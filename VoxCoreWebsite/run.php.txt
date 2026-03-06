@@ -1,0 +1,23 @@
+<?php
+echo "<pre>";
+echo "Running setup commands...\n\n";
+
+$commands = [
+    "mkdir -p ~/logs",
+    "cd ~/VOXCORE/voxquery && python3 -m venv venv",
+    "cd ~/VOXCORE/voxquery && source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt",
+    "echo 'VITE_API_URL=https://voxcore.org/api\nALLOWED_HOSTS=voxcore.org,www.voxcore.org\nENV=production\nDATABASE_URL=' > ~/VOXCORE/voxquery/.env",
+    "cd ~/VOXCORE/voxquery && source venv/bin/activate && nohup python -m uvicorn voxquery.api.main:app --host 127.0.0.1 --port 8000 > ~/logs/voxcore-backend.log 2>&1 &",
+    "sleep 2",
+    "cat > ~/public_html/voxcore/.htaccess << 'EOF'\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteBase /\nRewriteRule ^api/(.*)$ http://127.0.0.1:8000/api/$1 [P,L]\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule ^ index.html [QSA,L]\n</IfModule>\nEOF",
+];
+
+foreach ($commands as $cmd) {
+    echo "Running: $cmd\n";
+    system($cmd);
+    echo "\n---\n\n";
+}
+
+echo "\n✓ Setup complete!\n";
+echo "Visit: https://voxcore.org/\n";
+?>

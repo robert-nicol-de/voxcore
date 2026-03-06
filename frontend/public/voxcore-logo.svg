@@ -1,0 +1,43 @@
+<svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="metalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8e8e8;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#c0c0c0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Pure Black Background -->
+  <rect width="400" height="300" fill="#000000"/>
+
+  <!-- VoxCore Logo Group -->
+  <g transform="translate(200, 120)">
+    <!-- V shape (left) -->
+    <path d="M -45 -40 L -20 40 L -10 40 L -35 -40 Z" fill="url(#metalGradient)" stroke="#4a5568" stroke-width="1.5"/>
+    
+    <!-- C shape (right) -->
+    <path d="M 10 -40 Q 45 -40 45 0 Q 45 40 10 40 L 20 40 Q 50 40 50 0 Q 50 -40 20 -40 Z" fill="url(#metalGradient)" stroke="#4a5568" stroke-width="1.5"/>
+    
+    <!-- Curved connector (bottom) -->
+    <path d="M -20 40 Q 0 55 20 40" fill="none" stroke="url(#metalGradient)" stroke-width="8" stroke-linecap="round"/>
+    
+    <!-- Blue arrow (top right) -->
+    <g transform="translate(35, -35)">
+      <!-- Arrow shaft -->
+      <line x1="0" y1="15" x2="0" y2="-25" stroke="url(#arrowGradient)" stroke-width="6" stroke-linecap="round"/>
+      <!-- Arrow head -->
+      <polygon points="0,-25 -8,-8 8,-8" fill="url(#arrowGradient)"/>
+    </g>
+  </g>
+
+  <!-- Text: VoxCore -->
+  <text x="200" y="240" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle" letter-spacing="2">VoxCore</text>
+  
+  <!-- Text: Tagline -->
+  <text x="200" y="275" font-family="Arial, sans-serif" font-size="18" fill="#cbd5e1" text-anchor="middle" letter-spacing="0.5">Control How AI Touches Your Data</text>
+</svg>

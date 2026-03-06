@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: voxcore-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=production
+      - ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
+      - DATABASE_URL=mssql://sa:YourPassword@sqlserver:1433/AdventureWorks2022
+    volumes:
+      - ./voxcore/voxquery/logs:/app/logs
+    depends_on:
+      - sqlserver
+    restart: unless-stopped
+    networks:
+      - voxcore-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL=https://yourdomain.com/api
+    container_name: voxcore-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=https://yourdomain.com/api
+    restart: unless-stopped
+    networks:
+      - voxcore-network
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: voxcore-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourSecurePassword123!
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - voxcore-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: voxcore-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    networks:
+      - voxcore-network
+
+volumes:
+  sqlserver_data:
+
+networks:
+  voxcore-network:
+    driver: bridge

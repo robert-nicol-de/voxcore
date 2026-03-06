@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "Auto-detect Backend Disconnect",
+  "description": "Automatically clears connection data when backend becomes unreachable, forcing immediate UI update to show disconnected status",
+  "version": "1",
+  "when": {
+    "type": "promptSubmit"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "powershell -Command \"\n# Monitor backend health and clear connection on failure\n\\$maxRetries = 3\n\\$retryCount = 0\n\nwhile (\\$retryCount -lt \\$maxRetries) {\n  try {\n    \\$response = Invoke-WebRequest -Uri 'http://localhost:8000/health' -Method GET -TimeoutSec 2 -ErrorAction Stop\n    if (\\$response.StatusCode -eq 200) {\n      Write-Host '✓ Backend healthy'\n      exit 0\n    }\n  } catch {\n    \\$retryCount++\n    if (\\$retryCount -lt \\$maxRetries) {\n      Start-Sleep -Milliseconds 500\n    }\n  }\n}\n\nWrite-Host '✗ Backend unreachable - clearing connection data'\n# Signal frontend to clear connection\nWrite-Host 'CLEAR_CONNECTION'\nexit 1\n\""
+  },
+  "workspaceFolderName": "VoxQuery",
+  "shortName": "backend-health-monitor"
+}

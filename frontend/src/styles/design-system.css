@@ -1,0 +1,214 @@
+/* ============================================================================
+   VOXCORE ENTERPRISE DESIGN SYSTEM - CSS VARIABLES
+   ============================================================================ */
+
+:root {
+  /* ========================================================================
+     SHADOWS (3-Level Enterprise Hierarchy)
+     ======================================================================== */
+  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.16);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.20);
+
+  /* ========================================================================
+     RESPONSIVE LAYOUT TOKENS
+     ======================================================================== */
+  --margin-desktop: 80px;
+  --margin-tablet: 64px;
+  --margin-mobile: 16px;
+
+  --gutter-desktop: 24px;
+  --gutter-tablet: 20px;
+  --gutter-mobile: 16px;
+
+  --sidebar-desktop: 280px;
+  --sidebar-tablet: 240px;
+  --sidebar-mobile: 0;
+
+  --header-height-desktop: 56px;
+  --header-height-tablet: 48px;
+  --header-height-mobile: 48px;
+
+  /* ========================================================================
+     COLORS - NEUTRALS (6 colors)
+     ======================================================================== */
+  --color-bg-primary: #0F172A;
+  --color-surface: #1A202C;
+  --color-surface-elevated: #1E293B;
+  --color-border: #334155;
+  --color-text-secondary: #64748B;
+  --color-text-primary: #F1F5F9;
+
+  /* ========================================================================
+     COLORS - SEMANTIC (6 colors)
+     ======================================================================== */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+  --color-accent-primary: #6366F1;
+  --color-brand: #7C3AED;
+
+  /* ========================================================================
+     COLORS - STATUS (3 colors)
+     ======================================================================== */
+  --color-status-passed: #10B981;
+  --color-status-rewritten: #F59E0B;
+  --color-status-blocked: #EF4444;
+
+  /* ========================================================================
+     TEXT HIERARCHY
+     ======================================================================== */
+  --color-text-heading: #F1F5F9;
+  --color-text-body: #E2E8F0;
+  --color-text-muted: #64748B;
+  --color-text-disabled: #475569;
+
+  /* ========================================================================
+     INTERACTIVE ELEMENTS
+     ======================================================================== */
+  --color-button-primary: #6366F1;
+  --color-button-primary-hover: #4F46E5;
+  --color-button-secondary: #334155;
+  --color-link: #3B82F6;
+
+  /* ========================================================================
+     SPACING (8pt System)
+     ======================================================================== */
+  --spacing-1: 8px;
+  --spacing-2: 16px;
+  --spacing-3: 24px;
+  --spacing-4: 32px;
+  --spacing-5: 48px;
+  --spacing-6: 64px;
+
+  /* ========================================================================
+     BORDER RADIUS
+     ======================================================================== */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* ========================================================================
+     TRANSITIONS
+     ======================================================================== */
+  --transition-fast: 200ms ease-in-out;
+  --transition-normal: 300ms ease-in-out;
+  --transition-slow: 500ms ease-in-out;
+
+  /* ========================================================================
+     RESPONSIVE DEFAULTS (Mobile-First)
+     ======================================================================== */
+  --margin: var(--margin-mobile);
+  --gutter: var(--gutter-mobile);
+  --sidebar-width: var(--sidebar-mobile);
+  --header-height: var(--header-height-mobile);
+}
+
+/* ============================================================================
+   TABLET BREAKPOINT (1024px+)
+   ============================================================================ */
+@media (min-width: 1024px) {
+  :root {
+    --margin: var(--margin-tablet);
+    --gutter: var(--gutter-tablet);
+    --sidebar-width: var(--sidebar-tablet);
+    --header-height: var(--header-height-tablet);
+  }
+}
+
+/* ============================================================================
+   DESKTOP BREAKPOINT (1920px+)
+   ============================================================================ */
+@media (min-width: 1920px) {
+  :root {
+    --margin: var(--margin-desktop);
+    --gutter: var(--gutter-desktop);
+    --sidebar-width: var(--sidebar-desktop);
+    --header-height: var(--header-height-desktop);
+  }
+}
+
+/* ============================================================================
+   GLOBAL STYLES
+   ============================================================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+.shadow-sm {
+  box-shadow: var(--shadow-sm);
+}
+
+.shadow-md {
+  box-shadow: var(--shadow-md);
+}
+
+.shadow-lg {
+  box-shadow: var(--shadow-lg);
+}
+
+.text-primary {
+  color: var(--color-text-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.text-disabled {
+  color: var(--color-text-disabled);
+}
+
+.bg-primary {
+  background-color: var(--color-bg-primary);
+}
+
+.bg-surface {
+  background-color: var(--color-surface);
+}
+
+.bg-surface-elevated {
+  background-color: var(--color-surface-elevated);
+}
+
+.border-default {
+  border-color: var(--color-border);
+}
+
+.rounded-sm {
+  border-radius: var(--radius-sm);
+}
+
+.rounded-md {
+  border-radius: var(--radius-md);
+}
+
+.rounded-lg {
+  border-radius: var(--radius-lg);
+}

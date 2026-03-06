@@ -1,68 +1,70 @@
 @echo off
-REM VoxQuery Launcher - Just double-click this file!
-
-title VoxQuery Launcher
-color 0A
-setlocal enabledelayedexpansion
+REM VoxQuery - Unified Startup Script
+REM Starts both backend and frontend together
 
 echo.
-echo ========================================
-echo   VoxQuery - Natural Language SQL
-echo ========================================
+echo ================================================================================
+echo                    VOXQUERY - STARTING FULL STACK
+echo ================================================================================
 echo.
-
-REM Get the directory where this script is located
-cd /d "%~dp0"
 
 REM Check if Python is installed
-echo Checking Python...
-python --version 2>nul
+python --version >nul 2>&1
 if errorlevel 1 (
-    echo.
-    echo ERROR: Python not found!
-    echo.
-    echo Please install Python 3.10+ from https://python.org
-    echo Make sure to check "Add Python to PATH"
-    echo.
+    echo ERROR: Python is not installed or not in PATH
+    echo Please install Python 3.12+ and add it to your PATH
     pause
     exit /b 1
 )
 
-REM Check dependencies
-echo Checking dependencies...
-cd backend
-pip show langchain >nul 2>&1
-if errorlevel 1 (
-    echo.
-    echo Installing dependencies...
-    pip install -r requirements.txt
-    if errorlevel 1 (
-        echo ERROR: Failed to install dependencies
-        pause
-        exit /b 1
-    )
-)
-cd ..
-
 REM Check if Node.js is installed
-echo Checking Node.js...
-node --version 2>nul
+node --version >nul 2>&1
 if errorlevel 1 (
-    echo.
-    echo WARNING: Node.js not found!
-    echo Install from https://nodejs.org
-    echo.
+    echo ERROR: Node.js is not installed or not in PATH
+    echo Please install Node.js and add it to your PATH
     pause
+    exit /b 1
 )
 
-REM Run the launcher
-echo.
-echo Launching VoxQuery...
-echo.
-python launcher.py
+echo ✓ Python found: 
+python --version
 
-if errorlevel 1 (
-    echo.
-    echo ERROR occurred. Press any key to see details...
-    pause
-)
+echo ✓ Node.js found: 
+node --version
+
+echo.
+echo Starting Backend (Python)...
+echo.
+
+REM Start backend in a new window (use uvicorn to serve the FastAPI app)
+start "VoxQuery Backend" cmd /k "cd voxcore\voxquery && python -m uvicorn voxquery.api.main:app --host 0.0.0.0 --port 8000 --reload"
+
+REM Wait for backend to start
+timeout /t 3 /nobreak
+
+echo.
+echo Starting Frontend (React)...
+echo.
+
+REM Start frontend in a new window
+start "VoxQuery Frontend" cmd /k "cd frontend && npm run dev"
+
+REM Wait for frontend to start
+timeout /t 3 /nobreak
+
+echo.
+echo ================================================================================
+echo                    VOXQUERY STARTED SUCCESSFULLY
+echo ================================================================================
+echo.
+echo Backend:  http://localhost:8000
+echo Frontend: http://localhost:5173
+echo.
+echo Press any key to continue...
+pause
+
+echo.
+echo To stop the application:
+echo 1. Close the Backend window (VoxQuery Backend)
+echo 2. Close the Frontend window (VoxQuery Frontend)
+echo.

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import './Chat.css';
 import ConnectionHeader from './ConnectionHeader';
+import ChartRenderer from './ChartRenderer';
+import { ClientDetailsModal } from './ClientDetailsModal';
 
 interface Message {
   id: string;
@@ -10,9 +12,27 @@ interface Message {
   sql?: string;
   results?: any[];
   chart?: any;
+  column_mapping?: { [key: string]: string };
 }
 
-const Chat = forwardRef((_, ref) => {
+interface EnlargedChart {
+  type: string;
+  title: string;
+  data?: any;
+}
+
+interface ClientDetails {
+  name: string;
+  value: number;
+  chartType: string;
+  chartTitle: string;
+}
+
+interface ChatProps {
+  onBackToDashboard?: () => void;
+}
+
+const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard }, ref) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '0',
@@ -23,6 +43,9 @@ const Chat = forwardRef((_, ref) => {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [enlargedChart, setEnlargedChart] = useState<EnlargedChart | null>(null);
+  const [clientDetails, setClientDetails] = useState<ClientDetails | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -41,6 +64,24 @@ const Chat = forwardRef((_, ref) => {
     }
   }, [input]);
 
+  // Check connection status on mount and when it changes
+  useEffect(() => {
+    const checkConnectionStatus = () => {
+      const status = localStorage.getItem('dbConnectionStatus');
+      setIsConnected(status === 'connected');
+    };
+
+    checkConnectionStatus();
+
+    // Listen for connection status changes
+    const handleConnectionChange = () => {
+      checkConnectionStatus();
+    };
+
+    window.addEventListener('connectionStatusChanged', handleConnectionChange);
+    return () => window.removeEventListener('connectionStatusChanged', handleConnectionChange);
+  }, []);
+
   const handleQuestionSelect = (question: string) => {
     setInput(question);
     if (inputRef.current) {
@@ -58,8 +99,32 @@ const Chat = forwardRef((_, ref) => {
     handleQuestionSelect
   }));
 
+  const handleChartItemClick = (itemData: any) => {
+    setClientDetails({
+      name: itemData.name,
+      value: itemData.value,
+      chartType: itemData.chartType,
+      chartTitle: itemData.chartTitle,
+    });
+  };
+
   const handleSendMessage = async () => {
     if (!input.trim()) return;
+
+    // Check if database is connected
+    const dbConnectionStatus = localStorage.getItem('dbConnectionStatus');
+    const selectedDatabase = localStorage.getItem('selectedDatabase');
+    
+    if (dbConnectionStatus !== 'connected' || !selectedDatabase) {
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        type: 'assistant',
+        text: '⚠️ Please connect to a database first. Click the "Connect" button in the header to establish a connection.',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      return;
+    }
 
     const questionText = input;
     const userMessage: Message = {
@@ -81,7 +146,7 @@ const Chat = forwardRef((_, ref) => {
         },
         body: JSON.stringify({
           question: questionText,
-          warehouse: 'sqlserver',
+          warehouse: selectedDatabase,
           execute: true,
           dry_run: false,
           session_id: 'test'
@@ -90,26 +155,51 @@ const Chat = forwardRef((_, ref) => {
 
       if (response.ok) {
         const data = await response.json();
+        let messageText = `✓ Query executed successfully\n\n`;
+        if (data.generated_sql) {
+          messageText += `SQL: ${data.generated_sql}\n`;
+        }
+        if (data.risk_score !== undefined) {
+          messageText += `Risk Score: ${data.risk_score}\n`;
+        }
+        if (data.execution_time_ms !== undefined) {
+          messageText += `Execution Time: ${data.execution_time_ms}ms\n`;
+        }
+        if (data.rows_returned !== undefined) {
+          messageText += `Rows Returned: ${data.rows_returned}\n`;
+        }
+        
         const assistantMessage: Message = {
           id: Date.now().toString(),
           type: 'assistant',
-          text: data.explanation || '✓ Query executed successfully',
+          text: messageText,
           timestamp: new Date(),
-          sql: data.sql,
-          results: data.data,
+          sql: data.generated_sql || data.final_sql,
+          results: data.results,
           chart: data.chart,
+          column_mapping: data.column_mapping || {},
         };
         setMessages(prev => [...prev, assistantMessage]);
       } else {
         const errorData = await response.json();
-        throw new Error(errorData.detail || `API error: ${response.status}`);
+        throw new Error(errorData.detail || errorData.error || `API error: ${response.status}`);
       }
     } catch (error) {
       console.error('Error:', error);
+      let errorText = '⚠️ Backend connection error. Make sure the API server is running on http://localhost:8000';
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorText = '⏱️ Query timeout - server took too long to respond (10 seconds)';
+        } else {
+          errorText = `⚠️ Error: ${error.message}`;
+        }
+      }
+      
       const errorMessage: Message = {
         id: Date.now().toString(),
         type: 'assistant',
-        text: '⚠️ Backend connection error. Make sure the API server is running on http://localhost:8000',
+        text: errorText,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -128,16 +218,19 @@ const Chat = forwardRef((_, ref) => {
   const exportToCSV = (results: any[]) => {
     if (!results || results.length === 0) return;
     
-    const headers = Object.keys(results[0]);
+    const headers = Object.keys(results[0] || {});
+    if (headers.length === 0) return;
+    
     const csvContent = [
       headers.join(','),
       ...results.map(row => 
         headers.map(header => {
-          const value = row[header];
+          const value = row?.[header];
+          if (value === null || value === undefined) return '';
           if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
             return `"${value.replace(/"/g, '""')}"`;
           }
-          return value;
+          return String(value);
         }).join(',')
       )
     ].join('\n');
@@ -198,13 +291,16 @@ const Chat = forwardRef((_, ref) => {
               <table>
                 <thead>
                   <tr>
-                    ${Object.keys(results[0]).map(key => `<th>${key}</th>`).join('')}
+                    ${Object.keys(results[0] || {}).map(key => `<th>${key}</th>`).join('')}
                   </tr>
                 </thead>
                 <tbody>
                   ${results.map((row: any) => `
                     <tr>
-                      ${Object.values(row).map(val => `<td>${typeof val === 'number' ? val.toLocaleString() : String(val)}</td>`).join('')}
+                      ${Object.values(row || {}).map(val => {
+                        const displayVal = val === null || val === undefined ? '-' : (typeof val === 'number' ? val.toLocaleString() : String(val));
+                        return `<td>${displayVal}</td>`;
+                      }).join('')}
                     </tr>
                   `).join('')}
                 </tbody>
@@ -225,7 +321,7 @@ const Chat = forwardRef((_, ref) => {
 
   return (
     <div className="chat">
-      <ConnectionHeader />
+      <ConnectionHeader onDisconnect={onBackToDashboard} />
       <div className="messages">
         {messages.map(msg => (
           <div key={msg.id} className={`message ${msg.type}`}>
@@ -257,7 +353,7 @@ const Chat = forwardRef((_, ref) => {
                 </div>
               )}
 
-              {msg.results && (
+              {msg.results && msg.results.length > 0 && (
                 <div className="results-block">
                   <div className="results-header">📊 Results ({msg.results.length} rows)</div>
                   <div className="results-table">
@@ -265,22 +361,72 @@ const Chat = forwardRef((_, ref) => {
                       <thead>
                         <tr>
                           {Object.keys(msg.results[0] || {}).map(key => (
-                            <th key={key}>{key}</th>
+                            <th key={key}>{msg.column_mapping?.[key] || key}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {msg.results.slice(0, 5).map((row, idx) => (
+                        {msg.results.map((row, idx) => (
                           <tr key={idx}>
-                            {Object.values(row).map((val: any, i) => (
-                              <td key={i}>{String(val)}</td>
+                            {Object.values(row || {}).map((val: any, i) => (
+                              <td key={i}>{val !== null && val !== undefined ? String(val) : '-'}</td>
                             ))}
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                    {msg.results.length > 5 && (
-                      <p className="more-rows">... and {msg.results.length - 5} more rows</p>
+                  </div>
+                </div>
+              )}
+
+              {msg.chart && (
+                <div className="charts-grid-container">
+                  <div className="charts-grid">
+                    {msg.chart && msg.chart.type === 'bar' && (
+                      <div className="chart-grid-item">
+                        <div className="chart-grid-header" style={{cursor: 'pointer'}} onClick={() => setEnlargedChart({type: 'bar', title: msg.chart.title, data: msg.chart})}>📊 Bar</div>
+                        <ChartRenderer chart={msg.chart} onItemClick={handleChartItemClick} />
+                      </div>
+                    )}
+                    
+                    {msg.chart && msg.chart.type === 'bar' && msg.chart.series && msg.chart.series[0] && (
+                      <div className="chart-grid-item">
+                        <div className="chart-grid-header" style={{cursor: 'pointer'}} onClick={() => setEnlargedChart({type: 'pie', title: 'Proportion', data: {type: 'pie', title: 'Proportion', data: msg.chart.series[0].data.map((val: number, idx: number) => ({value: Number(val) || 0, name: msg.chart.xAxis.data[idx] || `Item ${idx + 1}`}))}})}>🥧 Pie</div>
+                        <ChartRenderer chart={{
+                          type: 'pie',
+                          title: 'Proportion',
+                          data: msg.chart.series[0].data.map((val: number, idx: number) => ({
+                            value: Number(val) || 0,
+                            name: msg.chart.xAxis.data[idx] || `Item ${idx + 1}`
+                          }))
+                        }} onItemClick={handleChartItemClick} />
+                      </div>
+                    )}
+                    
+                    {msg.chart && msg.chart.type === 'bar' && msg.chart.xAxis && msg.chart.series && (
+                      <div className="chart-grid-item">
+                        <div className="chart-grid-header" style={{cursor: 'pointer'}} onClick={() => setEnlargedChart({type: 'line', title: 'Trend - ' + msg.chart.title, data: {type: 'line', title: 'Trend - ' + msg.chart.title, xAxis: msg.chart.xAxis, yAxis: msg.chart.yAxis, series: msg.chart.series}})}>📈 Line</div>
+                        <ChartRenderer chart={{
+                          type: 'line',
+                          title: 'Trend - ' + msg.chart.title,
+                          xAxis: msg.chart.xAxis,
+                          yAxis: msg.chart.yAxis,
+                          series: msg.chart.series
+                        }} onItemClick={handleChartItemClick} />
+                      </div>
+                    )}
+                    
+                    {msg.chart && msg.chart.type === 'bar' && msg.chart.xAxis && msg.chart.series && (
+                      <div className="chart-grid-item">
+                        <div className="chart-grid-header" style={{cursor: 'pointer'}} onClick={() => setEnlargedChart({type: 'bar', title: 'Comparison - ' + msg.chart.title, data: msg.chart})}>📊 Comparison</div>
+                        <ChartRenderer chart={{
+                          type: 'bar',
+                          title: 'Comparison - ' + msg.chart.title,
+                          xAxis: msg.chart.xAxis,
+                          yAxis: msg.chart.yAxis,
+                          series: msg.chart.series
+                        }} onItemClick={handleChartItemClick} />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -301,6 +447,29 @@ const Chat = forwardRef((_, ref) => {
         <div ref={messagesEndRef} />
       </div>
 
+      {enlargedChart && (
+        <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999}} onClick={() => setEnlargedChart(null)}>
+          <div style={{background: 'var(--bg-primary)', borderRadius: '8px', padding: '20px', width: '90%', height: '90%', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.3)', overflowY: 'auto'}} onClick={(e) => e.stopPropagation()}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+              <h2 style={{margin: 0, color: 'var(--text-primary)'}}>{enlargedChart.title}</h2>
+              <button onClick={() => setEnlargedChart(null)} style={{background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: 'var(--text-secondary)'}}>×</button>
+            </div>
+            <div style={{flex: 1, width: '100%'}}>
+              <ChartRenderer chart={enlargedChart.data} onItemClick={handleChartItemClick} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ClientDetailsModal
+        isOpen={!!clientDetails}
+        clientName={clientDetails?.name || ''}
+        clientValue={clientDetails?.value || 0}
+        chartType={clientDetails?.chartType || ''}
+        chartTitle={clientDetails?.chartTitle || ''}
+        onClose={() => setClientDetails(null)}
+      />
+
       <div className="input-area">
         <div className="input-wrapper">
           <textarea
@@ -313,8 +482,9 @@ const Chat = forwardRef((_, ref) => {
           />
           <button 
             onClick={handleSendMessage}
-            disabled={!input.trim() || loading}
+            disabled={!input.trim() || loading || !isConnected}
             className="send-btn"
+            title={!isConnected ? 'Connect to a database first' : ''}
           >
             {loading ? '⏳' : '➤'}
           </button>

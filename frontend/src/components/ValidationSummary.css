@@ -1,0 +1,38 @@
+.validation-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border-left: 3px solid var(--risk-safe);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 12px;
+}
+
+.validation-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.check-icon {
+  color: var(--risk-safe);
+  font-weight: 700;
+  min-width: 16px;
+  text-align: center;
+}
+
+.validation-item.rewritten {
+  color: var(--risk-warning);
+}
+
+.validation-item.rewritten .check-icon {
+  color: var(--risk-warning);
+}
+
+.validation-summary span:last-child {
+  flex: 1;
+}

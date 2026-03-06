@@ -1,0 +1,979 @@
+[
+  {
+    "natural_language_question": "What are my YTD sales vs budget by store and category?",
+    "domain": "retail",
+    "priority_golden_set": true,
+    "split": "validation",
+    "expected_features": [
+      "YTD using DATE_TRUNC or DATE_PART",
+      "JOIN fact + budget table",
+      "variance calculation",
+      "GROUP BY store, category"
+    ],
+    "relevant_tables": [
+      "sales_fact",
+      "product_dim",
+      "budget_plan",
+      "store_dim"
+    ],
+    "key_columns": [
+      "transaction_date",
+      "revenue_amount",
+      "store_id",
+      "category_name",
+      "budget_amount",
+      "budget_year"
+    ],
+    "expected_sql": "WITH sales_ytd AS (\n  SELECT\n    s.store_id,\n    p.category_name,\n    SUM(s.revenue_amount) AS actual_sales\n  FROM sales_fact s\n  JOIN product_dim p ON s.product_id = p.product_id\n  WHERE s.transaction_date >= DATE_TRUNC('year', CURRENT_DATE())\n    AND s.transaction_date < DATE_TRUNC('year', CURRENT_DATE()) + INTERVAL '1 year'\n  GROUP BY s.store_id, p.category_name\n),\nbudget_ytd AS (\n  SELECT\n    store_id,\n    category_name,\n    SUM(budget_amount) AS budgeted_sales\n  FROM budget_plan\n  WHERE budget_year = YEAR(CURRENT_DATE())\n    AND budget_period = 'YTD'\n  GROUP BY store_id, category_name\n)\nSELECT\n  COALESCE(s.store_id, b.store_id) AS store_id,\n  COALESCE(s.category_name, b.category_name) AS category_name,\n  COALESCE(s.actual_sales, 0) AS actual_sales,\n  COALESCE(b.budgeted_sales, 0) AS budgeted_sales,\n  s.actual_sales - b.budgeted_sales AS variance,\n  CASE\n    WHEN b.budgeted_sales = 0 THEN NULL\n    ELSE ROUND(100.0 * (s.actual_sales - b.budgeted_sales) / b.budgeted_sales, 2)\n  END AS variance_pct\nFROM sales_ytd s\nFULL OUTER JOIN budget_ytd b ON s.store_id = b.store_id AND s.category_name = b.category_name\nORDER BY variance_pct ASC NULLS LAST, actual_sales DESC;",
+    "paraphrases": [
+      "Show YTD sales compared to budget broken down by store and category",
+      "YTD actual sales versus budget by store and category please",
+      "How are we performing YTD against budget per store and per category?"
+    ]
+  },
+  {
+    "natural_language_question": "Show gross profit percent MTD versus same month last year by department.",
+    "domain": "retail",
+    "priority_golden_set": true,
+    "split": "validation",
+    "expected_features": [
+      "MTD using DATE_TRUNC('month')",
+      "YoY comparison with DATEADD(year, -1)",
+      "percentage calc (gross_profit / revenue)",
+      "GROUP BY department"
+    ],
+    "relevant_tables": [
+      "sales_fact",
+      "product_dim"
+    ],
+    "key_columns": [
+      "transaction_date",
+      "revenue_amount",
+      "cogs_amount",
+      "department_name"
+    ],
+    "expected_sql": "WITH mtd_current AS (\n  SELECT\n    p.department_name,\n    SUM(s.revenue_amount) AS revenue_mtd,\n    SUM(s.cogs_amount) AS cogs_mtd,\n    SUM(s.revenue_amount - s.cogs_amount) AS gross_profit_mtd\n  FROM sales_fact s\n  JOIN product_dim p ON s.product_id = p.product_id\n  WHERE s.transaction_date >= DATE_TRUNC('month', CURRENT_DATE())\n    AND s.transaction_date < DATE_TRUNC('month', CURRENT_DATE()) + INTERVAL '1 month'\n  GROUP BY p.department_name\n),\nmtd_last_year AS (\n  SELECT\n    p.department_name,\n    SUM(s.revenue_amount) AS revenue_ly,\n    SUM(s.cogs_amount) AS cogs_ly,\n    SUM(s.revenue_amount - s.cogs_amount) AS gross_profit_ly\n  FROM sales_fact s\n  JOIN product_dim p ON s.product_id = p.product_id\n  WHERE s.transaction_date >= DATEADD(year, -1, DATE_TRUNC('month', CURRENT_DATE()))\n    AND s.transaction_date < DATEADD(year, -1, DATE_TRUNC('month', CURRENT_DATE()) + INTERVAL '1 month')\n  GROUP BY p.department_name\n)\nSELECT\n  COALESCE(c.department_name, ly.department_name) AS department_name,\n  c.revenue_mtd,\n  c.gross_profit_mtd,\n  CASE\n    WHEN c.revenue_mtd = 0 THEN NULL\n    ELSE ROUND(100.0 * c.gross_profit_mtd / c.revenue_mtd, 2)\n  END AS gross_margin_pct_mtd,\n  ly.gross_profit_ly,\n  CASE\n    WHEN ly.revenue_ly = 0 THEN NULL\n    ELSE ROUND(100.0 * ly.gross_profit_ly / ly.revenue_ly, 2)\n  END AS gross_margin_pct_ly,\n  ROUND(\n    (CASE WHEN c.revenue_mtd = 0 THEN NULL ELSE 100.0 * c.gross_profit_mtd / c.revenue_mtd END) -\n    (CASE WHEN ly.revenue_ly = 0 THEN NULL ELSE 100.0 * ly.gross_profit_ly / ly.revenue_ly END),\n    2\n  ) AS margin_pct_change\nFROM mtd_current c\nFULL OUTER JOIN mtd_last_year ly ON c.department_name = ly.department_name\nORDER BY gross_margin_pct_mtd DESC NULLS LAST;",
+    "paraphrases": [
+      "Gross margin MTD vs same month last year by department",
+      "MTD gross profit percentage compared to last year same month, by dept",
+      "How is gross profit % this month versus last year by department?"
+    ]
+  },
+  {
+    "natural_language_question": "Top 10 slow-moving items this week by store \u00e2\u20ac\u201d include days on hand and current stock.",
+    "domain": "retail",
+    "priority_golden_set": true,
+    "split": "validation",
+    "expected_features": [
+      "CURRENT_DATE based week filter",
+      "QUALIFY ROW_NUMBER() or LIMIT",
+      "days on hand calc",
+      "inventory snapshot",
+      "per store grouping"
+    ],
+    "paraphrases": [
+      "What are the 10 slowest moving products this week per store with DOH and stock level",
+      "Top 10 slow sellers this week by store including days in inventory and on-hand quantity",
+      "Show the slowest moving items right now this week, broken down by store"
+    ],
+    "expected_sql": "SELECT\n  s.store_id,\n  p.product_id,\n  p.product_name,\n  SUM(s.units) AS units_sold_week,\n  i.on_hand_quantity,\n  CASE\n    WHEN SUM(s.units) > 0 THEN ROUND(i.on_hand_quantity / SUM(s.units), 1)\n    ELSE NULL\n  END AS days_on_hand,\n  ROW_NUMBER() OVER (PARTITION BY s.store_id ORDER BY SUM(s.units) ASC) AS rank_by_store\nFROM sales_fact s\nJOIN product_dim p ON s.product_id = p.product_id\nJOIN inventory_snapshot i ON s.product_id = i.product_id AND s.store_id = i.store_id\nWHERE s.transaction_date >= DATE_TRUNC('week', CURRENT_DATE())\n  AND s.transaction_date < DATE_TRUNC('week', CURRENT_DATE()) + INTERVAL '1 week'\nGROUP BY s.store_id, p.product_id, p.product_name, i.on_hand_quantity\nQUALIFY ROW_NUMBER() OVER (PARTITION BY s.store_id ORDER BY SUM(s.units) ASC) <= 10\nORDER BY s.store_id, rank_by_store;",
+    "relevant_tables": [
+      "sales_fact",
+      "product_dim",
+      "inventory_snapshot"
+    ],
+    "key_columns": [
+      "transaction_date",
+      "units",
+      "product_id",
+      "store_id",
+      "on_hand_quantity"
+    ]
+  },
+  {
+    "natural_language_question": "Which stores are more than 15% below YTD sales target? Show variance amount too.",
+    "domain": "retail",
+    "priority_golden_set": true,
+    "split": "validation",
+    "expected_features": [
+      "YTD aggregation",
+      "percentage variance",
+      "HAVING or QUALIFY filter > 15%",
+      "absolute variance $",
+      "negative performance highlight"
+    ],
+    "paraphrases": [
+      "Stores more than 15% under YTD sales target with dollar variance",
+      "List stores over 15% behind YTD budget and show the gap in $",
+      "Which locations are significantly below YTD target (more than 15%)"
+    ],
+    "expected_sql": "WITH ytd_sales AS (\n  SELECT\n    s.store_id,\n    SUM(s.revenue_amount) AS actual_ytd_sales\n  FROM sales_fact s\n  WHERE s.transaction_date >= DATE_TRUNC('year', CURRENT_DATE())\n    AND s.transaction_date < DATE_TRUNC('year', CURRENT_DATE()) + INTERVAL '1 year'\n  GROUP BY s.store_id\n),\nytd_targets AS (\n  SELECT\n    store_id,\n    SUM(target_amount) AS ytd_target\n  FROM sales_target\n  WHERE target_year = YEAR(CURRENT_DATE())\n  GROUP BY store_id\n)\nSELECT\n  COALESCE(s.store_id, t.store_id) AS store_id,\n  s.actual_ytd_sales,\n  t.ytd_target,\n  ROUND(s.actual_ytd_sales - t.ytd_target, 2) AS variance_amount,\n  ROUND(100.0 * (s.actual_ytd_sales - t.ytd_target) / NULLIF(t.ytd_target, 0), 2) AS variance_pct\nFROM ytd_sales s\nFULL OUTER JOIN ytd_targets t ON s.store_id = t.store_id\nWHERE ROUND(100.0 * (s.actual_ytd_sales - t.ytd_target) / NULLIF(t.ytd_target, 0), 2) < -15\nORDER BY variance_pct ASC;",
+    "relevant_tables": [
+      "sales_fact",
+      "sales_target",
+      "store_dim"
+    ],
+    "key_columns": [
+      "transaction_date",
+      "revenue_amount",
+      "store_id",
+      "target_amount",
+      "target_year"
+    ]
+  },
+  {
+    "natural_language_question": "Weekly sales trend for Electronics category over the last 12 weeks \u00e2\u20ac\u201d show as line-ready data.",
+    "domain": "retail",
+    "priority_golden_set": true,
+    "split": "validation",
+    "expected_features": [
+      "DATE_TRUNC('week')",
+      "DATEADD(week, -12, CURRENT_DATE)",
+      "time-series ready output",
+      "category filter",
+      "ORDER BY week"
+    ],
+    "relevant_tables": [
+      "sales_fact",
+      "product_dim"
+    ],
+    "key_columns": [
+      "transaction_date",
+      "revenue_amount",
+      "category_name",
+      "transaction_id",
+      "units"
+    ],
+    "expected_sql": "SELECT\n  DATE_TRUNC('week', s.transaction_date) AS week_start,\n  SUM(s.revenue_amount) AS weekly_sales,\n  COUNT(DISTINCT s.transaction_id) AS transaction_count,\n  AVG(s.revenue_amount / NULLIF(s.units, 0)) AS avg_price_per_unit\nFROM sales_fact s\nJOIN product_dim p ON s.product_id = p.product_id\nWHERE p.category_name = 'Electronics'\n  AND s.transaction_date >= DATEADD(week, -12, DATE_TRUNC('week', CURRENT_DATE()))\n  AND s.transaction_date < DATE_TRUNC('week', CURRENT_DATE()) + INTERVAL '1 week'\nGROUP BY DATE_TRUNC('week', s.transaction_date)\nORDER BY week_start ASC;",
+    "paraphrases": [
+      "Electronics weekly sales trend for the last 12 weeks",
+      "Show weekly sales of Electronics going back 12 weeks for a line chart",
+      "12-week trend of Electronics sales broken by week"
+    ]
+  },
+  {
+    "natural_language_question": "MTD revenue and COGS by channel \u00e2\u20ac\u201d Retail, Online, Wholesale.",
+    "domain": "retail",
+    "priority_golden_set": true,
+    "split": "validation",
+    "expected_features": [
+      "MTD using DATE_TRUNC('month')",
+      "multiple metrics",
+      "GROUP BY channel",
+      "explicit channel values"
+    ],
+    "paraphrases": [
+      "Month-to-date revenue and cost of goods by sales channel",
+      "MTD revenue + COGS split by Retail, Online, Wholesale",
+      "Current month rev and COGS per channel"
+    ],
+    "expected_sql": "SELECT\n  s.channel,\n  SUM(s.revenue_amount) AS mtd_revenue,\n  SUM(s.cogs_amount) AS mtd_cogs,\n  ROUND(SUM(s.revenue_amount) - SUM(s.cogs_amount), 2) AS mtd_gross_profit,\n  CASE\n    WHEN SUM(s.revenue_amount) = 0 THEN NULL\n    ELSE ROUND(100.0 * (SUM(s.revenue_amount) - SUM(s.cogs_amount)) / SUM(s.revenue_amount), 2)\n  END AS gross_margin_pct\nFROM sales_fact s\nWHERE s.transaction_date >= DATE_TRUNC('month', CURRENT_DATE())\n  AND s.transaction_date < DATE_TRUNC('month', CURRENT_DATE()) + INTERVAL '1 month'\n  AND s.channel IN ('Retail', 'Online', 'Wholesale')\nGROUP BY s.channel\nORDER BY mtd_revenue DESC;",
+    "relevant_tables": [
+      "sales_fact"
+    ],
+    "key_columns": [
+      "transaction_date",
+      "revenue_amount",
+      "cogs_amount",
+      "channel"
+    ]
+  },
+  {
+    "natural_language_question": "Bottom 5 stores by sales per square meter this quarter.",
+    "domain": "retail",
+    "priority_golden_set": true,
+    "split": "test",
+    "expected_features": [
+      "QTD using DATE_TRUNC('quarter')",
+      "derived metric (sales / sqm)",
+      "ORDER BY + LIMIT 5",
+      "lowest performers"
+    ],
+    "paraphrases": [
+      "Worst 5 stores for sales per square foot this quarter",
+      "Bottom performing stores by sales/sqm QTD",
+      "Which stores have the lowest sales per sqm this quarter"
+    ],
+    "expected_sql": "SELECT\n  s.store_id,\n  st.store_name,\n  st.square_meters,\n  SUM(sf.revenue_amount) AS qtd_sales,\n  ROUND(SUM(sf.revenue_amount) / NULLIF(st.square_meters, 0), 2) AS sales_per_sqm,\n  ROW_NUMBER() OVER (ORDER BY SUM(sf.revenue_amount) / NULLIF(st.square_meters, 0) ASC) AS rank\nFROM sales_fact sf\nJOIN store_dim s ON sf.store_id = s.store_id\nJOIN store_details st ON s.store_id = st.store_id\nWHERE sf.transaction_date >= DATE_TRUNC('quarter', CURRENT_DATE())\n  AND sf.transaction_date < DATE_TRUNC('quarter', CURRENT_DATE()) + INTERVAL '1 quarter'\nGROUP BY s.store_id, st.store_name, st.square_meters\nQUALIFY ROW_NUMBER() OVER (ORDER BY SUM(sf.revenue_amount) / NULLIF(st.square_meters, 0) ASC) <= 5\nORDER BY sales_per_sqm ASC;",
+    "relevant_tables": [
+      "sales_fact",
+      "store_dim",
+      "store_details"
+    ],
+    "key_columns": [
+      "transaction_date",
+      "revenue_amount",
+      "store_id",
+      "square_meters"
+    ]
+  },
+  {
+    "natural_language_question": "Year-over-year growth rate for top 20 products by revenue last month.",
+    "domain": "retail",
+    "priority_golden_set": true,
+    "split": "test",
+    "expected_features": [
+      "YoY using DATEADD(year, -1)",
+      "growth % calculation",
+      "RANK() or ROW_NUMBER() for top 20",
+      "previous month filter"
+    ],
+    "paraphrases": [
+      "YoY growth % for the top 20 products by revenue last month",
+      "Top 20 SKUs by last month's revenue with year-over-year growth",
+      "Which products grew the most YoY among the highest revenue items last month"
+    ],
+    "expected_sql": "WITH last_month_sales AS (\n  SELECT\n    p.product_id,\n    p.product_name,\n    SUM(sf.revenue_amount) AS last_month_revenue,\n    SUM(sf.units) AS last_month_units\n  FROM sales_fact sf\n  JOIN product_dim p ON sf.product_id = p.product_id\n  WHERE sf.transaction_date >= DATEADD(month, -1, DATE_TRUNC('month', CURRENT_DATE()))\n    AND sf.transaction_date < DATE_TRUNC('month', CURRENT_DATE())\n  GROUP BY p.product_id, p.product_name\n),\nlast_month_ly AS (\n  SELECT\n    p.product_id,\n    p.product_name,\n    SUM(sf.revenue_amount) AS ly_revenue,\n    SUM(sf.units) AS ly_units\n  FROM sales_fact sf\n  JOIN product_dim p ON sf.product_id = p.product_id\n  WHERE sf.transaction_date >= DATEADD(month, -13, DATE_TRUNC('month', CURRENT_DATE()))\n    AND sf.transaction_date < DATEADD(month, -12, DATE_TRUNC('month', CURRENT_DATE()))\n  GROUP BY p.product_id, p.product_name\n),\ntop_products AS (\n  SELECT\n    lm.product_id,\n    lm.product_name,\n    lm.last_month_revenue,\n    ly.ly_revenue,\n    ROUND(100.0 * (lm.last_month_revenue - ly.ly_revenue) / NULLIF(ly.ly_revenue, 0), 2) AS yoy_growth_pct,\n    ROW_NUMBER() OVER (ORDER BY lm.last_month_revenue DESC) AS rank\n  FROM last_month_sales lm\n  LEFT JOIN last_month_ly ly ON lm.product_id = ly.product_id\n)\nSELECT\n  product_id,\n  product_name,\n  last_month_revenue,\n  ly_revenue,\n  yoy_growth_pct\nFROM top_products\nWHERE rank <= 20\nORDER BY last_month_revenue DESC;",
+    "relevant_tables": [
+      "sales_fact",
+      "product_dim"
+    ],
+    "key_columns": [
+      "transaction_date",
+      "revenue_amount",
+      "units",
+      "product_id",
+      "product_name"
+    ]
+  },
+  {
+    "natural_language_question": "Show average transaction value by day of week for the last 90 days.",
+    "domain": "retail",
+    "split": "test",
+    "expected_features": [
+      "DAYOFWEEK or WEEKDAY function",
+      "last 90 days window",
+      "AVG(revenue / transactions)",
+      "GROUP BY day of week"
+    ],
+    "paraphrases": [
+      "Average basket size by day of the week over the past 90 days",
+      "Last 90 days avg transaction value per weekday",
+      "How much customers spend on average each day of week recently"
+    ],
+    "expected_sql": "SELECT\n  DAYNAME(sf.transaction_date) AS day_of_week,\n  DAYOFWEEK(sf.transaction_date) AS day_num,\n  COUNT(DISTINCT sf.transaction_id) AS transaction_count,\n  COUNT(DISTINCT sf.customer_id) AS customer_count,\n  SUM(sf.revenue_amount) AS total_revenue,\n  ROUND(SUM(sf.revenue_amount) / COUNT(DISTINCT sf.transaction_id), 2) AS avg_transaction_value,\n  ROUND(SUM(sf.revenue_amount) / COUNT(DISTINCT sf.customer_id), 2) AS avg_customer_spend\nFROM sales_fact sf\nWHERE sf.transaction_date >= DATEADD(day, -90, CURRENT_DATE())\n  AND sf.transaction_date < CURRENT_DATE()\nGROUP BY DAYNAME(sf.transaction_date), DAYOFWEEK(sf.transaction_date)\nORDER BY day_num ASC;",
+    "relevant_tables": [
+      "sales_fact"
+    ],
+    "key_columns": [
+      "transaction_date",
+      "transaction_id",
+      "customer_id",
+      "revenue_amount"
+    ]
+  },
+  {
+    "natural_language_question": "Which categories have the highest return rate YTD? Include return value and % of sales.",
+    "domain": "retail",
+    "priority_golden_set": true,
+    "split": "test",
+    "expected_features": [
+      "YTD",
+      "return rate (returns / sales)",
+      "return value SUM",
+      "% calculation",
+      "ORDER BY DESC"
+    ],
+    "paraphrases": [
+      "Categories with the worst return rates year to date \u00e2\u20ac\u201d show $ and %",
+      "Top categories by return percentage YTD including return amount",
+      "Which product categories see the most returns this year"
+    ],
+    "expected_sql": "WITH category_sales AS (\n  SELECT\n    p.category_name,\n    SUM(sf.revenue_amount) AS total_sales,\n    SUM(sf.units) AS total_units\n  FROM sales_fact sf\n  JOIN product_dim p ON sf.product_id = p.product_id\n  WHERE sf.transaction_date >= DATE_TRUNC('year', CURRENT_DATE())\n    AND sf.transaction_date < DATE_TRUNC('year', CURRENT_DATE()) + INTERVAL '1 year'\n    AND sf.transaction_type = 'SALE'\n  GROUP BY p.category_name\n),\ncategory_returns AS (\n  SELECT\n    p.category_name,\n    SUM(sf.revenue_amount) AS return_value,\n    SUM(sf.units) AS return_units,\n    COUNT(DISTINCT sf.transaction_id) AS return_count\n  FROM sales_fact sf\n  JOIN product_dim p ON sf.product_id = p.product_id\n  WHERE sf.transaction_date >= DATE_TRUNC('year', CURRENT_DATE())\n    AND sf.transaction_date < DATE_TRUNC('year', CURRENT_DATE()) + INTERVAL '1 year'\n    AND sf.transaction_type = 'RETURN'\n  GROUP BY p.category_name\n)\nSELECT\n  COALESCE(s.category_name, r.category_name) AS category_name,\n  s.total_sales,\n  r.return_value,\n  ROUND(100.0 * r.return_value / NULLIF(s.total_sales, 0), 2) AS return_rate_pct,\n  r.return_count\nFROM category_sales s\nFULL OUTER JOIN category_returns r ON s.category_name = r.category_name\nORDER BY return_rate_pct DESC NULLS LAST;",
+    "relevant_tables": [
+      "sales_fact",
+      "product_dim"
+    ],
+    "key_columns": [
+      "transaction_date",
+      "revenue_amount",
+      "units",
+      "category_name",
+      "transaction_type"
+    ]
+  },
+  {
+    "natural_language_question": "Monthly operating expenses trend last 12 months with % change.",
+    "domain": "finance",
+    "priority_golden_set": true,
+    "split": "validation",
+    "expected_features": [
+      "monthly grouping",
+      "LAG for MoM %",
+      "last 12 months"
+    ],
+    "paraphrases": [
+      "OpEx by month past year showing month-over-month % change",
+      "12-month operating expense trend with growth rates",
+      "Monthly OpEx run-rate and % variance last 12 months"
+    ],
+    "expected_sql": "WITH monthly_opex AS (\n  SELECT\n    DATE_TRUNC('month', expense_date) AS expense_month,\n    SUM(expense_amount) AS monthly_opex\n  FROM operating_expenses\n  WHERE expense_date >= DATEADD(month, -12, DATE_TRUNC('month', CURRENT_DATE()))\n    AND expense_date < DATE_TRUNC('month', CURRENT_DATE()) + INTERVAL '1 month'\n  GROUP BY DATE_TRUNC('month', expense_date)\n)\nSELECT\n  expense_month,\n  monthly_opex,\n  LAG(monthly_opex) OVER (ORDER BY expense_month) AS prior_month_opex,\n  ROUND(monthly_opex - LAG(monthly_opex) OVER (ORDER BY expense_month), 2) AS mom_change_amount,\n  CASE\n    WHEN LAG(monthly_opex) OVER (ORDER BY expense_month) = 0 THEN NULL\n    ELSE ROUND(100.0 * (monthly_opex - LAG(monthly_opex) OVER (ORDER BY expense_month)) / LAG(monthly_opex) OVER (ORDER BY expense_month), 2)\n  END AS mom_change_pct\nFROM monthly_opex\nORDER BY expense_month ASC;",
+    "relevant_tables": [
+      "operating_expenses"
+    ],
+    "key_columns": [
+      "expense_date",
+      "expense_amount",
+      "expense_category"
+    ]
+  },
+  {
+    "natural_language_question": "Gross profit bridge \u00e2\u20ac\u201d show volume, mix, cost, price impact YTD vs LY.",
+    "domain": "finance",
+    "priority_golden_set": true,
+    "split": "test",
+    "expected_features": [
+      "bridge / waterfall analysis",
+      "multiple CTEs or CASE",
+      "YoY variance drivers"
+    ],
+    "paraphrases": [
+      "YTD gross profit walk \u00e2\u20ac\u201d volume, mix, price, cost effects vs last year",
+      "Gross margin bridge analysis YTD vs prior year",
+      "Break down gross profit change into volume mix price cost"
+    ],
+    "expected_sql": "WITH ytd_current AS (\n  SELECT\n    SUM(sf.revenue_amount) AS revenue_ytd,\n    SUM(sf.cogs_amount) AS cogs_ytd,\n    SUM(sf.units) AS units_ytd,\n    COUNT(DISTINCT sf.product_id) AS product_count\n  FROM sales_fact sf\n  WHERE sf.transaction_date >= DATE_TRUNC('year', CURRENT_DATE())\n    AND sf.transaction_date < DATE_TRUNC('year', CURRENT_DATE()) + INTERVAL '1 year'\n),\nytd_ly AS (\n  SELECT\n    SUM(sf.revenue_amount) AS revenue_ly,\n    SUM(sf.cogs_amount) AS cogs_ly,\n    SUM(sf.units) AS units_ly,\n    COUNT(DISTINCT sf.product_id) AS product_count_ly\n  FROM sales_fact sf\n  WHERE sf.transaction_date >= DATEADD(year, -1, DATE_TRUNC('year', CURRENT_DATE()))\n    AND sf.transaction_date < DATEADD(year, -1, DATE_TRUNC('year', CURRENT_DATE()) + INTERVAL '1 year')\n)\nSELECT\n  c.revenue_ytd,\n  ly.revenue_ly,\n  ROUND(c.revenue_ytd - ly.revenue_ly, 2) AS revenue_variance,\n  ROUND(100.0 * (c.revenue_ytd - ly.revenue_ly) / NULLIF(ly.revenue_ly, 0), 2) AS revenue_variance_pct,\n  c.cogs_ytd,\n  ly.cogs_ly,\n  ROUND(c.cogs_ytd - ly.cogs_ly, 2) AS cogs_variance,\n  ROUND((c.revenue_ytd - c.cogs_ytd) - (ly.revenue_ly - ly.cogs_ly), 2) AS gp_variance,\n  ROUND(100.0 * ((c.revenue_ytd - c.cogs_ytd) - (ly.revenue_ly - ly.cogs_ly)) / NULLIF(ly.revenue_ly - ly.cogs_ly, 0), 2) AS gp_variance_pct,\n  ROUND(100.0 * (c.revenue_ytd - c.cogs_ytd) / NULLIF(c.revenue_ytd, 0), 2) AS gp_margin_pct_ytd,\n  ROUND(100.0 * (ly.revenue_ly - ly.cogs_ly) / NULLIF(ly.revenue_ly, 0), 2) AS gp_margin_pct_ly\nFROM ytd_current c\nCROSS JOIN ytd_ly ly;",
+    "relevant_tables": [
+      "sales_fact"
+    ],
+    "key_columns": [
+      "transaction_date",
+      "revenue_amount",
+      "cogs_amount",
+      "units"
+    ]
+  },
+  {
+    "natural_language_question": "Full P&L summary YTD \u00e2\u20ac\u201d revenue, COGS, gross profit, op ex, EBITDA, net income \u00e2\u20ac\u201d with % variance to budget and LY.",
+    "domain": "finance",
+    "priority_golden_set": true,
+    "split": "test",
+    "expected_features": [
+      "P&L structure",
+      "multiple KPIs",
+      "YTD",
+      "variance to budget + YoY %"
+    ],
+    "paraphrases": [
+      "Year-to-date full profit & loss with budget and prior year variances",
+      "YTD P&L key lines \u00e2\u20ac\u201d actual vs budget vs last year",
+      "Complete YTD income statement with % variances"
+    ],
+    "expected_sql": "WITH ytd_pl AS (\n  SELECT\n    SUM(sf.revenue_amount) AS revenue,\n    SUM(sf.cogs_amount) AS cogs,\n    SUM(sf.revenue_amount - sf.cogs_amount) AS gross_profit,\n    SUM(oe.expense_amount) FILTER (WHERE oe.expense_category = 'OPERATING') AS operating_expenses,\n    SUM(oe.expense_amount) FILTER (WHERE oe.expense_category = 'INTEREST') AS interest_expense,\n    SUM(oe.expense_amount) FILTER (WHERE oe.expense_category = 'TAX') AS tax_expense\n  FROM sales_fact sf\n  LEFT JOIN operating_expenses oe ON sf.transaction_date >= DATE_TRUNC('year', CURRENT_DATE())\n    AND sf.transaction_date < DATE_TRUNC('year', CURRENT_DATE()) + INTERVAL '1 year'\n    AND oe.expense_date >= DATE_TRUNC('year', CURRENT_DATE())\n    AND oe.expense_date < DATE_TRUNC('year', CURRENT_DATE()) + INTERVAL '1 year'\n  WHERE sf.transaction_date >= DATE_TRUNC('year', CURRENT_DATE())\n    AND sf.transaction_date < DATE_TRUNC('year', CURRENT_DATE()) + INTERVAL '1 year'\n),\nytd_ly_pl AS (\n  SELECT\n    SUM(sf.revenue_amount) AS revenue_ly,\n    SUM(sf.cogs_amount) AS cogs_ly,\n    SUM(sf.revenue_amount - sf.cogs_amount) AS gross_profit_ly,\n    SUM(oe.expense_amount) FILTER (WHERE oe.expense_category = 'OPERATING') AS operating_expenses_ly\n  FROM sales_fact sf\n  LEFT JOIN operating_expenses oe ON oe.expense_date >= DATEADD(year, -1, DATE_TRUNC('year', CURRENT_DATE()))\n    AND oe.expense_date < DATEADD(year, -1, DATE_TRUNC('year', CURRENT_DATE()) + INTERVAL '1 year')\n  WHERE sf.transaction_date >= DATEADD(year, -1, DATE_TRUNC('year', CURRENT_DATE()))\n    AND sf.transaction_date < DATEADD(year, -1, DATE_TRUNC('year', CURRENT_DATE()) + INTERVAL '1 year')\n)\nSELECT\n  p.revenue,\n  p.cogs,\n  p.gross_profit,\n  ROUND(100.0 * p.gross_profit / NULLIF(p.revenue, 0), 2) AS gross_margin_pct,\n  p.operating_expenses,\n  ROUND(p.gross_profit - p.operating_expenses, 2) AS ebitda,\n  p.interest_expense,\n  p.tax_expense,\n  ROUND(p.gross_profit - p.operating_expenses - p.interest_expense - p.tax_expense, 2) AS net_income,\n  ROUND(100.0 * (p.gross_profit - p.operating_expenses - p.interest_expense - p.tax_expense) / NULLIF(p.revenue, 0), 2) AS net_margin_pct,\n  ROUND(100.0 * (p.revenue - ly.revenue_ly) / NULLIF(ly.revenue_ly, 0), 2) AS revenue_variance_pct,\n  ROUND(100.0 * (p.gross_profit - ly.gross_profit_ly) / NULLIF(ly.gross_profit_ly, 0), 2) AS gp_variance_pct\nFROM ytd_pl p\nCROSS JOIN ytd_ly_pl ly;",
+    "relevant_tables": [
+      "sales_fact",
+      "operating_expenses"
+    ],
+    "key_columns": [
+      "transaction_date",
+      "revenue_amount",
+      "cogs_amount",
+      "expense_amount",
+      "expense_category"
+    ]
+  },
+  {
+    "natural_language_question": "Compare online vs in-store sales mix MTD vs last year same period.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "MTD vs same month last year",
+      "sales mix %",
+      "channel grouping",
+      "comparison side-by-side"
+    ],
+    "paraphrases": [
+      "MTD online vs in-store sales split compared to last year same month",
+      "Channel mix this month versus same month last year (online/in-store)",
+      "How has the online/in-store revenue proportion changed MTD YoY"
+    ]
+  },
+  {
+    "natural_language_question": "Stores with inventory turnover below 4x in the last 6 months.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "inventory turnover (COGS / avg inventory)",
+      "6-month window",
+      "HAVING turnover < 4",
+      "per store"
+    ],
+    "paraphrases": [
+      "Which stores have inventory turnover less than 4 times in past 6 months",
+      "Locations with low stock turn (under 4x) last half year",
+      "Stores turning inventory too slowly over the last 6 months"
+    ]
+  },
+  {
+    "natural_language_question": "Top 15 items by units sold this month that were not in top 50 last month.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "EXCEPT or NOT IN subquery",
+      "top N with QUALIFY",
+      "month filter",
+      "momentum detection"
+    ],
+    "paraphrases": [
+      "Fastest rising products this month \u00e2\u20ac\u201d top 15 new to top 50",
+      "Items that entered top sellers this month (not top 50 last month)",
+      "Which products jumped into top sellers this month"
+    ]
+  },
+  {
+    "natural_language_question": "Gross margin by supplier for Q1 this year vs Q1 last year.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "Q1 filter",
+      "YoY comparison",
+      "GROUP BY supplier",
+      "margin %"
+    ],
+    "paraphrases": [
+      "Supplier gross margin Q1 this year compared to Q1 last year",
+      "Gross profit % by vendor Q1 vs Q1 prior year",
+      "How are suppliers performing on margin in Q1 YoY"
+    ]
+  },
+  {
+    "natural_language_question": "How many stores are up more than 10% in comp sales this fiscal year?",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "comp sales (same-store)",
+      "fiscal YTD",
+      ">10% growth filter",
+      "COUNT"
+    ],
+    "paraphrases": [
+      "Number of stores with comp sales growth >10% fiscal YTD",
+      "How many locations are up more than 10% like-for-like this year",
+      "Count of stores showing double-digit comp growth YTD"
+    ]
+  },
+  {
+    "natural_language_question": "Show markdown dollars and % of sales by category last 30 days.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "last 30 days",
+      "markdown value",
+      "% of total sales",
+      "GROUP BY category"
+    ],
+    "paraphrases": [
+      "Markdown spend and % of revenue by category past 30 days",
+      "Discount dollars and markdown rate by category last month",
+      "Which categories had the most markdowns recently"
+    ]
+  },
+  {
+    "natural_language_question": "Customer count and average basket size by region last week.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "last 7 days",
+      "DISTINCT customers",
+      "avg basket",
+      "GROUP BY region"
+    ],
+    "paraphrases": [
+      "Last week's customer traffic and avg spend per transaction by region",
+      "Number of shoppers and average basket by region past week",
+      "Regional customer count + basket size last week"
+    ]
+  },
+  {
+    "natural_language_question": "Which products have stock below reorder point and sales > $5000 last month?",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "inventory threshold",
+      "last month sales filter",
+      "AND condition",
+      "urgent restock flag"
+    ],
+    "paraphrases": [
+      "Products below reorder level with >$5k sales last month",
+      "Hot sellers that are running low on stock from last month",
+      "Which items need urgent reorder based on last month's sales"
+    ]
+  },
+  {
+    "natural_language_question": "MTD sales by store format \u00e2\u20ac\u201d Flagship, Express, Outlet.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "MTD",
+      "GROUP BY format",
+      "specific format values"
+    ],
+    "paraphrases": [
+      "Month-to-date sales split by store type: Flagship, Express, Outlet",
+      "Current month revenue by store format",
+      "MTD performance across Flagship vs Express vs Outlet stores"
+    ]
+  },
+  {
+    "natural_language_question": "Running total YTD sales by month and cumulative variance to budget.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "window SUM() OVER",
+      "YTD running total",
+      "cumulative variance",
+      "monthly grouping"
+    ],
+    "paraphrases": [
+      "Cumulative YTD sales by month with running budget variance",
+      "Month-by-month YTD sales total and how far ahead/behind budget",
+      "Running YTD revenue vs budget cumulative"
+    ]
+  },
+  {
+    "natural_language_question": "Top 5 categories by contribution margin this quarter.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "contribution margin",
+      "QTD",
+      "top 5 with QUALIFY or LIMIT"
+    ],
+    "paraphrases": [
+      "Best 5 categories by contribution margin QTD",
+      "Top performing categories on contribution margin this quarter",
+      "Which categories contribute most to margin right now"
+    ]
+  },
+  {
+    "natural_language_question": "Stores ranked by shrink percentage YTD \u00e2\u20ac\u201d show top 10 worst.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "shrink % (lost / total)",
+      "YTD",
+      "DESC ranking",
+      "LIMIT 10"
+    ],
+    "paraphrases": [
+      "Worst 10 stores for shrinkage percentage year to date",
+      "Top 10 stores with highest shrink rate YTD",
+      "Which locations have the biggest inventory loss % this year"
+    ]
+  },
+  {
+    "natural_language_question": "Weekly footfall and conversion rate trend last 8 weeks.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "weekly grouping",
+      "conversion = transactions / visitors",
+      "last 8 weeks",
+      "trend output"
+    ],
+    "paraphrases": [
+      "Foot traffic and conversion trend week by week past 8 weeks",
+      "Last 8 weeks weekly visitor count and conversion rate",
+      "How has store traffic and conversion changed recently"
+    ]
+  },
+  {
+    "natural_language_question": "Products with negative margin last month \u00e2\u20ac\u201d include cost and selling price.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "negative margin filter",
+      "last month",
+      "show cost & revenue per unit"
+    ],
+    "paraphrases": [
+      "Items sold at a loss last month with cost and price details",
+      "Which products had negative gross margin in the last month",
+      "Loss-making products from last month"
+    ]
+  },
+  {
+    "natural_language_question": "Sales per labor hour by store for the current payroll week.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "current week",
+      "sales / hours worked",
+      "per store"
+    ],
+    "paraphrases": [
+      "This week's sales productivity per labor hour by store",
+      "Store-level sales per staffed hour current pay period",
+      "Which stores are most efficient with labor this week"
+    ]
+  },
+  {
+    "natural_language_question": "Cross-channel shoppers \u00e2\u20ac\u201d % of online buyers who also bought in-store last 90 days.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "customer overlap",
+      "last 90 days",
+      "percentage calculation",
+      "cross-channel behavior"
+    ],
+    "paraphrases": [
+      "Percentage of online customers who also shopped in physical stores past 90 days",
+      "How many online buyers are also in-store shoppers last 3 months",
+      "Cross-channel customer overlap last 90 days"
+    ]
+  },
+  {
+    "natural_language_question": "Forecast vs actual sales for Black Friday week last year vs this year.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "specific week comparison",
+      "YoY + forecast variance",
+      "Black Friday period"
+    ],
+    "paraphrases": [
+      "Black Friday week actual vs forecast this year and last year",
+      "How did Black Friday sales compare to forecast YoY",
+      "Black Friday performance vs plan current vs previous year"
+    ]
+  },
+  {
+    "natural_language_question": "Category share of wallet \u00e2\u20ac\u201d how much each category contributes to total basket.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "% of total basket",
+      "GROUP BY category",
+      "share of wallet"
+    ],
+    "paraphrases": [
+      "What portion of average basket does each category represent",
+      "Category contribution to total basket value",
+      "Share of wallet by product category"
+    ]
+  },
+  {
+    "natural_language_question": "Slow sellers with high markdown \u00e2\u20ac\u201d top 20 items where markdown % > 40 and sales rank > 200.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "multiple filters",
+      "markdown % > 40",
+      "low sales rank",
+      "top 20 worst"
+    ],
+    "paraphrases": [
+      "Top 20 slowest items with heaviest markdowns (>40%)",
+      "Products with high discounts and very low sales velocity",
+      "Worst performing items \u00e2\u20ac\u201d slow + deeply discounted"
+    ]
+  },
+  {
+    "natural_language_question": "Store performance scorecard: sales, GP%, traffic, conversion, last 4 weeks vs LY.",
+    "domain": "retail",
+    "split": "train",
+    "expected_features": [
+      "multi-metric scorecard",
+      "last 4 weeks vs LY",
+      "multiple KPIs"
+    ],
+    "paraphrases": [
+      "Last 4 weeks store KPI dashboard vs same period last year",
+      "Recent store performance: sales, margin, traffic, conversion YoY",
+      "4-week store scorecard with year-over-year comparison"
+    ]
+  },
+  {
+    "natural_language_question": "MTD actual vs forecast revenue and variance by cost center.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "MTD",
+      "forecast table join",
+      "variance $ and %",
+      "GROUP BY cost center"
+    ],
+    "paraphrases": [
+      "Month-to-date revenue vs forecast by cost center with variance",
+      "Current month actual revenue compared to plan per department",
+      "MTD rev variance to forecast by cost center"
+    ]
+  },
+  {
+    "natural_language_question": "Monthly operating expenses trend last 12 months with % change.",
+    "domain": "finance",
+    "expected_features": [
+      "monthly grouping",
+      "LAG for MoM %",
+      "last 12 months"
+    ],
+    "paraphrases": [
+      "OpEx by month past year showing month-over-month % change",
+      "12-month operating expense trend with growth rates",
+      "Monthly OpEx run-rate and % variance last 12 months"
+    ],
+    "split": "train"
+  },
+  {
+    "natural_language_question": "Top 10 expense categories by amount this fiscal year.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "fiscal YTD",
+      "top 10 DESC",
+      "GROUP BY expense category"
+    ],
+    "paraphrases": [
+      "Highest 10 expense lines year to date",
+      "Top spending categories this fiscal year",
+      "Where are we spending the most this year \u00e2\u20ac\u201d top 10"
+    ]
+  },
+  {
+    "natural_language_question": "Cash flow from operations last quarter vs budget.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "last quarter",
+      "cash flow calc",
+      "vs budget"
+    ],
+    "paraphrases": [
+      "Operating cash flow QTD compared to plan",
+      "Last quarter cash from operations vs budgeted",
+      "How did cash flow from ops compare to forecast last quarter"
+    ]
+  },
+  {
+    "natural_language_question": "Working capital days \u00e2\u20ac\u201d DIO + DSO \u00e2\u20ac\u201c DPO trend quarterly last 2 years.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "DIO, DSO, DPO formulas",
+      "quarterly",
+      "last 8 quarters",
+      "net working capital days"
+    ],
+    "paraphrases": [
+      "Cash conversion cycle trend last 8 quarters",
+      "Working capital days (DIO+DSO-DPO) quarterly past 2 years",
+      "CCC performance by quarter last two years"
+    ]
+  },
+  {
+    "natural_language_question": "Revenue by customer segment \u00e2\u20ac\u201d enterprise, SMB, consumer last 6 months.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "last 6 months",
+      "GROUP BY segment",
+      "time series or total"
+    ],
+    "paraphrases": [
+      "Revenue split by customer type last 6 months",
+      "Enterprise vs SMB vs consumer revenue past half year",
+      "Sales by customer segment last 6 months"
+    ]
+  },
+  {
+    "natural_language_question": "Days sales outstanding by payment term bucket.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "DSO calculation",
+      "GROUP BY payment terms bucket"
+    ],
+    "paraphrases": [
+      "Average collection period by payment terms group",
+      "DSO split by credit terms",
+      "How long customers take to pay by term bucket"
+    ]
+  },
+  {
+    "natural_language_question": "FX impact on international sales this year in USD.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "currency conversion",
+      "FX variance",
+      "YTD international"
+    ],
+    "paraphrases": [
+      "Foreign exchange effect on global revenue YTD in dollars",
+      "Year-to-date FX impact on overseas sales",
+      "How much did currency movements affect international revenue"
+    ]
+  },
+  {
+    "natural_language_question": "Budget vs actual by department for SG&A expenses YTD.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "SG&A grouping",
+      "YTD",
+      "budget vs actual",
+      "variance"
+    ],
+    "paraphrases": [
+      "YTD SG&A spend vs budget per department",
+      "Administrative & overhead expenses actual vs plan year to date",
+      "Department-level SG&A variance YTD"
+    ]
+  },
+  {
+    "natural_language_question": "Net profit margin by product line last fiscal year.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "net margin",
+      "full year",
+      "GROUP BY product line"
+    ],
+    "paraphrases": [
+      "Net profitability % by product line previous fiscal year",
+      "Which product lines were most profitable last year",
+      "Last year's net margin per product category"
+    ]
+  },
+  {
+    "natural_language_question": "Top 10 vendors by spend and payment terms compliance.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "top 10 spend",
+      "compliance % (on-time payment)",
+      "GROUP BY vendor"
+    ],
+    "paraphrases": [
+      "Highest spend suppliers and their on-time payment rate",
+      "Top 10 vendors by amount spent + payment compliance",
+      "Biggest suppliers and how well they meet payment terms"
+    ]
+  },
+  {
+    "natural_language_question": "Deferred revenue balance and recognition schedule next 12 months.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "deferred rev snapshot",
+      "future recognition by month"
+    ],
+    "paraphrases": [
+      "Current deferred revenue and how much will be recognized next year month by month",
+      "Deferred revenue balance + 12-month recognition forecast",
+      "What's our deferred revenue and when will it hit P&L"
+    ]
+  },
+  {
+    "natural_language_question": "Stores with highest EBITDA margin this quarter.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "EBITDA margin",
+      "QTD",
+      "top performing stores"
+    ],
+    "paraphrases": [
+      "Most profitable stores by EBITDA % this quarter",
+      "Top stores for EBITDA margin QTD",
+      "Which locations generate best operating profit margin right now"
+    ]
+  },
+  {
+    "natural_language_question": "Revenue concentration \u00e2\u20ac\u201d % from top 5 customers YTD.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "concentration risk",
+      "top 5 customers %",
+      "YTD"
+    ],
+    "paraphrases": [
+      "What percentage of revenue comes from our top 5 customers this year",
+      "YTD revenue dependency on top 5 clients",
+      "Customer concentration \u00e2\u20ac\u201d share of top 5 YTD"
+    ]
+  },
+  {
+    "natural_language_question": "Inventory aging \u00e2\u20ac\u201d value of stock older than 180 days by category.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "aging buckets",
+      ">180 days",
+      "GROUP BY category",
+      "value at cost"
+    ],
+    "paraphrases": [
+      "Value of inventory older than 6 months by product category",
+      "Aging report \u00e2\u20ac\u201d stock >180 days old by category",
+      "How much obsolete/slow inventory do we have per category"
+    ]
+  },
+  {
+    "natural_language_question": "ROIC by business unit last 4 quarters.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "ROIC = NOPAT / Invested Capital",
+      "quarterly",
+      "last 4 quarters",
+      "GROUP BY BU"
+    ],
+    "paraphrases": [
+      "Return on invested capital by division past 4 quarters",
+      "ROIC trend last year per business unit",
+      "Which business units have best capital efficiency recently"
+    ]
+  },
+  {
+    "natural_language_question": "Variance analysis \u00e2\u20ac\u201d price, volume, FX, acquisition impact on revenue growth.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "revenue bridge",
+      "price/volume/FX/mix/acquisition",
+      "YoY decomposition"
+    ],
+    "paraphrases": [
+      "Revenue variance walk \u00e2\u20ac\u201d price, volume, currency, M&A effects",
+      "What drove revenue change YoY: price vs volume vs FX vs acquisitions",
+      "Full revenue bridge analysis year-over-year"
+    ]
+  },
+  {
+    "natural_language_question": "MTD cash collections vs target by region.",
+    "domain": "finance",
+    "split": "train",
+    "expected_features": [
+      "MTD collections",
+      "vs target",
+      "GROUP BY region",
+      "variance"
+    ],
+    "paraphrases": [
+      "Month-to-date cash received vs goal per region",
+      "Current month collections performance by region vs plan",
+      "How are regions doing on cash collection MTD"
+    ]
+  },
+  {
+    "natural_language_question": "Full P&L summary YTD \u00e2\u20ac\u201d revenue, COGS, gross profit, op ex, EBITDA, net income \u00e2\u20ac\u201d with % variance to budget and LY.",
+    "domain": "finance",
+    "priority_golden_set": true,
+    "split": "train",
+    "expected_features": [
+      "P&L structure",
+      "multiple KPIs",
+      "YTD",
+      "variance to budget + YoY %"
+    ],
+    "paraphrases": [
+      "Year-to-date full profit & loss with budget and prior year variances",
+      "YTD P&L key lines \u00e2\u20ac\u201d actual vs budget vs last year",
+      "Complete YTD income statement with % variances"
+    ]
+  }
+]

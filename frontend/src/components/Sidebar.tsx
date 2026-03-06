@@ -4,6 +4,10 @@ import './Sidebar.css';
 interface SidebarProps {
   onClose?: () => void;
   onQuestionSelect?: (question: string) => void;
+  onNavigate?: (view: 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema') => void;
+  currentView?: 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema';
+  isOpen?: boolean;
+  onToggle?: () => void;
 }
 
 interface Question {
@@ -13,7 +17,7 @@ interface Question {
   pinned?: boolean;
 }
 
-function Sidebar({ onClose, onQuestionSelect }: SidebarProps) {
+function Sidebar({ onClose, onQuestionSelect, onNavigate, currentView, isOpen, onToggle }: SidebarProps) {
   const defaultQuestions: Question[] = [
     { id: '1', text: 'Show me sales trends' },
     { id: '2', text: 'What\'s the revenue by customer?' },
@@ -42,6 +46,28 @@ function Sidebar({ onClose, onQuestionSelect }: SidebarProps) {
   });
   const [connectionStatus, setConnectionStatus] = useState<string>('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Check connection status on mount and when it changes
+  useEffect(() => {
+    const checkConnectionStatus = () => {
+      const status = localStorage.getItem('dbConnectionStatus');
+      const isConnected = status === 'connected';
+      setIsConnected(isConnected);
+      console.log('[Sidebar] Connection status updated:', isConnected);
+    };
+
+    checkConnectionStatus();
+
+    // Listen for connection status changes
+    const handleConnectionChange = (event: any) => {
+      console.log('[Sidebar] connectionStatusChanged event received:', event.detail);
+      checkConnectionStatus();
+    };
+
+    window.addEventListener('connectionStatusChanged', handleConnectionChange);
+    return () => window.removeEventListener('connectionStatusChanged', handleConnectionChange);
+  }, []);
 
   // Load saved credentials for selected database and last used database on mount
   useEffect(() => {
@@ -316,6 +342,12 @@ function Sidebar({ onClose, onQuestionSelect }: SidebarProps) {
         localStorage.setItem('dbDatabase', dbCredentials.database);
         localStorage.setItem('dbConnectionStatus', 'connected');
 
+        // Dispatch event to notify other components
+        const event = new CustomEvent('connectionStatusChanged', {
+          detail: { connected: true, database: selectedDatabase }
+        });
+        window.dispatchEvent(event);
+
         setConnectionStatus(`✅ Connected! Generated smart questions.`);
         
         // Generate smart questions based on schema
@@ -373,121 +405,142 @@ function Sidebar({ onClose, onQuestionSelect }: SidebarProps) {
     if (onQuestionSelect) {
       onQuestionSelect(question);
     }
+    if (onNavigate) {
+      onNavigate('query');
+    }
   };
 
   return (
     <div className="sidebar-content">
       <div className="sidebar-header">
-        <h2>Quick Questions</h2>
+        <div className="voxcore-branding">
+          <h1 className="voxcore-title">VoxCore</h1>
+          <p className="voxcore-subtitle">GOVERNANCE</p>
+        </div>
         <button className="new-chat-btn" onClick={() => setShowNewQueryModal(true)} title="Add Custom Query">+ New</button>
       </div>
 
-      <div className="conversations">
-        {getSortedQuestions().map(q => (
-          <div 
-            key={q.id} 
-            className={`conversation-item ${q.custom ? 'custom-question' : ''} ${q.pinned ? 'pinned-question' : ''}`}
-            onClick={() => handleQuestionClick(q.text)}
+      {/* Navigation Sections - Moved to Top */}
+      <div className="sidebar-nav">
+        <div className="nav-section">
+          <button 
+            className="nav-btn"
+            onClick={() => {
+              console.log('Clicked: dashboard');
+              if (onNavigate) onNavigate('dashboard');
+            }}
+            title="Dashboard"
           >
-            <div className="conv-info">
-              <p className="conv-name">{q.text}</p>
-            </div>
-            <div className="conv-actions">
-              <button 
-                className={`conv-pin ${q.pinned ? 'pinned' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePinQuestion(q.id);
-                }}
-                title={q.pinned ? 'Unpin question' : 'Pin question'}
-              >
-                📌
-              </button>
-              {q.custom && (
+            🏠 Dashboard
+          </button>
+          <button 
+            className="nav-btn"
+            onClick={() => {
+              console.log('Clicked: query');
+              if (onNavigate) onNavigate('query');
+            }}
+            title="Ask Query"
+          >
+            💬 Ask Query
+          </button>
+          <button 
+            className="nav-btn"
+            onClick={() => {
+              console.log('Clicked: history');
+              if (onNavigate) onNavigate('history');
+            }}
+            title="History"
+          >
+            📜 Query History
+          </button>
+        </div>
+
+        <div className="nav-section">
+          <h3 className="nav-section-title">Governance</h3>
+          <button 
+            className="nav-btn"
+            onClick={() => {
+              console.log('Clicked: logs');
+              if (onNavigate) onNavigate('logs');
+            }}
+            title="Logs"
+          >
+            📋 Governance Logs
+          </button>
+          <button 
+            className="nav-btn"
+            onClick={() => {
+              console.log('Clicked: policies');
+              if (onNavigate) onNavigate('policies');
+            }}
+            title="Policies"
+          >
+            ⚙️ Policies
+          </button>
+        </div>
+
+        <div className="nav-section">
+          <h3 className="nav-section-title">Tools</h3>
+          <button 
+            className="nav-btn"
+            onClick={() => {
+              console.log('Clicked: schema');
+              if (onNavigate) onNavigate('schema');
+            }}
+            title="Schema"
+          >
+            🔍 Schema Explorer
+          </button>
+        </div>
+      </div>
+
+      {currentView === 'query' && (
+        <div className="conversations">
+          {getSortedQuestions().map(q => (
+            <div 
+              key={q.id} 
+              className={`conversation-item ${q.custom ? 'custom-question' : ''} ${q.pinned ? 'pinned-question' : ''}`}
+              onClick={() => handleQuestionClick(q.text)}
+            >
+              <div className="conv-info">
+                <p className="conv-name">{q.text}</p>
+              </div>
+              <div className="conv-actions">
                 <button 
-                  className="conv-delete"
+                  className={`conv-pin ${q.pinned ? 'pinned' : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    deleteCustomQuestion(q.id);
+                    togglePinQuestion(q.id);
                   }}
-                  title="Delete custom query"
+                  title={q.pinned ? 'Unpin question' : 'Pin question'}
                 >
-                  ✕
+                  📌
                 </button>
-              )}
+                {q.custom && (
+                  <button 
+                    className="conv-delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteCustomQuestion(q.id);
+                    }}
+                    title="Delete custom query"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="sidebar-footer">
-        <button 
-          className="settings-btn"
-          onClick={() => setShowSettings(!showSettings)}
-          title="Settings"
-        >
-          ⚙️ Settings
-        </button>
-        <button className="help-btn" title="Help">
-          ? Help
-        </button>
-        <button className="docs-btn" title="Documentation">
-          📖 Docs
-        </button>
-      </div>
-
-      {showSettings && (
-        <div className="settings-panel">
-          <h3>Settings</h3>
-          <div className="current-database-status">
-            <span className="status-label">Current Database:</span>
-            <span className="status-value">
-              {selectedDatabase === 'snowflake' && '❄️ Snowflake'}
-              {selectedDatabase === 'redshift' && '🔴 Redshift'}
-              {selectedDatabase === 'postgres' && '🐘 PostgreSQL'}
-              {selectedDatabase === 'bigquery' && '☁️ BigQuery'}
-              {selectedDatabase === 'sqlserver' && '🟦 SQL Server'}
-            </span>
-          </div>
-          <div className="setting-group">
-            <label>Database</label>
-            <div className="database-selector-group">
-              <select value={selectedDatabase} onChange={handleDatabaseDropdownChange}>
-                <option value="snowflake">❄️ Snowflake</option>
-                <option value="redshift">🔴 Redshift</option>
-                <option value="postgres">🐘 PostgreSQL</option>
-                <option value="bigquery">☁️ BigQuery</option>
-                <option value="sqlserver">🟦 SQL Server</option>
-              </select>
-              <button 
-                className="connect-btn-small"
-                onClick={() => setShowDatabaseModal(true)}
-                title="Connect to database"
-              >
-                🔗 Connect
-              </button>
-            </div>
-          </div>
-
-          <div className="setting-group">
-            <label>Theme</label>
-            <select defaultValue="dark">
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-            </select>
-          </div>
-          <div className="setting-group">
-            <label>
-              <input type="checkbox" defaultChecked /> Show SQL
-            </label>
-          </div>
-          <div className="setting-group">
-            <label>
-              <input type="checkbox" defaultChecked /> Show Results
-            </label>
-          </div>
+          ))}
         </div>
       )}
+
+      <div className="sidebar-footer">
+        <div className="connection-status-footer">
+          {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+        </div>
+      </div>
+
+
 
       {/* New Custom Query Modal */}
       {showNewQueryModal && (
@@ -621,7 +674,7 @@ function Sidebar({ onClose, onQuestionSelect }: SidebarProps) {
                     <input 
                       type="text" 
                       name="username"
-                      placeholder={sqlServerAuthType === 'windows' ? "e.g., DESKTOP-ABC\\USER" : "username"}
+                      placeholder="username"
                       value={dbCredentials.username}
                       onChange={handleCredentialChange}
                       className="form-input"

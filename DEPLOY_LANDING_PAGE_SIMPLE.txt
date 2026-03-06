@@ -1,0 +1,37 @@
+@echo off
+REM VoxCore Landing Page Deployment Instructions
+REM Simple checklist for cPanel File Manager
+
+COLOR 0A
+echo.
+echo ===============================================
+echo   VoxCore Landing Page Deployment
+echo ===============================================
+echo.
+echo STEP 1: Open cPanel File Manager
+echo   - Go to https://cloud771.thundercloud.uk:2083/
+echo   - Navigate to public_html folder
+echo.
+echo STEP 2: Delete old index.html
+echo   - Find the current index.html (484 bytes)
+echo   - Right-click and Delete it
+echo.
+echo STEP 3: Upload new landing.html
+echo   - Click Upload button
+echo   - Select: c:\Users\USER\Documents\trae_projects\VoxQuery\frontend\dist\landing.html
+echo.
+echo STEP 4: Rename file
+echo   - Right-click on landing.html
+echo   - Click Rename
+echo   - Change to: index.html
+echo.
+echo STEP 5: Verify
+echo   - Open https://voxcore.org/
+echo   - You should see the professional landing page
+echo   - Click "Enter VoxCore" to access the full dashboard
+echo.
+echo ===============================================
+echo   DONE! Your landing page is live.
+echo ===============================================
+echo.
+pause

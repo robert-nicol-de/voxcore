@@ -1,0 +1,53 @@
+/* VoxCore Theme Variables - Token-Based System */
+
+/* Dark Mode (Default) */
+:root[data-theme="dark"],
+:root {
+  /* Backgrounds */
+  --bg-primary: #0F172A;
+  --bg-surface: #111827;
+  --bg-elevated: #1E293B;
+  
+  /* Text */
+  --text-primary: #F9FAFB;
+  --text-secondary: #D1D5DB;
+  
+  /* Borders */
+  --border-default: #1F2937;
+  
+  /* Accent (consistent across modes) */
+  --accent-primary: #2563EB;
+  
+  /* Risk (consistent across modes) */
+  --risk-safe: #16A34A;
+  --risk-warning: #F59E0B;
+  --risk-danger: #DC2626;
+}
+
+/* Light Mode */
+:root[data-theme="light"] {
+  /* Backgrounds */
+  --bg-primary: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #F1F5F9;
+  
+  /* Text */
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  
+  /* Borders */
+  --border-default: #E2E8F0;
+  
+  /* Accent (consistent across modes) */
+  --accent-primary: #2563EB;
+  
+  /* Risk (consistent across modes) */
+  --risk-safe: #15803D;
+  --risk-warning: #D97706;
+  --risk-danger: #B91C1C;
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}

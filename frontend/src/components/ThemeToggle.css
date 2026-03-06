@@ -1,0 +1,19 @@
+.theme-toggle {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 200ms ease;
+}
+
+.theme-toggle:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent-primary);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
+}

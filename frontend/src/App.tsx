@@ -1,20 +1,57 @@
-﻿import React, { useState, useRef } from 'react';
+﻿import React, { useState } from 'react';
 import './App.css';
-import Chat from './components/Chat';
 import Sidebar from './components/Sidebar';
-import Settings from './components/Settings';
+import Chat from './components/Chat';
+import SchemaExplorer from './components/SchemaExplorer';
+import { GovernanceDashboard } from './screens/GovernanceDashboard';
+import { Login } from './screens/Login';
+import { QueryHistory } from './components/QueryHistory';
+import { GovernanceLogs } from './components/GovernanceLogs';
+import { PoliciesManager } from './components/PoliciesManager';
+
+type ViewType = 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema';
 
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
-  const chatRef = useRef<{handleQuestionSelect: (q: string) => void}>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const chatRef = React.useRef<any>(null);
+
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
+
+  const handleNavigate = (view: ViewType) => {
+    setCurrentView(view);
+    console.log('Navigating to:', view);
+  };
+
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+  };
+
+  const handleQuestionSelect = (question: string) => {
+    // Navigate to query view and pass question to Chat
+    setCurrentView('query');
+    if (chatRef.current) {
+      chatRef.current.handleQuestionSelect(question);
+    }
+  };
+
+  // Show login screen if not logged in
+  if (!isLoggedIn) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   return (
-    <div className="app">
-      <div className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
+    <div className="app" data-theme={theme}>
+      <div className={`sidebar ${!sidebarOpen ? 'closed' : ''}`}>
         <Sidebar 
-          onClose={() => setSidebarOpen(false)}
-          onQuestionSelect={(question) => chatRef.current?.handleQuestionSelect(question)}
+          currentView={currentView}
+          onNavigate={handleNavigate}
+          onQuestionSelect={handleQuestionSelect}
+          isOpen={sidebarOpen}
+          onToggle={toggleSidebar}
         />
       </div>
 
@@ -22,37 +59,59 @@ function App() {
         <header className="app-header">
           <button
             className="sidebar-toggle"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={toggleSidebar}
+            aria-label="Toggle sidebar"
           >
             ☰
           </button>
-          <div className="header-content">
-            <div className="logo-section">
-              <div className="voxquery-logo">
-                <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'white' }}>
-                  V<span style={{ color: '#06b6d4' }}>✓</span>X
-                </div>
-              </div>
-              <div className="app-title">
-                <h1>VoxQuery</h1>
-                <p>Natural Language SQL Assistant</p>
-              </div>
+          <div className="header-right">
+            <button
+              className="theme-toggle"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+            <div className="user-menu">
+              <span>Robert Nicol</span>
             </div>
           </div>
-          <button
-            className="settings-toggle"
-            onClick={() => setShowSettings(true)}
-            title="Settings"
-          >
-            ⚙️
-          </button>
         </header>
 
-        {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+        <main className="chat-container">
+          {/* Dashboard View */}
+          {currentView === 'dashboard' && (
+            <GovernanceDashboard onAskQuestion={() => handleNavigate('query')} />
+          )}
 
-        <div className="chat-container">
-          <Chat ref={chatRef} />
-        </div>
+          {/* Query View */}
+          {currentView === 'query' && (
+            <Chat
+              ref={chatRef}
+              onBackToDashboard={() => handleNavigate('dashboard')}
+            />
+          )}
+
+          {/* History View */}
+          {currentView === 'history' && (
+            <QueryHistory />
+          )}
+
+          {/* Logs View */}
+          {currentView === 'logs' && (
+            <GovernanceLogs />
+          )}
+
+          {/* Policies View */}
+          {currentView === 'policies' && (
+            <PoliciesManager />
+          )}
+
+          {/* Schema View */}
+          {currentView === 'schema' && (
+            <SchemaExplorer onClose={() => handleNavigate('query')} />
+          )}
+        </main>
       </div>
     </div>
   );

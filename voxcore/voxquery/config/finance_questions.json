@@ -1,0 +1,217 @@
+{
+  "finance_rules": {
+    "ytd": "YTD = current year to date. Use: EXTRACT(YEAR FROM date_column) = EXTRACT(YEAR FROM CURRENT_DATE()) AND date_column <= CURRENT_DATE()",
+    "mtd": "MTD = current month to date. Use: EXTRACT(MONTH FROM date_column) = EXTRACT(MONTH FROM CURRENT_DATE()) AND EXTRACT(YEAR FROM date_column) = EXTRACT(YEAR FROM CURRENT_DATE()) AND date_column <= CURRENT_DATE()",
+    "qtd": "QTD = current quarter to date. Use: EXTRACT(QUARTER FROM date_column) = EXTRACT(QUARTER FROM CURRENT_DATE()) AND EXTRACT(YEAR FROM date_column) = EXTRACT(YEAR FROM CURRENT_DATE()) AND date_column <= CURRENT_DATE()",
+    "variance": "Variance = actual - budget. Always calculate as: SUM(actual_amount) - SUM(budget_amount) AS variance",
+    "aggregation": "Use SUM() for totals (revenue, expenses, balances). Use AVG() for rates and percentages. Use COUNT() for counts.",
+    "grouping": "When asked 'by X', GROUP BY that dimension. Common: month, quarter, region, customer, product, department, category",
+    "sorting": "Top N = ORDER BY DESC LIMIT N. Bottom N = ORDER BY ASC LIMIT N"
+  },
+  "common_questions": [
+    {
+      "category": "Monthly/Quarterly Close & Reporting",
+      "question": "What is our YTD revenue?",
+      "sql": "SELECT SUM(amount) AS ytd_revenue FROM TRANSACTIONS WHERE EXTRACT(YEAR FROM transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE()) AND transaction_date <= CURRENT_DATE()",
+      "pattern": "YTD aggregation"
+    },
+    {
+      "category": "Monthly/Quarterly Close & Reporting",
+      "question": "What is our YTD profit?",
+      "sql": "SELECT SUM(amount) AS ytd_profit FROM TRANSACTIONS WHERE transaction_type = 'PROFIT' AND EXTRACT(YEAR FROM transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE()) AND transaction_date <= CURRENT_DATE()",
+      "pattern": "YTD with filter"
+    },
+    {
+      "category": "Monthly/Quarterly Close & Reporting",
+      "question": "What is our YTD gross margin?",
+      "sql": "SELECT SUM(CASE WHEN transaction_type = 'REVENUE' THEN amount ELSE 0 END) - SUM(CASE WHEN transaction_type = 'COGS' THEN amount ELSE 0 END) AS gross_profit, SUM(CASE WHEN transaction_type = 'REVENUE' THEN amount ELSE 0 END) AS revenue, (SUM(CASE WHEN transaction_type = 'REVENUE' THEN amount ELSE 0 END) - SUM(CASE WHEN transaction_type = 'COGS' THEN amount ELSE 0 END)) / SUM(CASE WHEN transaction_type = 'REVENUE' THEN amount ELSE 0 END) AS gross_margin_pct FROM TRANSACTIONS WHERE EXTRACT(YEAR FROM transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE())",
+      "pattern": "YTD with calculated metrics"
+    },
+    {
+      "category": "Monthly/Quarterly Close & Reporting",
+      "question": "How are we tracking against budget?",
+      "sql": "SELECT EXTRACT(MONTH FROM a.transaction_date) AS month, SUM(a.amount) AS actual, SUM(b.budget_amount) AS budget, SUM(a.amount) - SUM(b.budget_amount) AS variance FROM TRANSACTIONS a LEFT JOIN BUDGET b ON EXTRACT(MONTH FROM a.transaction_date) = b.month AND EXTRACT(YEAR FROM a.transaction_date) = b.year GROUP BY EXTRACT(MONTH FROM a.transaction_date) ORDER BY month",
+      "pattern": "Actual vs Budget"
+    },
+    {
+      "category": "Monthly/Quarterly Close & Reporting",
+      "question": "What is the variance to budget this month?",
+      "sql": "SELECT SUM(a.amount) - SUM(b.budget_amount) AS variance FROM TRANSACTIONS a LEFT JOIN BUDGET b ON EXTRACT(MONTH FROM a.transaction_date) = b.month AND EXTRACT(YEAR FROM a.transaction_date) = b.year WHERE EXTRACT(MONTH FROM a.transaction_date) = EXTRACT(MONTH FROM CURRENT_DATE()) AND EXTRACT(YEAR FROM a.transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE())",
+      "pattern": "MTD variance"
+    },
+    {
+      "category": "Monthly/Quarterly Close & Reporting",
+      "question": "Which departments are over budget?",
+      "sql": "SELECT department, SUM(a.amount) AS actual, SUM(b.budget_amount) AS budget, SUM(a.amount) - SUM(b.budget_amount) AS variance FROM TRANSACTIONS a LEFT JOIN BUDGET b ON a.department = b.department AND EXTRACT(YEAR FROM a.transaction_date) = b.year GROUP BY department HAVING SUM(a.amount) > SUM(b.budget_amount) ORDER BY variance DESC",
+      "pattern": "Department analysis with variance"
+    },
+    {
+      "category": "Revenue Analysis",
+      "question": "Show me revenue by customer",
+      "sql": "SELECT customer_id, customer_name, SUM(amount) AS total_revenue FROM TRANSACTIONS WHERE transaction_type = 'REVENUE' GROUP BY customer_id, customer_name ORDER BY total_revenue DESC",
+      "pattern": "Revenue by dimension"
+    },
+    {
+      "category": "Revenue Analysis",
+      "question": "What are the top 10 customers by revenue YTD?",
+      "sql": "SELECT TOP 10 customer_id, customer_name, SUM(amount) AS ytd_revenue FROM TRANSACTIONS WHERE transaction_type = 'REVENUE' AND EXTRACT(YEAR FROM transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE()) GROUP BY customer_id, customer_name ORDER BY ytd_revenue DESC",
+      "pattern": "Top N by metric"
+    },
+    {
+      "category": "Revenue Analysis",
+      "question": "Show me revenue by product",
+      "sql": "SELECT product_id, product_name, SUM(amount) AS total_revenue FROM TRANSACTIONS WHERE transaction_type = 'REVENUE' GROUP BY product_id, product_name ORDER BY total_revenue DESC",
+      "pattern": "Revenue by dimension"
+    },
+    {
+      "category": "Revenue Analysis",
+      "question": "Show me revenue by region",
+      "sql": "SELECT region, SUM(amount) AS total_revenue FROM TRANSACTIONS WHERE transaction_type = 'REVENUE' GROUP BY region ORDER BY total_revenue DESC",
+      "pattern": "Revenue by dimension"
+    },
+    {
+      "category": "Revenue Analysis",
+      "question": "Show me revenue by channel",
+      "sql": "SELECT channel, SUM(amount) AS total_revenue FROM TRANSACTIONS WHERE transaction_type = 'REVENUE' GROUP BY channel ORDER BY total_revenue DESC",
+      "pattern": "Revenue by dimension"
+    },
+    {
+      "category": "Expense Analysis",
+      "question": "Show me expense by category",
+      "sql": "SELECT expense_category, SUM(amount) AS total_expense FROM TRANSACTIONS WHERE transaction_type = 'EXPENSE' GROUP BY expense_category ORDER BY total_expense DESC",
+      "pattern": "Expense by dimension"
+    },
+    {
+      "category": "Expense Analysis",
+      "question": "Show me expense by department",
+      "sql": "SELECT department, SUM(amount) AS total_expense FROM TRANSACTIONS WHERE transaction_type = 'EXPENSE' GROUP BY department ORDER BY total_expense DESC",
+      "pattern": "Expense by dimension"
+    },
+    {
+      "category": "Expense Analysis",
+      "question": "Show me expense by GL account",
+      "sql": "SELECT gl_account, gl_account_name, SUM(amount) AS total_expense FROM TRANSACTIONS WHERE transaction_type = 'EXPENSE' GROUP BY gl_account, gl_account_name ORDER BY total_expense DESC",
+      "pattern": "Expense by dimension"
+    },
+    {
+      "category": "Expense Analysis",
+      "question": "What are the largest unusual expenses this month?",
+      "sql": "SELECT TOP 10 transaction_date, description, amount FROM TRANSACTIONS WHERE transaction_type = 'EXPENSE' AND is_unusual = TRUE AND EXTRACT(MONTH FROM transaction_date) = EXTRACT(MONTH FROM CURRENT_DATE()) AND EXTRACT(YEAR FROM transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE()) ORDER BY amount DESC",
+      "pattern": "Filtered expense analysis"
+    },
+    {
+      "category": "Expense Analysis",
+      "question": "How much did we spend on travel YTD?",
+      "sql": "SELECT SUM(amount) AS travel_spend FROM TRANSACTIONS WHERE transaction_type = 'EXPENSE' AND expense_category = 'TRAVEL' AND EXTRACT(YEAR FROM transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE())",
+      "pattern": "Category-specific YTD"
+    },
+    {
+      "category": "Expense Analysis",
+      "question": "How much did we spend on marketing YTD?",
+      "sql": "SELECT SUM(amount) AS marketing_spend FROM TRANSACTIONS WHERE transaction_type = 'EXPENSE' AND expense_category = 'MARKETING' AND EXTRACT(YEAR FROM transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE())",
+      "pattern": "Category-specific YTD"
+    },
+    {
+      "category": "Headcount & Payroll",
+      "question": "What is our headcount by department?",
+      "sql": "SELECT department, COUNT(DISTINCT employee_id) AS headcount FROM EMPLOYEES WHERE is_active = TRUE GROUP BY department ORDER BY headcount DESC",
+      "pattern": "Headcount analysis"
+    },
+    {
+      "category": "Headcount & Payroll",
+      "question": "Show me payroll costs YTD",
+      "sql": "SELECT SUM(amount) AS ytd_payroll FROM TRANSACTIONS WHERE transaction_type = 'PAYROLL' AND EXTRACT(YEAR FROM transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE())",
+      "pattern": "YTD payroll"
+    },
+    {
+      "category": "Headcount & Payroll",
+      "question": "Show me benefits costs YTD",
+      "sql": "SELECT SUM(amount) AS ytd_benefits FROM TRANSACTIONS WHERE transaction_type = 'EXPENSE' AND expense_category = 'BENEFITS' AND EXTRACT(YEAR FROM transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE())",
+      "pattern": "YTD benefits"
+    },
+    {
+      "category": "Profitability Analysis",
+      "question": "What is our gross profit % by product?",
+      "sql": "SELECT product_id, product_name, SUM(CASE WHEN transaction_type = 'REVENUE' THEN amount ELSE 0 END) AS revenue, SUM(CASE WHEN transaction_type = 'COGS' THEN amount ELSE 0 END) AS cogs, (SUM(CASE WHEN transaction_type = 'REVENUE' THEN amount ELSE 0 END) - SUM(CASE WHEN transaction_type = 'COGS' THEN amount ELSE 0 END)) / SUM(CASE WHEN transaction_type = 'REVENUE' THEN amount ELSE 0 END) AS gross_margin_pct FROM TRANSACTIONS GROUP BY product_id, product_name ORDER BY gross_margin_pct DESC",
+      "pattern": "Profitability by dimension"
+    },
+    {
+      "category": "Profitability Analysis",
+      "question": "Which products are most profitable?",
+      "sql": "SELECT TOP 10 product_id, product_name, SUM(CASE WHEN transaction_type = 'REVENUE' THEN amount ELSE 0 END) - SUM(CASE WHEN transaction_type = 'COGS' THEN amount ELSE 0 END) AS profit FROM TRANSACTIONS GROUP BY product_id, product_name ORDER BY profit DESC",
+      "pattern": "Top N by profit"
+    },
+    {
+      "category": "Profitability Analysis",
+      "question": "Which customers are most profitable?",
+      "sql": "SELECT TOP 10 customer_id, customer_name, SUM(CASE WHEN transaction_type = 'REVENUE' THEN amount ELSE 0 END) - SUM(CASE WHEN transaction_type = 'COGS' THEN amount ELSE 0 END) AS profit FROM TRANSACTIONS GROUP BY customer_id, customer_name ORDER BY profit DESC",
+      "pattern": "Top N by profit"
+    },
+    {
+      "category": "AR/AP/Treasury",
+      "question": "What is our aging report for AR?",
+      "sql": "SELECT CASE WHEN DATEDIFF(DAY, due_date, CURRENT_DATE()) <= 30 THEN '0-30 days' WHEN DATEDIFF(DAY, due_date, CURRENT_DATE()) <= 60 THEN '31-60 days' WHEN DATEDIFF(DAY, due_date, CURRENT_DATE()) <= 90 THEN '61-90 days' ELSE '>90 days' END AS aging_bucket, COUNT(*) AS invoice_count, SUM(amount) AS total_amount FROM INVOICES WHERE status = 'UNPAID' GROUP BY CASE WHEN DATEDIFF(DAY, due_date, CURRENT_DATE()) <= 30 THEN '0-30 days' WHEN DATEDIFF(DAY, due_date, CURRENT_DATE()) <= 60 THEN '31-60 days' WHEN DATEDIFF(DAY, due_date, CURRENT_DATE()) <= 90 THEN '61-90 days' ELSE '>90 days' END",
+      "pattern": "Aging analysis"
+    },
+    {
+      "category": "AR/AP/Treasury",
+      "question": "Which invoices are overdue more than 30 days?",
+      "sql": "SELECT TOP 20 invoice_id, customer_name, amount, due_date, DATEDIFF(DAY, due_date, CURRENT_DATE()) AS days_overdue FROM INVOICES WHERE status = 'UNPAID' AND DATEDIFF(DAY, due_date, CURRENT_DATE()) > 30 ORDER BY days_overdue DESC",
+      "pattern": "Overdue analysis"
+    },
+    {
+      "category": "AR/AP/Treasury",
+      "question": "What is our current cash position?",
+      "sql": "SELECT SUM(CASE WHEN account_type = 'CASH' THEN balance ELSE 0 END) AS cash_balance FROM ACCOUNTS WHERE account_type = 'CASH'",
+      "pattern": "Balance sheet metric"
+    },
+    {
+      "category": "Sales Pipeline",
+      "question": "What is our sales pipeline by stage?",
+      "sql": "SELECT stage, COUNT(*) AS opportunity_count, SUM(amount) AS pipeline_value FROM OPPORTUNITIES WHERE status = 'OPEN' GROUP BY stage ORDER BY pipeline_value DESC",
+      "pattern": "Pipeline analysis"
+    },
+    {
+      "category": "Sales Pipeline",
+      "question": "What is the win rate by sales rep?",
+      "sql": "SELECT sales_rep_id, sales_rep_name, COUNT(CASE WHEN status = 'WON' THEN 1 END) AS won, COUNT(*) AS total, CAST(COUNT(CASE WHEN status = 'WON' THEN 1 END) AS FLOAT) / COUNT(*) AS win_rate FROM OPPORTUNITIES GROUP BY sales_rep_id, sales_rep_name ORDER BY win_rate DESC",
+      "pattern": "Win rate calculation"
+    },
+    {
+      "category": "Sales Pipeline",
+      "question": "Show me sales by rep YTD",
+      "sql": "SELECT sales_rep_id, sales_rep_name, SUM(amount) AS ytd_sales FROM TRANSACTIONS WHERE transaction_type = 'REVENUE' AND EXTRACT(YEAR FROM transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE()) GROUP BY sales_rep_id, sales_rep_name ORDER BY ytd_sales DESC",
+      "pattern": "Sales by dimension YTD"
+    },
+    {
+      "category": "Other Metrics",
+      "question": "What is our EBITDA YTD?",
+      "sql": "SELECT SUM(CASE WHEN transaction_type = 'REVENUE' THEN amount WHEN transaction_type IN ('COGS', 'OPERATING_EXPENSE') THEN -amount ELSE 0 END) + SUM(CASE WHEN transaction_type = 'DEPRECIATION' THEN amount WHEN transaction_type = 'INTEREST' THEN amount WHEN transaction_type = 'TAX' THEN amount ELSE 0 END) AS ebitda FROM TRANSACTIONS WHERE EXTRACT(YEAR FROM transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE())",
+      "pattern": "EBITDA calculation"
+    },
+    {
+      "category": "Other Metrics",
+      "question": "Show me operating expenses as % of revenue",
+      "sql": "SELECT SUM(CASE WHEN transaction_type = 'OPERATING_EXPENSE' THEN amount ELSE 0 END) / SUM(CASE WHEN transaction_type = 'REVENUE' THEN amount ELSE 0 END) AS opex_pct_of_revenue FROM TRANSACTIONS",
+      "pattern": "Ratio calculation"
+    },
+    {
+      "category": "Other Metrics",
+      "question": "What is our current inventory value?",
+      "sql": "SELECT SUM(quantity * unit_cost) AS inventory_value FROM INVENTORY WHERE is_active = TRUE",
+      "pattern": "Inventory valuation"
+    },
+    {
+      "category": "Other Metrics",
+      "question": "Show me capex spend YTD",
+      "sql": "SELECT SUM(amount) AS ytd_capex FROM TRANSACTIONS WHERE transaction_type = 'CAPEX' AND EXTRACT(YEAR FROM transaction_date) = EXTRACT(YEAR FROM CURRENT_DATE())",
+      "pattern": "YTD capex"
+    },
+    {
+      "category": "Other Metrics",
+      "question": "What is our current debt balance?",
+      "sql": "SELECT SUM(balance) AS total_debt FROM ACCOUNTS WHERE account_type = 'DEBT' AND is_active = TRUE",
+      "pattern": "Balance sheet metric"
+    }
+  ]
+}

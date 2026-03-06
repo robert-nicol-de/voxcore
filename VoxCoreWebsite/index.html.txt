@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VoxCore</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+<img src="logo.png" height="60">
+<h1>VoxCore</h1>
+</header>
+
+<section class="hero">
+<h2>AI SQL With Governance</h2>
+
+<p>
+Control how AI touches your data. Secure natural language queries with built-in
+governance, security policies and auditability.
+</p>
+
+<button>Request Demo</button>
+
+</section>
+
+<section class="features">
+
+<div>
+<h3>Natural Language Queries</h3>
+<p>Ask questions in plain English and generate SQL instantly.</p>
+</div>
+
+<div>
+<h3>Governance Layer</h3>
+<p>Policy enforcement prevents unsafe or unauthorized queries.</p>
+</div>
+
+<div>
+<h3>Audit Trail</h3>
+<p>Every AI query is logged and fully traceable.</p>
+</div>
+
+</section>
+
+<footer>
+<p>© VoxCore</p>
+</footer>
+
+</body>
+</html>

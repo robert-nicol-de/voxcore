@@ -1,0 +1,210 @@
+.governance-logs {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.logs-header {
+  margin-bottom: 2rem;
+}
+
+.logs-header h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary, #ffffff);
+}
+
+.logs-subtitle {
+  color: var(--text-secondary, #a0aec0);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.logs-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--card-bg, #1a202c);
+  border: 1px solid var(--border-color, #2d3748);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #a0aec0);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+}
+
+.logs-filter {
+  background: var(--card-bg, #1a202c);
+  border: 1px solid var(--border-color, #2d3748);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.logs-filter label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  margin-bottom: 1rem;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color, #2d3748);
+  background-color: transparent;
+  color: var(--text-secondary, #a0aec0);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  border-color: var(--accent-color, #4299e1);
+  color: var(--accent-color, #4299e1);
+}
+
+.filter-btn.active {
+  background-color: var(--accent-color, #4299e1);
+  border-color: var(--accent-color, #4299e1);
+  color: white;
+}
+
+.logs-table {
+  background: var(--card-bg, #1a202c);
+  border: 1px solid var(--border-color, #2d3748);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 120px 180px 150px 120px 120px 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: var(--hover-bg, #2d3748);
+  border-bottom: 1px solid var(--border-color, #2d3748);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary, #a0aec0);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 120px 180px 150px 120px 120px 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color, #2d3748);
+  align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.table-row:hover {
+  background-color: var(--hover-bg, #2d3748);
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.col-severity,
+.col-timestamp,
+.col-event,
+.col-user,
+.col-action,
+.col-details {
+  font-size: 0.9rem;
+  color: var(--text-primary, #ffffff);
+}
+
+.severity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.8rem;
+  border-left: 3px solid;
+  border-radius: 4px;
+  background-color: var(--hover-bg, #2d3748);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.action-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  background-color: var(--hover-bg, #2d3748);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-color, #4299e1);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 1200px) {
+  .table-header,
+  .table-row {
+    grid-template-columns: 100px 150px 120px 100px 100px 1fr;
+    gap: 0.75rem;
+  }
+
+  .col-details {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .governance-logs {
+    padding: 1rem;
+  }
+
+  .logs-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .filter-buttons {
+    gap: 0.3rem;
+  }
+
+  .filter-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+  }
+
+  .table-header,
+  .table-row {
+    grid-template-columns: 80px 120px 100px 80px 80px 1fr;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    font-size: 0.8rem;
+  }
+}
