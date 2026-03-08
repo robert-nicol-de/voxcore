@@ -210,9 +210,10 @@
 }
 
 .credentials-form {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 20px;
+  row-gap: 18px;
   max-height: 500px;
   overflow-y: auto;
   padding-right: 8px;
