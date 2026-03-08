@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any
 from jose import jwt
 
 from . import engine_manager
-from voxquery.settings import settings
+from ..settings import settings
 
 router = APIRouter()
 
