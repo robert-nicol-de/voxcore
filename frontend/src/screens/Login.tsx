@@ -23,9 +23,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     <div className="login-container">
       <div className="login-content">
         <img 
-          src="/voxcore-landing.png" 
-          alt="VoxCore" 
-          className="login-image"
+          src="/voxcore-landing-new.png"
+          alt="VoxCore Logo"
+          className="login-image login-image-small"
         />
         
         {loginsLocked ? (
