@@ -4,8 +4,14 @@ services:
     name: voxcore
     runtime: python
     buildCommand: |
-      cd frontend && npm install --legacy-peer-deps && npm run build &&
-      cd .. && pip install -r voxcore/voxquery/requirements.txt
+      echo "Building frontend..." &&
+      npm --prefix frontend install --legacy-peer-deps &&
+      npm --prefix frontend run build &&
+      echo "Frontend build complete. Checking dist..." &&
+      ls -la frontend/dist/ &&
+      echo "Installing Python dependencies..." &&
+      pip install -r voxcore/voxquery/requirements.txt &&
+      echo "Build complete!"
     startCommand: cd voxcore/voxquery && uvicorn voxquery.api:app --host 0.0.0.0 --port 10000
     envVars:
       - key: PYTHONUNBUFFERED
