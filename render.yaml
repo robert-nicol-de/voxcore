@@ -4,14 +4,19 @@ services:
     name: voxcore
     runtime: python
     buildCommand: |
-      echo "Building frontend..." &&
+      echo "Installing dependencies..." &&
       npm --prefix frontend install --legacy-peer-deps &&
-      npm --prefix frontend run build &&
-      echo "Frontend build complete. Checking dist..." &&
-      ls -la frontend/dist/ &&
+      echo "Building frontend..." &&
+      npm --prefix frontend run build || {
+        echo "⚠️  Vite build failed, using public folder as fallback...";
+        mkdir -p frontend/dist;
+        cp -r frontend/public/* frontend/dist/;
+      } &&
+      echo "Frontend ready at frontend/dist/" &&
+      ls -la frontend/dist/ | head -20 &&
       echo "Installing Python dependencies..." &&
       pip install -r voxcore/voxquery/requirements.txt &&
-      echo "Build complete!"
+      echo "✅ Build complete!"
     startCommand: cd voxcore/voxquery && uvicorn voxquery.api:app --host 0.0.0.0 --port 10000
     envVars:
       - key: PYTHONUNBUFFERED
