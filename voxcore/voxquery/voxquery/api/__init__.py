@@ -41,7 +41,7 @@ else:
     logger.warning(f"⚠️  Frontend dist folder not found at {frontend_dist}")
 
 # Root endpoint - serve frontend home page
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def root():
     """Root endpoint - serve React frontend"""
     frontend_index = os.path.join(frontend_dist, "index.html")
