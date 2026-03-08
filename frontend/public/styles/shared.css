@@ -54,9 +54,23 @@ header {
 }
 
 .logo img {
-  height: 90px;
+  height: 120px;
   width: auto;
   display: block;
+}
+
+.hero-logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.hero-logo img {
+  max-width: 320px;
+  width: 100%;
+  height: auto;
+  box-shadow: 0 8px 32px rgba(100,149,255,0.12);
+  border-radius: 12px;
 }
 
 nav {
