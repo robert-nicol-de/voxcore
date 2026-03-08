@@ -1,10 +1,16 @@
 """Authentication endpoints"""
 
+import os
+import secrets
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
+from jose import jwt
 
 from . import engine_manager
+from voxquery.settings import settings
 
 router = APIRouter()
 
@@ -52,9 +58,29 @@ class ConnectResponse(BaseModel):
 
 @router.post("/auth/login", response_model=LoginResponse)
 async def login(request: LoginRequest) -> LoginResponse:
-    """Login endpoint (placeholder)"""
+    """Developer/admin login endpoint."""
+    admin_username = os.getenv("VOXCORE_ADMIN_USERNAME", "admin")
+    admin_password = os.getenv("VOXCORE_ADMIN_PASSWORD", "VoxCore123!")
+
+    valid_username = secrets.compare_digest(request.username, admin_username)
+    valid_password = secrets.compare_digest(request.password, admin_password)
+
+    if not (valid_username and valid_password):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    expire_at = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.access_token_expire_minutes
+    )
+    payload = {
+        "sub": request.username,
+        "role": "god",
+        "is_admin": True,
+        "exp": int(expire_at.timestamp()),
+    }
+    token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+
     return LoginResponse(
-        access_token="placeholder_token",
+        access_token=token,
         token_type="bearer"
     )
 
