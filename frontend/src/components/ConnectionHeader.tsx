@@ -7,9 +7,10 @@ interface ConnectionHeaderProps {
   host?: string;
   isConnected?: boolean;
   onDisconnect?: () => void;
+  isPreviewMode?: boolean;
 }
 
-function ConnectionHeader({ database = 'Snowflake', host = 'we08391.af-south-1.aws', isConnected = true, onDisconnect }: ConnectionHeaderProps) {
+function ConnectionHeader({ database = 'Snowflake', host = 'we08391.af-south-1.aws', isConnected = true, onDisconnect, isPreviewMode = false }: ConnectionHeaderProps) {
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const displayDatabase = localStorage.getItem('selectedDatabase') || '';
   const displayHost = localStorage.getItem('dbHost') || '';
@@ -90,13 +91,21 @@ function ConnectionHeader({ database = 'Snowflake', host = 'we08391.af-south-1.a
               </div>
             </div>
             {isActuallyConnected ? (
-              <button className="disconnect-btn" onClick={handleDisconnect} title="Disconnect from database">
+              <button className="disconnect-btn" onClick={handleDisconnect} title="Disconnect from database" disabled={isPreviewMode}>
                 🔌 Disconnect
               </button>
             ) : (
-              <button className="connect-btn" onClick={() => setShowConnectionModal(true)} title="Connect to database">
-                🔗 Connect
-              </button>
+              <>
+                <button 
+                  className="connect-btn" 
+                  onClick={() => setShowConnectionModal(true)} 
+                  title={isPreviewMode ? "Login required to connect a database" : "Connect to database"}
+                  disabled={isPreviewMode}
+                >
+                  🔗 Connect
+                </button>
+                {isPreviewMode && <p className="preview-note">Login required to connect a database</p>}
+              </>
             )}
           </div>
         </div>

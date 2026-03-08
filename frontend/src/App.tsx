@@ -16,6 +16,7 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [isPreviewMode, setIsPreviewMode] = useState(true); // Preview mode enabled by default
   const chatRef = React.useRef<any>(null);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -89,6 +90,7 @@ function App() {
             <Chat
               ref={chatRef}
               onBackToDashboard={() => handleNavigate('dashboard')}
+              isPreviewMode={isPreviewMode}
             />
           )}
 

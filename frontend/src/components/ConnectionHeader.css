@@ -185,3 +185,23 @@
 .connect-btn:active {
   transform: translateY(0);
 }
+.disconnect-btn:disabled,
+.connect-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none !important;
+}
+
+.disconnect-btn:disabled:hover,
+.connect-btn:disabled:hover {
+  transform: none;
+}
+
+.preview-note {
+  font-size: 12px;
+  color: #d97706;
+  margin: 0;
+  text-align: center;
+  font-weight: 500;
+}

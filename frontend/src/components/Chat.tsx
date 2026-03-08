@@ -30,9 +30,10 @@ interface ClientDetails {
 
 interface ChatProps {
   onBackToDashboard?: () => void;
+  isPreviewMode?: boolean;
 }
 
-const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard }, ref) => {
+const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = false }, ref) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '0',
@@ -321,7 +322,13 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard }, ref) => {
 
   return (
     <div className="chat">
-      <ConnectionHeader onDisconnect={onBackToDashboard} />
+      {isPreviewMode && (
+        <div className="preview-banner">
+          Preview Mode — Database connections are disabled.
+          <a href="/pricing.html">Subscribe to unlock full access</a>
+        </div>
+      )}
+      <ConnectionHeader onDisconnect={onBackToDashboard} isPreviewMode={isPreviewMode} />
       <div className="messages">
         {messages.map(msg => (
           <div key={msg.id} className={`message ${msg.type}`}>

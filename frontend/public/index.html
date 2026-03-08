@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoxCore — SQL Governance & Query Intelligence</title>
+  <link rel="stylesheet" href="/styles/shared.css" />
+  <style>
+    .hero {
+      padding: 120px 32px 80px;
+      text-align: center;
+      background: linear-gradient(135deg, rgba(100, 150, 255, 0.05) 0%, rgba(100, 150, 255, 0) 100%);
+    }
+
+    .hero h1 {
+      font-size: 64px;
+      background: linear-gradient(135deg, #fff 0%, #6495ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 24px;
+    }
+
+    .hero p {
+      font-size: 20px;
+      color: #aaa;
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .featured-section {
+      padding: 80px 32px;
+      background: rgba(30, 40, 60, 0.3);
+    }
+
+    .featured-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+      max-width: 1200px;
+      margin: 48px auto 0;
+    }
+
+    .featured-item {
+      text-align: center;
+    }
+
+    .featured-item-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .featured-item h3 {
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+
+    .featured-item p {
+      font-size: 14px;
+      color: #888;
+    }
+
+    .cta-section {
+      padding: 80px 32px;
+      text-align: center;
+    }
+
+    .cta-section h2 {
+      margin-bottom: 16px;
+    }
+
+    .cta-section p {
+      font-size: 18px;
+      color: #aaa;
+      max-width: 500px;
+      margin: 0 auto 32px;
+    }
+
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 40px;
+      }
+
+      .hero p {
+        font-size: 16px;
+      }
+
+      .featured-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-buttons {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .hero-buttons a {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header & Navigation -->
+  <header>
+    <div class="header-container">
+      <a href="/" class="logo">
+        <span>🧠</span> VoxCore
+      </a>
+      <nav>
+        <a href="/" class="active">Home</a>
+        <a href="/about.html">About</a>
+        <a href="/pricing.html">Pricing</a>
+        <div class="nav-buttons">
+          <a href="/login.html" class="btn-login">Login</a>
+          <a href="/pricing.html" class="btn-signup">Get Started</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h1>SQL Governance & Query Intelligence</h1>
+      <p>VoxCore introduces a SQL firewall that inspects, validates and governs AI-generated queries before execution. Make AI-driven data access secure for enterprises.</p>
+      <div class="hero-buttons">
+        <a href="/app" class="btn-primary">Launch App</a>
+        <a href="/pricing.html" class="btn-secondary">View Pricing</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured Features -->
+  <section class="featured-section">
+    <div class="container">
+      <h2 style="text-align: center; margin-bottom: 0;">Why VoxCore?</h2>
+      <div class="featured-grid">
+        <div class="featured-item">
+          <span class="featured-item-icon">🔐</span>
+          <h3>Query Firewall</h3>
+          <p>Inspect and validate every AI-generated SQL query before execution</p>
+        </div>
+        <div class="featured-item">
+          <span class="featured-item-icon">📊</span>
+          <h3>Multi-Database</h3>
+          <p>Connect to Snowflake, SQL Server, PostgreSQL, and more</p>
+        </div>
+        <div class="featured-item">
+          <span class="featured-item-icon">📋</span>
+          <h3>Query Audit</h3>
+          <p>Complete audit trail of all queries and governance decisions</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="section">
+    <div class="container">
+      <h2>How It Works</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <span class="feature-icon">1️⃣</span>
+          <h3>Connect Database</h3>
+          <p>Link any SQL database—Snowflake, SQL Server, PostgreSQL, or BigQuery—in seconds.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🤖</span>
+          <h3>Ask in Natural Language</h3>
+          <p>Type questions about your data. VoxCore's AI understands your database schema.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🔍</span>
+          <h3>Query Inspection</h3>
+          <p>Our SQL firewall validates the query for security, correctness, and policy compliance.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">✅</span>
+          <h3>Execute Safely</h3>
+          <p>Approved queries execute. Risky queries are blocked with clear explanations.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">📈</span>
+          <h3>View Results</h3>
+          <p>Get instant insights with interactive charts and exportable data.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">📝</span>
+          <h3>Audit Trail</h3>
+          <p>Full compliance logging—every query, every decision, every user interaction.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <div class="container">
+      <h2>Ready to Govern Your AI Queries?</h2>
+      <p>Start with a free preview. Upgrade to unlock full database access.</p>
+      <a href="/pricing.html" class="btn-primary">View Pricing</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>Product</h3>
+        <a href="/app">App</a>
+        <a href="/pricing.html">Pricing</a>
+        <a href="#features">Features</a>
+      </div>
+      <div class="footer-section">
+        <h3>Company</h3>
+        <a href="/about.html">About</a>
+        <a href="#">Blog</a>
+        <a href="#">Careers</a>
+      </div>
+      <div class="footer-section">
+        <h3>Resources</h3>
+        <a href="#">Documentation</a>
+        <a href="#">API Docs</a>
+        <a href="#">Support</a>
+      </div>
+      <div class="footer-section">
+        <h3>Legal</h3>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Security</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2026 VoxCore. All rights reserved.</span>
+      <span>Secure AI for Data Access</span>
+    </div>
+  </footer>
+</body>
+</html>
