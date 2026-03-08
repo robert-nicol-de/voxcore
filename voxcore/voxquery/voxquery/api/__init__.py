@@ -3,10 +3,12 @@
 __all__ = ["app"]
 
 import logging
+import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 
 from . import health, query, schema, auth, connection, metrics, governance, firewall
 
@@ -28,11 +30,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Root endpoint - redirect to API docs
+# Serve static files from frontend dist folder
+frontend_dist = os.path.join(os.path.dirname(__file__), "../../../frontend/dist")
+if os.path.exists(frontend_dist):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+    app.mount("/styles", StaticFiles(directory=os.path.join(frontend_dist, "styles")), name="styles")
+    logger.info(f"✅ Frontend static files mounted from {frontend_dist}")
+else:
+    logger.warning(f"⚠️  Frontend dist folder not found at {frontend_dist}")
+
+# Root endpoint - serve frontend home page
 @app.get("/")
 def root():
-    """Root endpoint - redirect to Swagger API documentation"""
+    """Root endpoint - serve React frontend"""
+    frontend_index = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(frontend_index):
+        return FileResponse(frontend_index)
+    # Fallback to API docs if frontend not built
     return RedirectResponse(url="/docs")
+
 
 # Include routers
 app.include_router(health.router, tags=["Health"])
@@ -43,6 +59,20 @@ app.include_router(auth.router, prefix="/api/v1", tags=["Auth"])
 app.include_router(metrics.router, tags=["Metrics"])
 app.include_router(governance.router, tags=["Governance"])
 app.include_router(firewall.router, prefix="/api/v1/firewall", tags=["Firewall"])
+
+# SPA catch-all route - serve index.html for client-side routing
+@app.get("/{full_path:path}")
+def spa_catchall(full_path: str):
+    """Catch-all route for SPA - serves index.html for all unmatched routes"""
+    frontend_index = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(frontend_index) and not full_path.startswith("api/"):
+        # Don't intercept API calls
+        if full_path.endswith((".js", ".css", ".png", ".jpg", ".svg", ".ico")):
+            # Static assets should return 404 if not found
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+        # For HTML routes (pages), serve index.html
+        return FileResponse(frontend_index)
+    return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
 # Exception handler for validation errors
 @app.exception_handler(RequestValidationError)
