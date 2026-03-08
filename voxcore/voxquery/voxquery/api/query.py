@@ -105,6 +105,55 @@ async def ask_question(request: QueryRequest) -> QueryResponse:
             result["message"] = "⚠️ Query used wrong table (DatabaseLog/ErrorLog). Try asking about 'accounts' or 'balance' specifically."
             logger.warning(f"⚠️ Query used wrong table: {generated_sql[:100]}")
         
+        # ===== FIREWALL LAYER (NEW) =====
+        # Inspect generated SQL through firewall before execution
+        if result.get("sql") and request.execute:
+            try:
+                from . import firewall as fw_module
+                
+                fw_engine = fw_module.firewall_engine
+                fw_result = fw_engine.inspect(
+                    query=result.get("sql"),
+                    context={
+                        "user": getattr(request, "user_id", "unknown"),
+                        "database": request.warehouse,
+                        "question": request.question
+                    }
+                )
+                
+                # Log the firewall inspection
+                logger.info(f"🔥 Firewall inspection: {fw_result['action'].upper()} (risk: {fw_result['risk_score']}/100)")
+                
+                # Block if firewall denied the query
+                if fw_result['action'] == 'block':
+                    logger.error(f"❌ FIREWALL BLOCKED: {fw_result['reason']}")
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Query blocked by firewall: {fw_result['reason']}",
+                        headers={"X-Firewall-Action": "block", "X-Risk-Score": str(fw_result['risk_score'])}
+                    )
+                
+                # Add firewall metadata to response
+                result['firewall'] = {
+                    'risk_score': fw_result['risk_score'],
+                    'risk_level': fw_result['risk_level'],
+                    'action': fw_result['action'],
+                    'violations': fw_result['violations'],
+                    'recommendations': fw_result['recommendations']
+                }
+                
+                # Log if firewall flagged something
+                if fw_result['violations']:
+                    logger.warning(f"⚠️ Firewall flagged violations: {fw_result['violations']}")
+                    
+            except HTTPException:
+                raise  # Re-raise firewall blocks
+            except Exception as fw_error:
+                logger.warning(f"⚠️ Firewall check error: {fw_error}")
+                # Continue on firewall error (don't block legitimate queries)
+        
+        # ===== END FIREWALL LAYER =====
+        
         # TIMING BREAKDOWN
         t_safety_start = time.time()
         

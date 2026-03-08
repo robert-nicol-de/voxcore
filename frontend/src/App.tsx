@@ -94,17 +94,23 @@ function App() {
 
           {/* History View */}
           {currentView === 'history' && (
-            <QueryHistory />
+            <div className="view-content">
+              <QueryHistory />
+            </div>
           )}
 
           {/* Logs View */}
           {currentView === 'logs' && (
-            <GovernanceLogs />
+            <div className="view-content">
+              <GovernanceLogs />
+            </div>
           )}
 
           {/* Policies View */}
           {currentView === 'policies' && (
-            <PoliciesManager />
+            <div className="view-content">
+              <PoliciesManager />
+            </div>
           )}
 
           {/* Schema View */}

@@ -1,0 +1,48 @@
+{
+  "start_time": "2026-03-07T18:16:00.208832",
+  "end_time": "2026-03-08T06:16:00.252846",
+  "duration_hours": 12,
+  "total_queries": 387423,
+  "successful_queries": 387423,
+  "failed_queries": 0,
+  "failure_rate_percent": 0.0,
+  "throughput_qps": 8.97,
+  "memory_drift_mb": -7.95,
+  "alerts": [],
+  "memory_stats": {
+    "unit": "MB",
+    "min": 12.23,
+    "p50": 12.23,
+    "p95": 12.23,
+    "p99": 12.23,
+    "max": 12.23,
+    "avg": 12.23
+  },
+  "cpu_stats": {
+    "unit": "%",
+    "min": 0.0,
+    "p50": 0.0,
+    "p95": 0.0,
+    "p99": 0.0,
+    "max": 16.8,
+    "avg": 0.03
+  },
+  "latency_stats": {
+    "unit": "ms",
+    "min": 0.0,
+    "p50": 0.0,
+    "p95": 0.0,
+    "p99": 0.13,
+    "max": 1.0,
+    "avg": 0.01
+  },
+  "throughput_stats": {
+    "unit": "qps",
+    "min": 8.97,
+    "p50": 8.97,
+    "p95": 8.97,
+    "p99": 8.97,
+    "max": 8.97,
+    "avg": 8.97
+  }
+}

@@ -1,0 +1,23 @@
+services:
+  # Backend API Service
+  - type: web
+    name: voxcore-api
+    runtime: python
+    buildCommand: pip install -r voxcore/voxquery/requirements.txt
+    startCommand: cd voxcore/voxquery && python main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12
+      - key: PORT
+        value: 8000
+    healthCheckPath: /health
+
+  # Frontend Service
+  - type: web
+    name: voxquery-frontend
+    runtime: node
+    buildCommand: cd frontend && npm install --legacy-peer-deps && npm run build
+    startCommand: cd frontend && npm run preview
+    routes:
+      - path: /
+        destination: /

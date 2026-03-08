@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
-from . import health, query, schema, auth, connection, metrics, governance
+from . import health, query, schema, auth, connection, metrics, governance, firewall
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ app.include_router(schema.router, prefix="/api/v1", tags=["Schema"])
 app.include_router(auth.router, prefix="/api/v1", tags=["Auth"])
 app.include_router(metrics.router, tags=["Metrics"])
 app.include_router(governance.router, tags=["Governance"])
+app.include_router(firewall.router, prefix="/api/v1/firewall", tags=["Firewall"])
 
 # Exception handler for validation errors
 @app.exception_handler(RequestValidationError)
