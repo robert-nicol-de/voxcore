@@ -34,8 +34,10 @@ app.add_middleware(
 frontend_public = os.path.join(os.path.dirname(__file__), "../../../../frontend/public")
 frontend_public = os.path.abspath(frontend_public)  # Normalize the path
 if os.path.exists(frontend_public):
-    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_public, "images")), name="assets")
-    app.mount("/styles", StaticFiles(directory=os.path.join(frontend_public, "styles")), name="styles")
+    # Mount styles folder if it exists
+    styles_dir = os.path.join(frontend_public, "styles")
+    if os.path.exists(styles_dir):
+        app.mount("/styles", StaticFiles(directory=styles_dir), name="styles")
     logger.info(f"✅ Marketing site static files mounted from {frontend_public}")
 else:
     logger.warning(f"⚠️  Frontend public folder not found at {frontend_public}")
