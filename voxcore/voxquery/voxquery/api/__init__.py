@@ -63,16 +63,16 @@ app.include_router(metrics.router, tags=["Metrics"])
 app.include_router(governance.router, tags=["Governance"])
 app.include_router(firewall.router, prefix="/api/v1/firewall", tags=["Firewall"])
 
-# SPA catch-all route - serve marketing pages for unmatched routes
+# SPA catch-all route - serve marketing pages from public folder
 @app.get("/{full_path:path}")
 def spa_catchall(full_path: str):
-    """Catch-all route - serves marketing pages from public folder"""
+    """Catch-all route - serves pages from public folder"""
     
     # Don't intercept API calls
     if full_path.startswith("api/"):
         return JSONResponse(status_code=404, content={"detail": "Not Found"})
     
-    # Try to serve the exact file first (e.g., about.html, pricing.html)
+    # Try exact file match first
     requested_file = os.path.join(frontend_public, full_path)
     requested_file = os.path.abspath(requested_file)
     
@@ -80,6 +80,14 @@ def spa_catchall(full_path: str):
     if os.path.commonpath([requested_file, frontend_public]) == frontend_public:
         if os.path.isfile(requested_file):
             return FileResponse(requested_file, media_type="text/html")
+    
+    # Try with .html extension (e.g., /app → app.html)
+    html_file = os.path.join(frontend_public, f"{full_path}.html")
+    html_file = os.path.abspath(html_file)
+    
+    if os.path.commonpath([html_file, frontend_public]) == frontend_public:
+        if os.path.isfile(html_file):
+            return FileResponse(html_file, media_type="text/html")
     
     # For routes without extension or unknown routes, serve index.html (for React routing)
     frontend_index = os.path.join(frontend_public, "index.html")
