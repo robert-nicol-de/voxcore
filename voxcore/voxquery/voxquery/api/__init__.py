@@ -66,15 +66,26 @@ app.include_router(firewall.router, prefix="/api/v1/firewall", tags=["Firewall"]
 # SPA catch-all route - serve marketing pages for unmatched routes
 @app.get("/{full_path:path}")
 def spa_catchall(full_path: str):
-    """Catch-all route - serves marketing pages for client-side routing"""
+    """Catch-all route - serves marketing pages from public folder"""
+    
+    # Don't intercept API calls
+    if full_path.startswith("api/"):
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    
+    # Try to serve the exact file first (e.g., about.html, pricing.html)
+    requested_file = os.path.join(frontend_public, full_path)
+    requested_file = os.path.abspath(requested_file)
+    
+    # Security: make sure the file is within frontend_public
+    if os.path.commonpath([requested_file, frontend_public]) == frontend_public:
+        if os.path.isfile(requested_file):
+            return FileResponse(requested_file, media_type="text/html")
+    
+    # For routes without extension or unknown routes, serve index.html (for React routing)
     frontend_index = os.path.join(frontend_public, "index.html")
-    if os.path.exists(frontend_index) and not full_path.startswith("api/"):
-        # Don't intercept API calls
-        if full_path.endswith((".js", ".css", ".png", ".jpg", ".svg", ".ico")):
-            # Static assets should return 404 if not found
-            return JSONResponse(status_code=404, content={"detail": "Not Found"})
-        # For HTML routes (pages), serve index.html
+    if os.path.exists(frontend_index):
         return FileResponse(frontend_index, media_type="text/html")
+    
     return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
 # Exception handler for validation errors
