@@ -4,15 +4,13 @@ services:
     name: voxcore-api
     runtime: python
     buildCommand: pip install -r voxcore/voxquery/requirements.txt
-    startCommand: cd voxcore/voxquery && python main.py
+    startCommand: cd voxcore/voxquery && uvicorn voxquery.api:app --host 0.0.0.0 --port 10000
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.12
-      - key: PORT
-        value: 8000
+      - key: PYTHONUNBUFFERED
+        value: "1"
     healthCheckPath: /health
 
-  # Frontend Service
+  # Frontend Service  
   - type: web
     name: voxquery-frontend
     runtime: node
