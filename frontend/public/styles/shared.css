@@ -327,34 +327,241 @@ p {
    Responsive
    ======================================== */
 
-@media (max-width: 768px) {
-  .header-container {
-    padding: 16px;
-  }
-
-  nav {
-    gap: 16px;
+@media (max-width: 1024px) {
+  .container {
+    padding: 0 24px;
   }
 
   h1 {
-    font-size: 36px;
+    font-size: 48px;
   }
 
   h2 {
-    font-size: 32px;
+    font-size: 40px;
   }
 
   .section {
-    padding: 48px 16px;
+    padding: 60px 24px;
+  }
+
+  nav {
+    gap: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-container {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    font-size: 20px;
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  nav {
+    gap: 12px;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  nav a {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+
+  .nav-buttons {
+    width: 100%;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .btn-login,
+  .btn-signup {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+
+  h1 {
+    font-size: 32px;
+    line-height: 1.3;
+  }
+
+  h2 {
+    font-size: 28px;
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: 20px;
+  }
+
+  p {
+    font-size: 14px;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+
+  .section {
+    padding: 40px 16px;
   }
 
   .feature-grid {
     grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .feature-card {
+    padding: 24px;
+  }
+
+  .feature-icon {
+    font-size: 32px;
+  }
+
+  .feature-card h3 {
+    font-size: 18px;
+  }
+
+  .feature-card p {
+    font-size: 13px;
+  }
+
+  .footer-content {
+    grid-template-columns: 1fr;
+    gap: 24px;
   }
 
   .footer-bottom {
     flex-direction: column;
     gap: 16px;
     text-align: center;
+  }
+
+  footer {
+    padding: 32px 16px 24px;
+    margin-top: 40px;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 12px 24px;
+    font-size: 14px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .hero-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-buttons a {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    padding: 12px 12px;
+  }
+
+  .logo {
+    font-size: 18px;
+  }
+
+  nav {
+    gap: 8px;
+  }
+
+  nav a {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+
+  h1 {
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+
+  h2 {
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+
+  h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .container {
+    padding: 0 12px;
+  }
+
+  .section {
+    padding: 32px 12px;
+  }
+
+  .feature-card {
+    padding: 20px;
+  }
+
+  .feature-icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+
+  .feature-card h3 {
+    font-size: 16px;
+  }
+
+  .feature-card p {
+    font-size: 12px;
+  }
+
+  footer {
+    padding: 24px 12px 16px;
+    margin-top: 32px;
+  }
+
+  .footer-section h3 {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .footer-section a {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+
+  .footer-bottom {
+    font-size: 12px;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+
+  .btn-login {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .btn-signup {
+    padding: 8px 16px;
+    font-size: 12px;
   }
 }
