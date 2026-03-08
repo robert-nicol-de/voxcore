@@ -5,7 +5,7 @@ __all__ = ["app"]
 import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.exceptions import RequestValidationError
 
 from . import health, query, schema, auth, connection, metrics, governance, firewall
@@ -27,6 +27,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Root endpoint - redirect to API docs
+@app.get("/")
+def root():
+    """Root endpoint - redirect to Swagger API documentation"""
+    return RedirectResponse(url="/docs")
 
 # Include routers
 app.include_router(health.router, tags=["Health"])
