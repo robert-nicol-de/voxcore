@@ -42,19 +42,21 @@ header {
 }
 
 .logo {
-  font-size: 24px;
-  font-weight: 700;
-  color: #fff;
-  text-decoration: none;
   display: flex;
   align-items: center;
+  text-decoration: none;
   gap: 8px;
-  letter-spacing: -0.5px;
+  transition: opacity 0.2s ease;
 }
 
 .logo:hover {
-  opacity: 0.8;
-  transition: opacity 0.2s;
+  opacity: 0.85;
+}
+
+.logo img {
+  height: 40px;
+  width: auto;
+  display: block;
 }
 
 nav {
@@ -356,9 +358,12 @@ p {
   }
 
   .logo {
-    font-size: 20px;
     width: 100%;
     margin-bottom: 12px;
+  }
+
+  .logo img {
+    height: 36px;
   }
 
   nav {
@@ -473,7 +478,11 @@ p {
   }
 
   .logo {
-    font-size: 18px;
+    transition: opacity 0.2s ease;
+  }
+
+  .logo img {
+    height: 32px;
   }
 
   nav {
