@@ -30,24 +30,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static files from frontend dist folder
-frontend_dist = os.path.join(os.path.dirname(__file__), "../../../../frontend/dist")
-frontend_dist = os.path.abspath(frontend_dist)  # Normalize the path
-if os.path.exists(frontend_dist):
-    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
-    app.mount("/styles", StaticFiles(directory=os.path.join(frontend_dist, "styles")), name="styles")
-    logger.info(f"✅ Frontend static files mounted from {frontend_dist}")
+# Serve static files from frontend public folder (marketing site)
+frontend_public = os.path.join(os.path.dirname(__file__), "../../../../frontend/public")
+frontend_public = os.path.abspath(frontend_public)  # Normalize the path
+if os.path.exists(frontend_public):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_public, "images")), name="assets")
+    app.mount("/styles", StaticFiles(directory=os.path.join(frontend_public, "styles")), name="styles")
+    logger.info(f"✅ Marketing site static files mounted from {frontend_public}")
 else:
-    logger.warning(f"⚠️  Frontend dist folder not found at {frontend_dist}")
+    logger.warning(f"⚠️  Frontend public folder not found at {frontend_public}")
 
-# Root endpoint - serve frontend home page
+# Root endpoint - serve marketing home page
 @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def root():
-    """Root endpoint - serve React frontend"""
-    frontend_index = os.path.join(frontend_dist, "index.html")
+    """Root endpoint - serve marketing home page"""
+    frontend_index = os.path.join(frontend_public, "index.html")
     if os.path.exists(frontend_index):
-        return FileResponse(frontend_index)
-    # Fallback to API docs if frontend not built
+        return FileResponse(frontend_index, media_type="text/html")
+    # Fallback to API docs if marketing site not available
     return RedirectResponse(url="/docs")
 
 
@@ -61,18 +61,18 @@ app.include_router(metrics.router, tags=["Metrics"])
 app.include_router(governance.router, tags=["Governance"])
 app.include_router(firewall.router, prefix="/api/v1/firewall", tags=["Firewall"])
 
-# SPA catch-all route - serve index.html for client-side routing
+# SPA catch-all route - serve marketing pages for unmatched routes
 @app.get("/{full_path:path}")
 def spa_catchall(full_path: str):
-    """Catch-all route for SPA - serves index.html for all unmatched routes"""
-    frontend_index = os.path.join(frontend_dist, "index.html")
+    """Catch-all route - serves marketing pages for client-side routing"""
+    frontend_index = os.path.join(frontend_public, "index.html")
     if os.path.exists(frontend_index) and not full_path.startswith("api/"):
         # Don't intercept API calls
         if full_path.endswith((".js", ".css", ".png", ".jpg", ".svg", ".ico")):
             # Static assets should return 404 if not found
             return JSONResponse(status_code=404, content={"detail": "Not Found"})
         # For HTML routes (pages), serve index.html
-        return FileResponse(frontend_index)
+        return FileResponse(frontend_index, media_type="text/html")
     return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
 # Exception handler for validation errors
