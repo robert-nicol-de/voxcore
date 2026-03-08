@@ -8,14 +8,14 @@ import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-from voxcore.voxquery.api import app
-from voxcore.voxquery.settings import settings
+from voxcore.voxquery.voxquery.api import app
+from voxcore.voxquery.voxquery.settings import settings
 
 if __name__ == "__main__":
     import uvicorn
     
     uvicorn.run(
-        "voxcore.voxquery.api:app",
+        "voxcore.voxquery.voxquery.api:app",
         host=settings.api_host,
         port=settings.api_port,
         reload=settings.debug,
