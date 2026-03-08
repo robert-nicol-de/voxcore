@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Badge } from '../components';
+import FirewallMonitor from '../components/FirewallMonitor';
 import './GovernanceDashboard.css';
 
 interface MetricsData {
@@ -143,6 +144,9 @@ export const GovernanceDashboard: React.FC<GovernanceDashboardProps> = ({ onAskQ
           </div>
         </div>
       </div>
+
+      {/* Firewall Monitor Component */}
+      <FirewallMonitor />
 
       {/* Firewall Status & Policy Violations */}
       <div className="governance-section">

@@ -35,6 +35,110 @@
       flex-wrap: wrap;
     }
 
+    .demo-section {
+      padding: 80px 32px;
+      background: rgba(30, 40, 60, 0.3);
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+      align-items: center;
+    }
+
+    .demo-arrow {
+      text-align: center;
+      font-size: 32px;
+      color: #6495ff;
+      font-weight: 700;
+    }
+
+    .demo-card {
+      background: rgba(30, 40, 60, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      position: relative;
+    }
+
+    .demo-step {
+      position: absolute;
+      top: -16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #6495ff 0%, #4a7fff 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .demo-card h3 {
+      font-size: 18px;
+      margin: 16px 0 24px 0;
+    }
+
+    .demo-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: left;
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .demo-input {
+      margin: 0;
+      color: #aaa;
+      font-size: 13px;
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    .demo-sql {
+      margin: 0;
+      color: #6495ff;
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+      line-height: 1.5;
+      overflow-x: auto;
+    }
+
+    .demo-validation {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .validation-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .validation-item.valid {
+      color: #10b981;
+    }
+
+    .validation-item span {
+      font-weight: 700;
+      font-size: 16px;
+    }
+
     .featured-section {
       padding: 80px 32px;
       background: rgba(30, 40, 60, 0.3);
@@ -106,6 +210,14 @@
         width: 100%;
         text-align: center;
       }
+
+      .demo-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .demo-arrow {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -120,6 +232,7 @@
         <a href="/" class="active">Home</a>
         <a href="/about.html">About</a>
         <a href="/pricing.html">Pricing</a>
+        <a href="/security.html">Security</a>
         <div class="nav-buttons">
           <a href="/login.html" class="btn-login">Login</a>
           <a href="/pricing.html" class="btn-signup">Get Started</a>
@@ -131,16 +244,68 @@
   <!-- Hero Section -->
   <section class="hero">
     <div class="container">
-      <h1>SQL Governance & Query Intelligence</h1>
-      <p>VoxCore introduces a SQL firewall that inspects, validates and governs AI-generated queries before execution. Make AI-driven data access secure for enterprises.</p>
+      <h1>Ask Your Database Anything</h1>
+      <p>VoxCore generates secure SQL automatically. No more query writing.</p>
       <div class="hero-buttons">
         <a href="/app" class="btn-primary">Launch App</a>
-        <a href="/pricing.html" class="btn-secondary">View Pricing</a>
+        <a href="#demo" class="btn-secondary">See Demo</a>
       </div>
     </div>
   </section>
 
-  <!-- Featured Features -->
+  <!-- Query Demo Section -->
+  <section id="demo" class="demo-section">
+    <div class="container">
+      <h2 style="text-align: center; margin-bottom: 48px;">See It In Action</h2>
+      <div class="demo-grid">
+        <div class="demo-card">
+          <div class="demo-step">1</div>
+          <h3>Ask in Plain English</h3>
+          <div class="demo-box">
+            <p class="demo-input">Show me total revenue by region for this quarter</p>
+          </div>
+        </div>
+
+        <div class="demo-arrow">→</div>
+
+        <div class="demo-card">
+          <div class="demo-step">2</div>
+          <h3>VoxCore Generates SQL</h3>
+          <div class="demo-box">
+            <pre class="demo-sql"><code>SELECT 
+  region,
+  SUM(revenue) as total_revenue
+FROM sales
+WHERE date >= CURRENT_DATE - 90
+GROUP BY region
+ORDER BY total_revenue DESC</code></pre>
+          </div>
+        </div>
+
+        <div class="demo-arrow">→</div>
+
+        <div class="demo-card">
+          <div class="demo-step">3</div>
+          <h3>Firewall Validates</h3>
+          <div class="demo-box demo-validation">
+            <div class="validation-item valid">
+              <span>✓</span> Syntax correct
+            </div>
+            <div class="validation-item valid">
+              <span>✓</span> No injection risk
+            </div>
+            <div class="validation-item valid">
+              <span>✓</span> Policy compliant
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align: center; margin-top: 48px;">
+        <p style="font-size: 16px; color: #aaa; margin-bottom: 24px;">No database connection needed for this demo. Login to connect your own database.</p>
+        <a href="/app" class="btn-primary">Try Now</a>
+      </div>
+    </div>
+  </section>
   <section class="featured-section">
     <div class="container">
       <h2 style="text-align: center; margin-bottom: 0;">Why VoxCore?</h2>
