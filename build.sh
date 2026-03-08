@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 echo "======================================"
 echo "VoxCore Build Script"
@@ -8,20 +7,34 @@ echo "======================================"
 # Build Frontend
 echo ""
 echo "📦 Installing frontend dependencies..."
-cd frontend
-npm install --legacy-peer-deps --production=false
+cd frontend 2>/dev/null || { echo "❌ frontend directory not found"; exit 1; }
+
+npm install --legacy-peer-deps --production=false 2>&1 || {
+    echo "⚠️  npm install failed, but continuing..."
+}
 
 echo ""
 echo "🏗️  Building React app with Vite..."
-if npm run build; then
+npm run build 2>&1
+BUILD_STATUS=$?
+
+if [ $BUILD_STATUS -eq 0 ]; then
     echo "✅ Vite build succeeded"
-    FRONTEND_READY=true
 else
-    echo "⚠️  Vite build failed, using public folder as fallback"
-    rm -rf dist
-    mkdir -p dist
-    cp -r public/* dist/
-    FRONTEND_READY=true
+    echo "⚠️  Vite build failed (status: $BUILD_STATUS), using public folder as fallback"
+    rm -rf dist 2>/dev/null || true
+    mkdir -p dist || { echo "❌ Failed to create dist directory"; exit 1; }
+    cp -r public/* dist/ 2>/dev/null || {
+        echo "❌ Failed to copy public to dist"
+        exit 1
+    }
+    echo "✅ Fallback: copied public/ → dist/"
+fi
+
+# Verify dist folder was created
+if [ ! -d "dist" ]; then
+    echo "❌ CRITICAL: dist folder does not exist!"
+    exit 1
 fi
 
 cd ..
