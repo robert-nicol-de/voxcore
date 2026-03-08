@@ -4,8 +4,8 @@ services:
     name: voxcore
     runtime: python
     buildCommand: |
-      pip install -r voxcore/voxquery/requirements.txt &&
-      cd frontend && npm install --legacy-peer-deps && npm run build
+      cd frontend && npm install --legacy-peer-deps && npm run build &&
+      cd .. && pip install -r voxcore/voxquery/requirements.txt
     startCommand: cd voxcore/voxquery && uvicorn voxquery.api:app --host 0.0.0.0 --port 10000
     envVars:
       - key: PYTHONUNBUFFERED
