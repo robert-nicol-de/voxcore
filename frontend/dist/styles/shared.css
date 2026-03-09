@@ -1,0 +1,590 @@
+/* ========================================
+   VoxCore Shared Styles
+   ======================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f1419 0%, #1a2332 100%);
+  color: #ffffff;
+  line-height: 1.6;
+}
+
+/* ========================================
+   Header & Navigation
+   ======================================== */
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(15, 20, 25, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  gap: 8px;
+  transition: opacity 0.2s ease;
+}
+
+.logo:hover {
+  opacity: 0.85;
+}
+
+.logo img {
+  height: 120px;
+  width: auto;
+  display: block;
+}
+
+.hero-logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.hero-logo img {
+  max-width: 320px;
+  width: 100%;
+  height: auto;
+  box-shadow: 0 8px 32px rgba(100,149,255,0.12);
+  border-radius: 12px;
+}
+
+nav {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+}
+
+nav a {
+  color: #aaa;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+nav a:hover {
+  color: #fff;
+}
+
+nav a.active {
+  color: #6495ff;
+  font-weight: 600;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn-login {
+  color: #aaa;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-login:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-signup {
+  background: linear-gradient(135deg, #6495ff 0%, #4a7fff 100%);
+  color: #fff;
+  text-decoration: none;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(100, 150, 255, 0.3);
+}
+
+.btn-signup:hover {
+  background: linear-gradient(135deg, #7aa5ff 0%, #5a8fff 100%);
+  box-shadow: 0 4px 12px rgba(100, 150, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+/* ========================================
+   Footer
+   ======================================== */
+
+footer {
+  background: rgba(15, 20, 25, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 48px 32px 32px;
+  margin-top: 80px;
+}
+
+.footer-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 40px;
+  margin-bottom: 40px;
+}
+
+.footer-section h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.footer-section a {
+  display: block;
+  color: #888;
+  text-decoration: none;
+  font-size: 13px;
+  margin-bottom: 12px;
+  transition: color 0.2s ease;
+}
+
+.footer-section a:hover {
+  color: #fff;
+}
+
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #666;
+}
+
+/* ========================================
+   Common Components
+   ======================================== */
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.section {
+  padding: 80px 32px;
+}
+
+h1 {
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 24px;
+  letter-spacing: -1px;
+}
+
+h2 {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 24px;
+  letter-spacing: -0.5px;
+}
+
+h3 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+p {
+  font-size: 16px;
+  color: #aaa;
+  margin-bottom: 16px;
+}
+
+.highlight {
+  color: #6495ff;
+  font-weight: 600;
+}
+
+.btn-primary {
+  display: inline-block;
+  background: linear-gradient(135deg, #6495ff 0%, #4a7fff 100%);
+  color: #fff;
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid rgba(100, 150, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #7aa5ff 0%, #5a8fff 100%);
+  box-shadow: 0 8px 20px rgba(100, 150, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 32px;
+  margin-top: 48px;
+}
+
+.feature-card {
+  background: rgba(30, 40, 60, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 32px;
+  transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+  background: rgba(40, 60, 100, 0.7);
+  border-color: rgba(100, 150, 255, 0.3);
+  transform: translateY(-4px);
+}
+
+.feature-icon {
+  font-size: 40px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.feature-card h3 {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.feature-card p {
+  font-size: 14px;
+  color: #888;
+}
+
+/* ========================================
+   Preview Mode Banner
+   ======================================== */
+
+.preview-banner {
+  background: linear-gradient(90deg, #3a3000 0%, #2a2000 100%);
+  border-bottom: 2px solid #d97706;
+  padding: 14px 24px;
+  text-align: center;
+  font-size: 14px;
+  color: #fbbf24;
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+  z-index: 99;
+}
+
+.preview-banner a {
+  color: #fbbf24;
+  text-decoration: underline;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.preview-banner a:hover {
+  color: #fff;
+}
+
+/* ========================================
+   Responsive
+   ======================================== */
+
+@media (max-width: 1024px) {
+  .container {
+    padding: 0 24px;
+  }
+
+  h1 {
+    font-size: 48px;
+  }
+
+  h2 {
+    font-size: 40px;
+  }
+
+  .section {
+    padding: 60px 24px;
+  }
+
+  nav {
+    gap: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-container {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .logo img {
+    height: 60px;
+  }
+
+  nav {
+    gap: 12px;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  nav a {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+
+  .nav-buttons {
+    width: 100%;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .btn-login,
+  .btn-signup {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+
+  h1 {
+    font-size: 32px;
+    line-height: 1.3;
+  }
+
+  h2 {
+    font-size: 28px;
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: 20px;
+  }
+
+  p {
+    font-size: 14px;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+
+  .section {
+    padding: 40px 16px;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .feature-card {
+    padding: 24px;
+  }
+
+  .feature-icon {
+    font-size: 32px;
+  }
+
+  .feature-card h3 {
+    font-size: 18px;
+  }
+
+  .feature-card p {
+    font-size: 13px;
+  }
+
+  .footer-content {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+
+  footer {
+    padding: 32px 16px 24px;
+    margin-top: 40px;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 12px 24px;
+    font-size: 14px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .hero-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-buttons a {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    padding: 12px 12px;
+  }
+
+  .logo {
+    transition: opacity 0.2s ease;
+  }
+
+  .logo img {
+    height: 50px;
+  }
+
+  nav {
+    gap: 8px;
+  }
+
+  nav a {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+
+  h1 {
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+
+  h2 {
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+
+  h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .container {
+    padding: 0 12px;
+  }
+
+  .section {
+    padding: 32px 12px;
+  }
+
+  .feature-card {
+    padding: 20px;
+  }
+
+  .feature-icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+
+  .feature-card h3 {
+    font-size: 16px;
+  }
+
+  .feature-card p {
+    font-size: 12px;
+  }
+
+  footer {
+    padding: 24px 12px 16px;
+    margin-top: 32px;
+  }
+
+  .footer-section h3 {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .footer-section a {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+
+  .footer-bottom {
+    font-size: 12px;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+
+  .btn-login {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .btn-signup {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+}

@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoxCore Architecture | SQL Governance Platform</title>
+    <link rel="stylesheet" href="styles/shared.css">
+    <style>
+        .architecture-hero {
+            background: linear-gradient(135deg, #0f1419 0%, #1a2332 100%);
+            padding: 80px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(100, 149, 255, 0.2);
+        }
+
+        .architecture-hero h1 {
+            font-size: 2.5rem;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .architecture-hero p {
+            font-size: 1.1rem;
+            color: #a0aec0;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .architecture-container {
+            max-width: 1000px;
+            margin: 60px auto;
+            padding: 0 20px;
+        }
+
+        /* System Flow Diagram */
+        .flow-diagram {
+            background: #0f1419;
+            border: 1px solid rgba(100, 149, 255, 0.3);
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 60px;
+            position: relative;
+        }
+
+        .flow-title {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #6495ff;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .flow-step {
+            background: #1a2332;
+            border: 1px solid rgba(100, 149, 255, 0.2);
+            border-radius: 8px;
+            padding: 25px;
+            position: relative;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .flow-step:hover {
+            border-color: #6495ff;
+            box-shadow: 0 0 20px rgba(100, 149, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .flow-step-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #6495ff, #4a7fff);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .flow-step-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .flow-step-desc {
+            color: #a0aec0;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .flow-arrow {
+            text-align: center;
+            color: #6495ff;
+            font-size: 1.8rem;
+            margin: -15px 0 -15px 0;
+            z-index: 1;
+        }
+
+        /* Component Grid */
+        .components-section {
+            margin-bottom: 60px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #6495ff;
+        }
+
+        .components-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .component-card {
+            background: #1a2332;
+            border: 1px solid rgba(100, 149, 255, 0.2);
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .component-card:hover {
+            border-color: #6495ff;
+            box-shadow: 0 8px 30px rgba(100, 149, 255, 0.15);
+            transform: translateY(-5px);
+        }
+
+        .component-icon {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+        }
+
+        .component-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .component-desc {
+            color: #a0aec0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* Data Flow */
+        .data-flow {
+            background: #1a2332;
+            border: 1px solid rgba(74, 127, 255, 0.3);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 60px;
+        }
+
+        .flow-box {
+            background: #0f1419;
+            border-left: 3px solid #6495ff;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
+        .flow-box:last-child {
+            margin-bottom: 0;
+        }
+
+        .flow-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: #6495ff;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .flow-content {
+            color: #e2e8f0;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        /* Security Layers */
+        .security-layers {
+            background: linear-gradient(135deg, rgba(244, 63, 94, 0.1) 0%, rgba(100, 149, 255, 0.05) 100%);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 60px;
+        }
+
+        .layers-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .layer {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            background: #0f1419;
+            border-radius: 8px;
+            border-left: 3px solid #f43f5e;
+        }
+
+        .layer-icon {
+            font-size: 1.8rem;
+            flex-shrink: 0;
+        }
+
+        .layer-content h4 {
+            color: #fff;
+            margin: 0 0 5px 0;
+            font-weight: 600;
+        }
+
+        .layer-content p {
+            color: #a0aec0;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Tech Stack */
+        .tech-stack {
+            background: #1a2332;
+            border: 1px solid rgba(100, 149, 255, 0.2);
+            border-radius: 12px;
+            padding: 30px;
+        }
+
+        .stack-row {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 20px;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(100, 149, 255, 0.1);
+        }
+
+        .stack-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-bottom: 0;
+        }
+
+        .stack-label {
+            font-weight: 600;
+            color: #6495ff;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .stack-tech {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tech-badge {
+            background: rgba(100, 149, 255, 0.1);
+            border: 1px solid rgba(100, 149, 255, 0.3);
+            color: #88b0ff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        /* Deployment */
+        .deployment {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(100, 149, 255, 0.05) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 60px;
+            text-align: center;
+        }
+
+        .deployment h3 {
+            color: #10b981;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+
+        .deployment-boxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .deployment-box {
+            background: #0f1419;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .deployment-box strong {
+            color: #10b981;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .deployment-box small {
+            color: #a0aec0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .architecture-hero h1 {
+                font-size: 1.8rem;
+            }
+
+            .flow-diagram {
+                padding: 25px;
+            }
+
+            .components-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stack-row {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .deployment-boxes {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <a href="/" class="logo">
+              <img src="/voxcore-landing.png" alt="VoxCore">
+            </a>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/pricing.html">Pricing</a>
+                <a href="/about.html">About</a>
+                <a href="/architecture.html" class="active">Architecture</a>                <a href="/ai-model.html">AI Model</a>                <a href="/security.html">Security</a>
+                <a href="/login.html" class="nav-cta">Login</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="architecture-hero">
+        <h1>System Architecture</h1>
+        <p>Understand how VoxCore protects your most valuable asset: real-time SQL queries.</p>
+    </div>
+
+    <div class="architecture-container">
+        <!-- System Flow -->
+        <div class="flow-diagram">
+            <div class="flow-title">Data Flow</div>
+            <div class="flow-steps">
+                <div class="flow-step">
+                    <div class="flow-step-number">1</div>
+                    <div class="flow-step-title">User Request</div>
+                    <div class="flow-step-desc">Natural language query from VoxCore web application. Example: "Show revenue by region"</div>
+                </div>
+                <div class="flow-arrow">↓</div>
+
+                <div class="flow-step">
+                    <div class="flow-step-number">2</div>
+                    <div class="flow-step-title">AI Query Engine</div>
+                    <div class="flow-step-desc">Claude/GPT-4 processes the request. Analyzes intent, identifies required tables/columns, generates SQL with context awareness.</div>
+                </div>
+                <div class="flow-arrow">↓</div>
+
+                <div class="flow-step">
+                    <div class="flow-step-number">3</div>
+                    <div class="flow-step-title">SQL Firewall</div>
+                    <div class="flow-step-desc">Validates generated SQL before execution. Detects injection attacks, policy violations, risky operations. Assigns risk score (0.0-1.0).</div>
+                </div>
+                <div class="flow-arrow">↓</div>
+
+                <div class="flow-step">
+                    <div class="flow-step-number">4</div>
+                    <div class="flow-step-title">Database Execution</div>
+                    <div class="flow-step-desc">Safe SQL executes on your database (Snowflake, SQL Server, PostgreSQL). Results returned immediately with audit log.</div>
+                </div>
+                <div class="flow-arrow">↓</div>
+
+                <div class="flow-step">
+                    <div class="flow-step-number">5</div>
+                    <div class="flow-step-title">Results & Visualization</div>
+                    <div class="flow-step-desc">Charts, tables, and natural language summary displayed in UI. All queries logged for compliance and audit.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Core Components -->
+        <div class="components-section">
+            <h2 class="section-title">Core Components</h2>
+            <div class="components-grid">
+                <div class="component-card">
+                    <div class="component-icon">🎨</div>
+                    <div class="component-name">VoxCore UI</div>
+                    <div class="component-desc">React 18 frontend with real-time query interface, governance dashboard, and audit logs.</div>
+                </div>
+
+                <div class="component-card">
+                    <div class="component-icon">🤖</div>
+                    <div class="component-name">AI Query Engine</div>
+                    <div class="component-desc">LLM integration (Claude 3 or GPT-4) with prompt engineering for safe SQL generation.</div>
+                </div>
+
+                <div class="component-card">
+                    <div class="component-icon">🔥</div>
+                    <div class="component-name">SQL Firewall</div>
+                    <div class="component-desc">Proprietary validation layer. Blocks injection attacks, policy violations, and risky patterns.</div>
+                </div>
+
+                <div class="component-card">
+                    <div class="component-icon">💾</div>
+                    <div class="component-name">Database Connectors</div>
+                    <div class="component-desc">Native support for Snowflake, SQL Server, PostgreSQL. Works with your existing infrastructure.</div>
+                </div>
+
+                <div class="component-card">
+                    <div class="component-icon">📊</div>
+                    <div class="component-name">Query History</div>
+                    <div class="component-desc">Complete audit trail of executed queries, risk scores, and user attribution for compliance.</div>
+                </div>
+
+                <div class="component-card">
+                    <div class="component-icon">🔐</div>
+                    <div class="component-name">Governance Layer</div>
+                    <div class="component-desc">Policy enforcement engine. Define rules for allowed tables, columns, operations.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Layers -->
+        <div class="components-section">
+            <h2 class="section-title">Security Layers</h2>
+            <div class="security-layers">
+                <div class="layers-grid">
+                    <div class="layer">
+                        <div class="layer-icon">🛡️</div>
+                        <div class="layer-content">
+                            <h4>SQL Injection Detection</h4>
+                            <p>AST parsing and pattern matching to detect malicious SQL fragments before execution.</p>
+                        </div>
+                    </div>
+
+                    <div class="layer">
+                        <div class="layer-icon">👤</div>
+                        <div class="layer-content">
+                            <h4>Query Fingerprinting</h4>
+                            <p>Unique fingerprint for each query type. Detects anomalies and repeated attack patterns.</p>
+                        </div>
+                    </div>
+
+                    <div class="layer">
+                        <div class="layer-icon">📋</div>
+                        <div class="layer-content">
+                            <h4>Policy Enforcement</h4>
+                            <p>User-defined rules restrict access to sensitive tables, columns, and operations.</p>
+                        </div>
+                    </div>
+
+                    <div class="layer">
+                        <div class="layer-icon">📝</div>
+                        <div class="layer-content">
+                            <h4>Audit Logging</h4>
+                            <p>All queries logged with user, timestamp, risk score, and results for compliance.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Flow Details -->
+        <div class="components-section">
+            <h2 class="section-title">Data Flow Through Firewall</h2>
+            <div class="data-flow">
+                <div class="flow-box">
+                    <div class="flow-label">User Input</div>
+                    <div class="flow-content">"Show revenue by region for Q4 2025"</div>
+                </div>
+
+                <div style="text-align: center; color: #6495ff; margin: 10px 0;">↓</div>
+
+                <div class="flow-box">
+                    <div class="flow-label">LLM Prompt</div>
+                    <div class="flow-content">Database schema, safety guidelines, user permissions → Claude/GPT-4 → SQL output</div>
+                </div>
+
+                <div style="text-align: center; color: #6495ff; margin: 10px 0;">↓</div>
+
+                <div class="flow-box">
+                    <div class="flow-label">Firewall Checks</div>
+                    <div class="flow-content">✓ SQL syntax ✓ No injection ✓ Policy compliance ✓ PII detection ✓ Risk scoring</div>
+                </div>
+
+                <div style="text-align: center; color: #6495ff; margin: 10px 0;">↓</div>
+
+                <div class="flow-box">
+                    <div class="flow-label">Decision</div>
+                    <div class="flow-content">Risk Score: 0.08 (Low) → ✅ APPROVE & EXECUTE</div>
+                </div>
+
+                <div style="text-align: center; color: #6495ff; margin: 10px 0;">↓</div>
+
+                <div class="flow-box">
+                    <div class="flow-label">Results</div>
+                    <div class="flow-content">Chart + Table + Natural Language Summary + Audit Log Entry</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technology Stack -->
+        <div class="components-section">
+            <h2 class="section-title">Technology Stack</h2>
+            <div class="tech-stack">
+                <div class="stack-row">
+                    <div class="stack-label">Frontend</div>
+                    <div class="stack-tech">
+                        <span class="tech-badge">React 18</span>
+                        <span class="tech-badge">TypeScript</span>
+                        <span class="tech-badge">Vite</span>
+                        <span class="tech-badge">CSS Grid</span>
+                    </div>
+                </div>
+
+                <div class="stack-row">
+                    <div class="stack-label">Backend</div>
+                    <div class="stack-tech">
+                        <span class="tech-badge">Python 3.11</span>
+                        <span class="tech-badge">FastAPI</span>
+                        <span class="tech-badge">Uvicorn</span>
+                    </div>
+                </div>
+
+                <div class="stack-row">
+                    <div class="stack-label">AI/LLM</div>
+                    <div class="stack-tech">
+                        <span class="tech-badge">LangChain</span>
+                        <span class="tech-badge">Claude 3</span>
+                        <span class="tech-badge">GPT-4</span>
+                    </div>
+                </div>
+
+                <div class="stack-row">
+                    <div class="stack-label">Databases</div>
+                    <div class="stack-tech">
+                        <span class="tech-badge">Snowflake</span>
+                        <span class="tech-badge">SQL Server</span>
+                        <span class="tech-badge">PostgreSQL</span>
+                    </div>
+                </div>
+
+                <div class="stack-row">
+                    <div class="stack-label">Deployment</div>
+                    <div class="stack-tech">
+                        <span class="tech-badge">Render (Cloud)</span>
+                        <span class="tech-badge">GitHub Actions</span>
+                        <span class="tech-badge">Docker</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deployment -->
+        <div class="deployment">
+            <h3>🚀 Production Deployment</h3>
+            <div class="deployment-boxes">
+                <div class="deployment-box">
+                    <strong>Frontend</strong>
+                    <small>voxcore.onrender.com<br>React + Vite auto-build</small>
+                </div>
+                <div class="deployment-box">
+                    <strong>Backend API</strong>
+                    <small>voxcore.onrender.com/api<br>FastAPI + Uvicorn auto-deploy</small>
+                </div>
+                <div class="deployment-box">
+                    <strong>Database</strong>
+                    <small>Your databases (Snowflake/SQL Server)<br>VoxCore never stores your data</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <strong>VoxCore</strong>
+                <p>AI-powered SQL governance for enterprise databases.</p>
+            </div>
+            <div class="footer-section">
+                <strong>Product</strong>
+                <a href="/">Home</a>
+                <a href="/pricing.html">Pricing</a>
+                <a href="/architecture.html">Architecture</a>
+                <a href="/security.html">Security</a>
+            </div>
+            <div class="footer-section">
+                <strong>Company</strong>
+                <a href="/about.html">About</a>
+                <a href="#">Docs</a>
+                <a href="#">Blog</a>
+            </div>
+            <div class="footer-section">
+                <strong>Legal</strong>
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">Contact</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 VoxCore. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

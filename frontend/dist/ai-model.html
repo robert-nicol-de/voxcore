@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Model Transparency | VoxCore</title>
+    <link rel="stylesheet" href="styles/shared.css">
+    <style>
+        .transparency-hero {
+            background: linear-gradient(135deg, #0f1419 0%, #1a2332 100%);
+            padding: 80px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(100, 149, 255, 0.2);
+        }
+
+        .transparency-hero h1 {
+            font-size: 2.5rem;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .transparency-hero p {
+            font-size: 1.1rem;
+            color: #a0aec0;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .transparency-container {
+            max-width: 1000px;
+            margin: 60px auto;
+            padding: 0 20px;
+        }
+
+        /* Section */
+        .transparency-section {
+            margin-bottom: 60px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #6495ff;
+        }
+
+        /* Card Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: #1a2332;
+            border: 1px solid rgba(100, 149, 255, 0.2);
+            border-radius: 12px;
+            padding: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: #6495ff;
+            box-shadow: 0 8px 30px rgba(100, 149, 255, 0.15);
+            transform: translateY(-5px);
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 12px;
+        }
+
+        .card-desc {
+            color: #a0aec0;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        /* Detailed Section */
+        .detailed-box {
+            background: #1a2332;
+            border: 1px solid rgba(100, 149, 255, 0.2);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+
+        .detailed-box-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .process-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .process-item {
+            display: flex;
+            gap: 15px;
+        }
+
+        .process-step {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #6495ff, #4a7fff);
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .process-content {
+            flex: 1;
+        }
+
+        .process-title {
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .process-desc {
+            color: #a0aec0;
+            font-size: 0.9rem;
+        }
+
+        /* Control Examples */
+        .example-box {
+            background: #0f1419;
+            border: 1px solid rgba(100, 149, 255, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .example-label {
+            color: #6495ff;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .example-code {
+            color: #e2e8f0;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        /* Trust Metrics */
+        .trust-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .metric-card {
+            background: #0f1419;
+            border: 1px solid rgba(100, 149, 255, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #6495ff;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            color: #a0aec0;
+            font-size: 0.9rem;
+        }
+
+        /* Comparison Table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+            background: #0f1419;
+            border: 1px solid rgba(100, 149, 255, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .comparison-table th {
+            background: #1a2332;
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(100, 149, 255, 0.2);
+            color: #6495ff;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .comparison-table td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(100, 149, 255, 0.1);
+            color: #e2e8f0;
+            font-size: 0.9rem;
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .check-icon {
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        /* CTA Section */
+        .transparency-cta {
+            background: linear-gradient(135deg, rgba(100, 149, 255, 0.1) 0%, rgba(74, 127, 255, 0.05) 100%);
+            border: 1px solid rgba(100, 149, 255, 0.2);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-top: 60px;
+        }
+
+        .transparency-cta h2 {
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .transparency-cta p {
+            color: #a0aec0;
+            margin-bottom: 25px;
+            font-size: 1.05rem;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 28px;
+            border-radius: 6px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6495ff, #4a7fff);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(100, 149, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #6495ff;
+            border: 1px solid #6495ff;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(100, 149, 255, 0.1);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .transparency-hero h1 {
+                font-size: 1.8rem;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <a href="/" class="logo">
+              <img src="/voxcore-landing.png" alt="VoxCore">
+            </a>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/pricing.html">Pricing</a>
+                <a href="/about.html">About</a>
+                <a href="/architecture.html">Architecture</a>
+                <a href="/ai-model.html">AI Model</a>
+                <a href="/security.html">Security</a>
+                <a href="/login.html" class="nav-cta">Login</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="transparency-hero">
+        <h1>AI Model Transparency</h1>
+        <p>We believe in explainable AI. Here's exactly how VoxCore generates, validates, and scores SQL queries.</p>
+    </div>
+
+    <div class="transparency-container">
+        <!-- LLM & Prompt Engineering -->
+        <div class="transparency-section">
+            <h2 class="section-title">🤖 LLM & Prompt Engineering</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-icon">🧠</div>
+                    <div class="card-title">Language Models</div>
+                    <div class="card-desc">VoxCore uses state-of-the-art LLMs: Claude 3.5 Sonnet (default) or GPT-4 Turbo (optional). Both support 200K context windows for large schemas.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🎯</div>
+                    <div class="card-title">Prompt Architecture</div>
+                    <div class="card-desc">Custom system prompts enforce safety constraints, SQL best practices, and data governance policies specific to your organization.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">💾</div>
+                    <div class="card-title">Schema Injection</div>
+                    <div class="card-desc">Your database schema is securely injected into the prompt context. LLM learns table names, columns, data types, and relationships.</div>
+                </div>
+            </div>
+
+            <div class="detailed-box">
+                <div class="detailed-box-title">Prompt Template Example</div>
+                <div class="example-box">
+                    <div class="example-label">System Prompt</div>
+                    <div class="example-code">You are a SQL query generation assistant for [COMPANY].
+
+Database: {database_type}
+Dialect: {sql_dialect}
+
+CONSTRAINTS:
+- Never access tables: employees, payroll, credentials
+- Use indexed columns for WHERE clauses
+- Limit result sets to 10,000 rows
+- Prefer CTEs over subqueries
+
+Available Tables:
+{schema_definition}
+
+User Request: {user_query}
+
+Generate safe, optimized SQL.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SQL Validation -->
+        <div class="transparency-section">
+            <h2 class="section-title">✓ SQL Validation</h2>
+            <div class="process-list">
+                <div class="process-item">
+                    <div class="process-step">1</div>
+                    <div class="process-content">
+                        <div class="process-title">Syntax Validation</div>
+                        <div class="process-desc">Parse SQL using dialect-specific parsers (TSQL, Snowflake, PostgreSQL). Invalid syntax is rejected immediately.</div>
+                    </div>
+                </div>
+
+                <div class="process-item">
+                    <div class="process-step">2</div>
+                    <div class="process-content">
+                        <div class="process-title">Semantic Analysis</div>
+                        <div class="process-desc">Verify table/column existence, data type compatibility, and join conditions against your actual schema.</div>
+                    </div>
+                </div>
+
+                <div class="process-item">
+                    <div class="process-step">3</div>
+                    <div class="process-content">
+                        <div class="process-title">Injection Detection</div>
+                        <div class="process-desc">AST analysis detects SQL injection patterns, malicious functions (xp_cmdshell, etc.), and suspicious operators.</div>
+                    </div>
+                </div>
+
+                <div class="process-item">
+                    <div class="process-step">4</div>
+                    <div class="process-content">
+                        <div class="process-title">Policy Enforcement</div>
+                        <div class="process-desc">Cross-reference query against organization policies. Block access to restricted tables or sensitive columns.</div>
+                    </div>
+                </div>
+
+                <div class="process-item">
+                    <div class="process-step">5</div>
+                    <div class="process-content">
+                        <div class="process-title">Query Fingerprinting</div>
+                        <div class="process-desc">Generate unique fingerprint for query type. Detect repeated patterns or known attack signatures.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Risk Scoring -->
+        <div class="transparency-section">
+            <h2 class="section-title">📊 Risk Scoring Algorithm</h2>
+            <div class="trust-metrics">
+                <div class="metric-card">
+                    <div class="metric-value">0.0 - 0.15</div>
+                    <div class="metric-label">LOW RISK<br>Safe to Execute</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">0.16 - 0.50</div>
+                    <div class="metric-label">MEDIUM RISK<br>Review Before Execute</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">0.51 - 1.0</div>
+                    <div class="metric-label">HIGH RISK<br>Blocked</div>
+                </div>
+            </div>
+
+            <div class="detailed-box">
+                <div class="detailed-box-title">Risk Scoring Factors</div>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Factor</th>
+                            <th>Weight</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>SQL Injection Score</strong></td>
+                            <td>35%</td>
+                            <td>0.0 = no injection patterns detected</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Table Sensitivity</strong></td>
+                            <td>25%</td>
+                            <td>Accessing PII table = +0.3 risk</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Policy Violations</strong></td>
+                            <td>20%</td>
+                            <td>Restricted column access = +0.25 risk</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Operation Type</strong></td>
+                            <td>15%</td>
+                            <td>UPDATE/DELETE = +0.1, SELECT = 0.0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Anomaly Detection</strong></td>
+                            <td>5%</td>
+                            <td>Unusual query structure = +0.05 risk</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="detailed-box">
+                <div class="detailed-box-title">Example Risk Calculation</div>
+                <div class="example-box">
+                    <div class="example-label">Query: "Show revenue by region"</div>
+                    <div class="example-code">SQL Injection Score:        0.00 (no patterns)
+Table Sensitivity Score:    0.05 (public tables)
+Policy Check:              0.03 (minor column audit)
+Operation Type:            0.00 (SELECT only)
+Anomaly Score:             0.00 (standard pattern)
+─────────────────────────────────────
+FINAL RISK SCORE:          0.08 (LOW)
+RECOMMENDATION:            ✓ EXECUTE</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prompt Controls -->
+        <div class="transparency-section">
+            <h2 class="section-title">⚙️ Prompt Controls & Configuration</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-icon">🔒</div>
+                    <div class="card-title">Safety Guardrails</div>
+                    <div class="card-desc">Configure forbidden operations (DROP TABLE, TRUNCATE), restricted tables (payroll, PII), and required audit fields.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">📋</div>
+                    <div class="card-title">Organization Policies</div>
+                    <div class="card-desc">Define data governance rules: who can access what tables, column-level restrictions, and compliance requirements.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🎓</div>
+                    <div class="card-title">Few-Shot Examples</div>
+                    <div class="card-desc">Provide example questions and expected SQL to improve LLM accuracy for your specific database dialect and conventions.</div>
+                </div>
+            </div>
+
+            <div class="detailed-box">
+                <div class="detailed-box-title">Policy Configuration Example</div>
+                <div class="example-box">
+                    <div class="example-label">Organization Policy</div>
+                    <div class="example-code">{
+  "restricted_tables": [
+    "employees",
+    "payroll",
+    "credentials"
+  ],
+  "restricted_columns": {
+    "customers": ["ssn", "credit_card"],
+    "orders": ["payment_method"]
+  },
+  "max_result_rows": 10000,
+  "require_where_clause": true,
+  "forbidden_operations": [
+    "DROP",
+    "TRUNCATE",
+    "ALTER TABLE"
+  ],
+  "audit_required": true
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Validation Layers -->
+        <div class="transparency-section">
+            <h2 class="section-title">🛡️ Multi-Layer Validation</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-icon">1️⃣</div>
+                    <div class="card-title">Pre-Execution Check</div>
+                    <div class="card-desc">Before any query touches your database, VoxCore validates against 50+ security rules and your custom policies.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">2️⃣</div>
+                    <div class="card-title">Query Timeout</div>
+                    <div class="card-desc">Auto-kill long-running queries (default 30s). Prevents accidental full-table scans and resource exhaustion.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">3️⃣</div>
+                    <div class="card-title">Result Sanitization</div>
+                    <div class="card-desc">Mask PII in results before returning to user. Redact sensitive data based on user permissions.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vs Traditional SQL -->
+        <div class="transparency-section">
+            <h2 class="section-title">🔄 VoxCore vs Traditional SQL Learning</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Aspect</th>
+                        <th>Traditional SQL Tools</th>
+                        <th>VoxCore with LLM</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Learning Curve</strong></td>
+                        <td>6-12 months to master SQL</td>
+                        <td><span class="check-icon">✓</span> Natural language (30 seconds)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Security</strong></td>
+                        <td>User discipline + access controls</td>
+                        <td><span class="check-icon">✓</span> AI firewall + policy enforcement</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Audit Trail</strong></td>
+                        <td>Database logs (hard to parse)</td>
+                        <td><span class="check-icon">✓</span> Automatic, user-friendly audit trail</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Query Optimization</strong></td>
+                        <td>Manual (requires expertise)</td>
+                        <td><span class="check-icon">✓</span> AI suggests optimal indexes</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Risk Scoring</strong></td>
+                        <td>❌ Not available</td>
+                        <td><span class="check-icon">✓</span> Every query scored (0.0-1.0)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Governance</strong></td>
+                        <td>Manual policy enforcement</td>
+                        <td><span class="check-icon">✓</span> Automatic enforcement + blocking</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Privacy Assurance -->
+        <div class="transparency-section">
+            <h2 class="section-title">🔐 Privacy & Data Security</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-icon">🌐</div>
+                    <div class="card-title">No Data Storage</div>
+                    <div class="card-desc">VoxCore never stores your data. Queries execute directly on your database. Results cached temporarily for performance only.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🔐</div>
+                    <div class="card-title">Encrypted Transmission</div>
+                    <div class="card-desc">All queries and results transmitted via TLS 1.3. Database credentials stored encrypted in AWS Secrets Manager.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">📝</div>
+                    <div class="card-title">Audit Logging</div>
+                    <div class="card-desc">Every query logged with user, IP, timestamp, risk score, and result. Immutable audit trail for compliance (SOC 2, HIPAA).</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Final CTA -->
+        <div class="transparency-cta">
+            <h2>Ready to See VoxCore in Action?</h2>
+            <p>Test the AI SQL engine with your own database. See risk scores, governance, and audit trails in real-time.</p>
+            <div class="cta-buttons">
+                <button class="btn btn-primary">Start Free Trial</button>
+                <button class="btn btn-secondary">Read the Docs</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <strong>VoxCore</strong>
+                <p>AI-powered SQL governance for enterprise databases.</p>
+            </div>
+            <div class="footer-section">
+                <strong>Product</strong>
+                <a href="/">Home</a>
+                <a href="/pricing.html">Pricing</a>
+                <a href="/architecture.html">Architecture</a>
+                <a href="/security.html">Security</a>
+            </div>
+            <div class="footer-section">
+                <strong>Company</strong>
+                <a href="/about.html">About</a>
+                <a href="#">Docs</a>
+                <a href="#">Blog</a>
+            </div>
+            <div class="footer-section">
+                <strong>Legal</strong>
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">Contact</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 VoxCore. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

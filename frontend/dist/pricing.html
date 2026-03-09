@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pricing — VoxCore</title>
+  <link rel="stylesheet" href="/styles/shared.css" />
+  <style>
+    .pricing-section {
+      padding: 80px 32px;
+    }
+
+    .pricing-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .pricing-header h1 {
+      margin-bottom: 16px;
+    }
+
+    .pricing-header p {
+      font-size: 18px;
+      color: #aaa;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 32px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .pricing-card {
+      background: rgba(30, 40, 60, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .pricing-card:hover {
+      background: rgba(40, 60, 100, 0.7);
+      border-color: rgba(100, 150, 255, 0.3);
+      transform: translateY(-8px);
+    }
+
+    .pricing-card.featured {
+      background: linear-gradient(135deg, rgba(100, 150, 255, 0.15) 0%, rgba(100, 150, 255, 0.05) 100%);
+      border-color: rgba(100, 150, 255, 0.4);
+      transform: scale(1.05);
+    }
+
+    .pricing-card.featured:hover {
+      transform: scale(1.05) translateY(-8px);
+      box-shadow: 0 20px 40px rgba(100, 150, 255, 0.2);
+    }
+
+    .pricing-badge {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #6495ff 0%, #4a7fff 100%);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .pricing-name {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    .pricing-price {
+      font-size: 48px;
+      font-weight: 700;
+      color: #6495ff;
+      margin-bottom: 8px;
+    }
+
+    .pricing-period {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 32px;
+    }
+
+    .pricing-features {
+      flex: 1;
+      margin-bottom: 32px;
+    }
+
+    .pricing-feature {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      font-size: 14px;
+      color: #aaa;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .pricing-feature:last-child {
+      border-bottom: none;
+    }
+
+    .pricing-feature-icon {
+      width: 20px;
+      text-align: center;
+      color: #6495ff;
+      font-weight: 700;
+    }
+
+    .pricing-actions {
+      display: flex;
+      gap: 12px;
+      flex-direction: column;
+    }
+
+    .pricing-card.featured .btn-primary {
+      flex: 1;
+    }
+
+    .faq-section {
+      padding: 80px 32px;
+      background: rgba(30, 40, 60, 0.3);
+    }
+
+    .faq-grid {
+      max-width: 800px;
+      margin: 48px auto 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .faq-item {
+      background: rgba(30, 40, 60, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .faq-item:hover {
+      background: rgba(40, 60, 100, 0.7);
+      border-color: rgba(100, 150, 255, 0.3);
+    }
+
+    .faq-item h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .faq-item.open .answer {
+      display: block;
+    }
+
+    .answer {
+      display: none;
+      font-size: 14px;
+      color: #888;
+      line-height: 1.6;
+    }
+
+    .faq-toggle {
+      font-size: 18px;
+      transition: transform 0.3s ease;
+    }
+
+    .faq-item.open .faq-toggle {
+      transform: rotate(180deg);
+    }
+
+    @media (max-width: 768px) {
+      .pricing-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .pricing-card.featured {
+        transform: scale(1);
+      }
+
+      .pricing-card.featured:hover {
+        transform: translateY(-8px);
+      }
+
+      .pricing-price {
+        font-size: 36px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header & Navigation -->
+  <header>
+    <div class="header-container">
+      <a href="/" class="logo">
+        <img src="/voxcore-landing.png" alt="VoxCore">
+      </a>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/about.html">About</a>
+        <a href="/pricing.html" class="active">Pricing</a>
+        <a href="/architecture.html">Architecture</a>
+        <a href="/ai-model.html">AI Model</a>
+        <a href="/security.html">Security</a>
+        <div class="nav-buttons">
+          <a href="/login.html" class="btn-login">Login</a>
+          <a href="/pricing.html" class="btn-signup">Get Started</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Pricing Section -->
+  <section class="pricing-section">
+    <div class="container">
+      <div class="pricing-header">
+        <h1>Simple, Transparent Pricing</h1>
+        <p>Choose the plan that fits your needs. Start free, upgrade anytime.</p>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Starter Plan -->
+        <div class="pricing-card">
+          <h3 class="pricing-name">Starter</h3>
+          <div class="pricing-price">$29</div>
+          <div class="pricing-period">per month, billed annually</div>
+          <div class="pricing-features">
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>1 database connection</span>
+            </div>
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>100 AI queries / month</span>
+            </div>
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>Basic SQL firewall</span>
+            </div>
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>Email support</span>
+            </div>
+          </div>
+          <div class="pricing-actions">
+            <a href="/app" class="btn-secondary">Start Free</a>
+          </div>
+        </div>
+
+        <!-- Professional Plan (Featured) -->
+        <div class="pricing-card featured">
+          <div class="pricing-badge">Most Popular</div>
+          <h3 class="pricing-name">Professional</h3>
+          <div class="pricing-price">$99</div>
+          <div class="pricing-period">per month, billed annually</div>
+          <div class="pricing-features">
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>5 database connections</span>
+            </div>
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>Unlimited AI queries</span>
+            </div>
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>Advanced SQL firewall</span>
+            </div>
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>Query audit logs</span>
+            </div>
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>Priority support</span>
+            </div>
+          </div>
+          <div class="pricing-actions">
+            <a href="#contact" class="btn-primary">Subscribe Now</a>
+          </div>
+        </div>
+
+        <!-- Enterprise Plan -->
+        <div class="pricing-card">
+          <h3 class="pricing-name">Enterprise</h3>
+          <div class="pricing-price">Custom</div>
+          <div class="pricing-period">tailored to your needs</div>
+          <div class="pricing-features">
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>Unlimited databases</span>
+            </div>
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>Unlimited queries</span>
+            </div>
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>Custom firewall rules</span>
+            </div>
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>SSO integration</span>
+            </div>
+            <div class="pricing-feature">
+              <span class="pricing-feature-icon">✓</span>
+              <span>Dedicated support</span>
+            </div>
+          </div>
+          <div class="pricing-actions">
+            <a href="#contact" class="btn-secondary">Contact Sales</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="faq-section">
+    <div class="container">
+      <h2 style="text-align: center;">Frequently Asked Questions</h2>
+      <div class="faq-grid">
+        <div class="faq-item">
+          <h4>
+            <span>What's included in the free trial?</span>
+            <span class="faq-toggle">▼</span>
+          </h4>
+          <div class="answer">
+            The free trial includes full access to VoxCore in preview mode. You can explore the UI, test the SQL firewall, and see how query governance works. Preview mode disables actual database connections.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <h4>
+            <span>Can I upgrade or downgrade anytime?</span>
+            <span class="faq-toggle">▼</span>
+          </h4>
+          <div class="answer">
+            Yes. You can upgrade, downgrade, or cancel your subscription at any time. Changes take effect immediately.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <h4>
+            <span>Do you offer discounts for annual billing?</span>
+            <span class="faq-toggle">▼</span>
+          </h4>
+          <div class="answer">
+            Yes. All prices shown are for annual billing and include a 20% discount compared to monthly plans.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <h4>
+            <span>What databases are supported?</span>
+            <span class="faq-toggle">▼</span>
+          </h4>
+          <div class="answer">
+            VoxCore currently supports Snowflake, SQL Server, and PostgreSQL. BigQuery, Redshift, and other databases are coming soon.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <h4>
+            <span>Is there a monthly billing option?</span>
+            <span class="faq-toggle">▼</span>
+          </h4>
+          <div class="answer">
+            Yes. Monthly billing is available at a 20% premium. Contact sales for details or upgrade from your dashboard.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <h4>
+            <span>Do you offer team features?</span>
+            <span class="faq-toggle">▼</span>
+          </h4>
+          <div class="answer">
+            Team features and SSO integration are available on the Enterprise plan. Contact our sales team to learn more.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>Product</h3>
+        <a href="/app">App</a>
+        <a href="/pricing.html">Pricing</a>
+        <a href="/">Features</a>
+      </div>
+      <div class="footer-section">
+        <h3>Company</h3>
+        <a href="/about.html">About</a>
+        <a href="#">Blog</a>
+        <a href="#">Careers</a>
+      </div>
+      <div class="footer-section">
+        <h3>Resources</h3>
+        <a href="#">Documentation</a>
+        <a href="#">API Docs</a>
+        <a href="#">Support</a>
+      </div>
+      <div class="footer-section">
+        <h3>Legal</h3>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Security</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2026 VoxCore. All rights reserved.</span>
+      <span>Secure AI for Data Access</span>
+    </div>
+  </footer>
+
+  <script>
+    // FAQ Accordion
+    document.querySelectorAll('.faq-item h4').forEach(header => {
+      header.addEventListener('click', () => {
+        const item = header.closest('.faq-item');
+        item.classList.toggle('open');
+      });
+    });
+  </script>
+</body>
+</html>

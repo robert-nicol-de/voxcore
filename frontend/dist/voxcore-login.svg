@@ -1,0 +1,43 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <defs>
+    <radialGradient id="bgGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#1a3a52;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <rect width="1024" height="1024" fill="url(#bgGradient)"/>
+  
+  <!-- Grid pattern background -->
+  <g opacity="0.1" stroke="#3b82f6" stroke-width="1">
+    <line x1="0" y1="0" x2="1024" y2="1024"/>
+    <line x1="1024" y1="0" x2="0" y2="1024"/>
+    <line x1="512" y1="0" x2="512" y2="1024"/>
+    <line x1="0" y1="512" x2="1024" y2="512"/>
+  </g>
+  
+  <!-- VoxCore Logo -->
+  <g transform="translate(512, 350)">
+    <!-- V shape -->
+    <path d="M -80 -60 L -30 80 L 0 20 L 30 80 L 80 -60" fill="none" stroke="#e0e7ff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- C shape -->
+    <path d="M 120 -60 Q 180 -60 180 0 Q 180 60 120 60" fill="none" stroke="#e0e7ff" stroke-width="20" stroke-linecap="round"/>
+    
+    <!-- Arrow -->
+    <path d="M 140 -100 L 200 -40 L 140 20" fill="none" stroke="#60a5fa" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="512" y="550" font-family="Arial, sans-serif" font-size="72" font-weight="700" text-anchor="middle" fill="#ffffff" letter-spacing="-1">VoxCore</text>
+  
+  <text x="512" y="630" font-family="Arial, sans-serif" font-size="32" text-anchor="middle" fill="#e0e7ff" letter-spacing="0.5">Control How AI Touches Your Data</text>
+</svg>
