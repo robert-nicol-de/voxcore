@@ -3,6 +3,16 @@ from fastapi.staticfiles import StaticFiles
 from backend.api.query import router as query_router
 from backend.api.scanner import router as scanner_router
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+env_path = Path(__file__).parent.parent / '.env'
+if env_path.exists():
+    load_dotenv(env_path)
+    print(f"[✓] Loaded environment variables from {env_path}")
+else:
+    print(f"[⚠] No .env file found at {env_path}")
 
 
 app = FastAPI(
