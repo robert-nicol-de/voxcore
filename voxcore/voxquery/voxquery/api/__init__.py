@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 
 from . import health, query, schema, auth, connection, metrics, governance, firewall
+from .models import init_db
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +175,14 @@ async def global_exception_handler(request: Request, exc: Exception):
 async def startup_event():
     """Startup event"""
     print("VoxQuery API starting up...")
+
+    # Initialize user/company database (SQLite)
+    try:
+        init_db()
+        print("✅ User database initialized")
+    except Exception as e:
+        print(f"⚠️  Could not initialize user database: {e}")
+
     # Initialize default engine from environment (only if credentials are provided)
     try:
         from ..settings import settings

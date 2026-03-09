@@ -1,51 +1,79 @@
-"""Authentication endpoints"""
+"""Authentication & user management endpoints (multi-tenant)."""
 
 import os
-import secrets
+import logging
 from datetime import datetime, timedelta, timezone
+from typing import Optional, Dict, Any, List
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
-from jose import jwt
+from jose import jwt, JWTError
+from passlib.hash import bcrypt
+from sqlalchemy.orm import Session
 
-from . import engine_manager
 from ..settings import settings
+from .models import User, Company, SessionLocal, get_db
+from . import engine_manager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
+# ── Pydantic schemas ──────────────────────────────────────────────
+
 class LoginRequest(BaseModel):
-    """Login request"""
-    username: str  # accepts email or username
+    username: str  # accepts email
     password: str
 
 
 class LoginResponse(BaseModel):
-    """Login response"""
     access_token: str
     token_type: str = "bearer"
     user_name: Optional[str] = None
     user_email: Optional[str] = None
+    user_role: Optional[str] = None
+    role_label: Optional[str] = None
+    company: Optional[str] = None
+    company_id: Optional[int] = None
 
 
-# ── Authorized users ──────────────────────────────────────────────
-AUTHORIZED_USERS = [
-    {
-        "email": "ico@astutetech.co.za",
-        "name": "Ico",
-        "password": "VoxCore!@#$",
-        "role": "god",
-        "is_admin": True,
-    },
-    {
-        "email": "drikus.dewet@astutetech.co.za",
-        "name": "Drikus de Wet",
-        "password": "VoxCore!@#$",
-        "role": "god",
-        "is_admin": True,
-    },
-]
+class MeResponse(BaseModel):
+    user_id: int
+    email: str
+    name: str
+    role: str
+    role_label: str
+    company: str
+    company_id: int
+    status: str
+    last_login: Optional[str] = None
+
+
+class InviteUserRequest(BaseModel):
+    email: str
+    name: str
+    password: str
+    role: str = "user"
+
+
+class UpdateUserRequest(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    name: str
+    role: str
+    role_label: str
+    status: str
+    company_id: int
+    company_name: Optional[str] = None
+    created_at: Optional[str] = None
+    last_login: Optional[str] = None
 
 
 class DatabaseCredentials(BaseModel):
@@ -77,60 +105,276 @@ class ConnectResponse(BaseModel):
     host: str
 
 
+# ── Helpers ───────────────────────────────────────────────────────
+
+def _get_current_user(request: Request, db: Session) -> User:
+    """Extract & validate the current user from Authorization header."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = auth_header.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    user_email = payload.get("sub")
+    if not user_email:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    user = db.query(User).filter(User.email == user_email).first()
+    if not user or user.status != "active":
+        raise HTTPException(status_code=401, detail="User not found or disabled")
+    return user
+
+
+# ── Auth endpoints ────────────────────────────────────────────────
+
 @router.post("/auth/login", response_model=LoginResponse)
 async def login(request: LoginRequest) -> LoginResponse:
-    """Login endpoint supporting email-based multi-user auth."""
-    login_id = request.username.strip().lower()
+    """Login with email + password → JWT token."""
+    login_email = request.username.strip().lower()
     login_pw = request.password
 
-    # Check against authorized users list (email-based)
-    matched_user = None
-    for user in AUTHORIZED_USERS:
-        if secrets.compare_digest(login_id, user["email"].lower()) and \
-           secrets.compare_digest(login_pw, user["password"]):
-            matched_user = user
-            break
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == login_email).first()
 
-    # Fallback: legacy admin env-var login
-    if matched_user is None:
-        admin_username = os.getenv("VOXCORE_ADMIN_USERNAME", "admin")
-        admin_password = os.getenv("VOXCORE_ADMIN_PASSWORD", "VoxCore123!")
-        if secrets.compare_digest(login_id, admin_username) and \
-           secrets.compare_digest(login_pw, admin_password):
-            matched_user = {
-                "email": admin_username,
-                "name": "Admin",
-                "role": "god",
-                "is_admin": True,
-            }
+        if not user or not bcrypt.verify(login_pw, user.password_hash):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    if matched_user is None:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        if user.status != "active":
+            raise HTTPException(status_code=403, detail="Account is disabled")
 
-    expire_at = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.access_token_expire_minutes
-    )
-    payload = {
-        "sub": matched_user["email"],
-        "name": matched_user["name"],
-        "role": matched_user["role"],
-        "is_admin": matched_user["is_admin"],
-        "exp": int(expire_at.timestamp()),
-    }
-    token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+        company = db.query(Company).filter(Company.id == user.company_id).first()
 
-    return LoginResponse(
-        access_token=token,
-        token_type="bearer",
-        user_name=matched_user["name"],
-        user_email=matched_user["email"],
-    )
+        # Update last_login
+        user.last_login = datetime.now(timezone.utc)
+        db.commit()
+
+        expire_at = datetime.now(timezone.utc) + timedelta(
+            minutes=settings.access_token_expire_minutes
+        )
+        payload = {
+            "sub": user.email,
+            "user_id": user.id,
+            "name": user.name,
+            "role": user.role,
+            "company_id": user.company_id,
+            "company": company.company_name if company else "",
+            "exp": int(expire_at.timestamp()),
+        }
+        token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+
+        return LoginResponse(
+            access_token=token,
+            token_type="bearer",
+            user_name=user.name,
+            user_email=user.email,
+            user_role=user.role,
+            role_label=User.ROLE_LABELS.get(user.role, user.role),
+            company=company.company_name if company else "",
+            company_id=user.company_id,
+        )
+    finally:
+        db.close()
+
+
+@router.get("/auth/me", response_model=MeResponse)
+async def get_me(request: Request):
+    """Return the currently logged-in user's profile."""
+    db = SessionLocal()
+    try:
+        user = _get_current_user(request, db)
+        company = db.query(Company).filter(Company.id == user.company_id).first()
+        return MeResponse(
+            user_id=user.id,
+            email=user.email,
+            name=user.name,
+            role=user.role,
+            role_label=User.ROLE_LABELS.get(user.role, user.role),
+            company=company.company_name if company else "",
+            company_id=user.company_id,
+            status=user.status,
+            last_login=user.last_login.isoformat() if user.last_login else None,
+        )
+    finally:
+        db.close()
 
 
 @router.post("/auth/logout")
 async def logout():
-    """Logout endpoint"""
+    """Logout endpoint — frontend clears token."""
     return {"message": "Logged out successfully"}
+
+
+# ── User management (admin/god only) ─────────────────────────────
+
+@router.get("/auth/users", response_model=List[UserResponse])
+async def list_users(request: Request):
+    """List users in the current user's company (admin+), or all users (god)."""
+    db = SessionLocal()
+    try:
+        current = _get_current_user(request, db)
+        if not current.has_permission("admin"):
+            raise HTTPException(status_code=403, detail="Admin access required")
+
+        if current.role == "god":
+            users = db.query(User).all()
+        else:
+            users = db.query(User).filter(User.company_id == current.company_id).all()
+
+        return [
+            UserResponse(
+                id=u.id,
+                email=u.email,
+                name=u.name,
+                role=u.role,
+                role_label=User.ROLE_LABELS.get(u.role, u.role),
+                status=u.status,
+                company_id=u.company_id,
+                company_name=u.company.company_name if u.company else None,
+                created_at=u.created_at.isoformat() if u.created_at else None,
+                last_login=u.last_login.isoformat() if u.last_login else None,
+            )
+            for u in users
+        ]
+    finally:
+        db.close()
+
+
+@router.post("/auth/users", response_model=UserResponse)
+async def invite_user(body: InviteUserRequest, request: Request):
+    """Create/invite a user into the current user's company."""
+    db = SessionLocal()
+    try:
+        current = _get_current_user(request, db)
+        if not current.has_permission("admin"):
+            raise HTTPException(status_code=403, detail="Admin access required")
+
+        # Cannot create a role higher than your own
+        if User.ROLE_HIERARCHY.get(body.role, 0) > User.ROLE_HIERARCHY.get(current.role, 0):
+            raise HTTPException(status_code=403, detail="Cannot assign a role higher than your own")
+
+        # Check duplicate email
+        existing = db.query(User).filter(User.email == body.email.strip().lower()).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="A user with this email already exists")
+
+        new_user = User(
+            email=body.email.strip().lower(),
+            name=body.name.strip(),
+            password_hash=bcrypt.hash(body.password),
+            company_id=current.company_id,
+            role=body.role,
+            status="active",
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
+        return UserResponse(
+            id=new_user.id,
+            email=new_user.email,
+            name=new_user.name,
+            role=new_user.role,
+            role_label=User.ROLE_LABELS.get(new_user.role, new_user.role),
+            status=new_user.status,
+            company_id=new_user.company_id,
+            company_name=current.company.company_name if current.company else None,
+            created_at=new_user.created_at.isoformat() if new_user.created_at else None,
+            last_login=None,
+        )
+    finally:
+        db.close()
+
+
+@router.patch("/auth/users/{user_id}", response_model=UserResponse)
+async def update_user(user_id: int, body: UpdateUserRequest, request: Request):
+    """Update a user (role, status, name). Admin+ only."""
+    db = SessionLocal()
+    try:
+        current = _get_current_user(request, db)
+        if not current.has_permission("admin"):
+            raise HTTPException(status_code=403, detail="Admin access required")
+
+        target = db.query(User).filter(User.id == user_id).first()
+        if not target:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Company isolation: admins can only manage own company
+        if current.role != "god" and target.company_id != current.company_id:
+            raise HTTPException(status_code=403, detail="Cannot manage users from another company")
+
+        if body.name is not None:
+            target.name = body.name.strip()
+        if body.role is not None:
+            if User.ROLE_HIERARCHY.get(body.role, 0) > User.ROLE_HIERARCHY.get(current.role, 0):
+                raise HTTPException(status_code=403, detail="Cannot assign a role higher than your own")
+            target.role = body.role
+        if body.status is not None:
+            target.status = body.status
+
+        db.commit()
+        db.refresh(target)
+
+        return UserResponse(
+            id=target.id,
+            email=target.email,
+            name=target.name,
+            role=target.role,
+            role_label=User.ROLE_LABELS.get(target.role, target.role),
+            status=target.status,
+            company_id=target.company_id,
+            company_name=target.company.company_name if target.company else None,
+            created_at=target.created_at.isoformat() if target.created_at else None,
+            last_login=target.last_login.isoformat() if target.last_login else None,
+        )
+    finally:
+        db.close()
+
+
+@router.delete("/auth/users/{user_id}")
+async def delete_user(user_id: int, request: Request):
+    """Delete a user. Admin+ only."""
+    db = SessionLocal()
+    try:
+        current = _get_current_user(request, db)
+        if not current.has_permission("admin"):
+            raise HTTPException(status_code=403, detail="Admin access required")
+
+        target = db.query(User).filter(User.id == user_id).first()
+        if not target:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if current.role != "god" and target.company_id != current.company_id:
+            raise HTTPException(status_code=403, detail="Cannot delete users from another company")
+
+        if target.id == current.id:
+            raise HTTPException(status_code=400, detail="Cannot delete yourself")
+
+        db.delete(target)
+        db.commit()
+        return {"message": f"User {target.email} deleted"}
+    finally:
+        db.close()
+
+
+# ── Company listing (god only) ────────────────────────────────────
+
+@router.get("/auth/companies")
+async def list_companies(request: Request):
+    """List all companies (god only)."""
+    db = SessionLocal()
+    try:
+        current = _get_current_user(request, db)
+        if current.role != "god":
+            raise HTTPException(status_code=403, detail="God admin access required")
+
+        companies = db.query(Company).all()
+        return [c.to_dict() for c in companies]
+    finally:
+        db.close()
 
 
 @router.post("/auth/connect", response_model=ConnectResponse)
