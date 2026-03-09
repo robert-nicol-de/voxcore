@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import './App.css';
 import Sidebar from './components/Sidebar';
 import Chat from './components/Chat';
@@ -17,7 +17,17 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [isPreviewMode, setIsPreviewMode] = useState(true); // Preview mode enabled by default
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const chatRef = React.useRef<any>(null);
+
+  // Check for demo mode from URL parameter
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const demoParam = params.get('demo');
+    if (demoParam === 'true') {
+      setIsDemoMode(true);
+    }
+  }, []);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -41,7 +51,7 @@ function App() {
 
   // Show login screen if not logged in
   if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={handleLogin} isDemoMode={isDemoMode} />;
   }
 
   return (
@@ -74,7 +84,7 @@ function App() {
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
             <div className="user-menu">
-              <span>Robert Nicol</span>
+              <span>{isDemoMode ? '👤 Demo User' : 'Robert Nicol'}</span>
             </div>
           </div>
         </header>
@@ -123,6 +133,7 @@ function App() {
       </div>
     </div>
   );
+}
 }
 
 export default App;
