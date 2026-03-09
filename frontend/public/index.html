@@ -43,11 +43,22 @@
       width: auto;
     }
 
+    .hero-logo-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+
     .hero-logo {
-      width: 240px;
-      margin: 0 auto 30px;
-      opacity: 0.95;
-      filter: drop-shadow(0 0 15px rgba(100, 149, 255, 0.35));
+      width: 120px;
+      animation: floatLogo 4s ease-in-out infinite;
+      filter: drop-shadow(0 0 15px rgba(100, 149, 255, 0.4));
+    }
+
+    @keyframes floatLogo {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+      100% { transform: translateY(0px); }
     }
 
     .hero-buttons {
@@ -92,6 +103,21 @@
       text-align: left;
       backdrop-filter: blur(6px);
       transition: 0.3s;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.6s forwards;
+    }
+
+    .step1 { animation-delay: 0.3s; }
+    .step2 { animation-delay: 0.8s; }
+    .step3 { animation-delay: 1.3s; }
+    .step4 { animation-delay: 1.8s; }
+
+    @keyframes fadeUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .demo-card:hover {
@@ -152,6 +178,16 @@
       margin: 8px 0;
       color: #7dffa6;
       font-size: 13px;
+      opacity: 0;
+      animation: checkFade 0.4s forwards;
+    }
+
+    .check1 { animation-delay: 2.4s; }
+    .check2 { animation-delay: 2.8s; }
+    .check3 { animation-delay: 3.2s; }
+
+    @keyframes checkFade {
+      to { opacity: 1; }
     }
 
     .results {
@@ -503,7 +539,9 @@
   <!-- Hero Section -->
   <section class="hero">
     <div class="container">
-      <img class="hero-logo" src="/images/voxcore-full-logo.png" alt="VoxCore">
+      <div class="hero-logo-container">
+        <img class="hero-logo" src="/images/voxcore-icon.png" alt="VoxCore">
+      </div>
       <h1>Ask Your Database Anything</h1>
       <p>VoxCore generates secure SQL automatically. No more query writing.</p>
       <div class="hero-buttons">
@@ -522,7 +560,7 @@
 
     <div class="demo-flow">
       <!-- STEP 1 -->
-      <div class="demo-card">
+      <div class="demo-card step1">
         <div class="step-number">1</div>
         <h3>Ask in Plain English</h3>
         <div class="question-box">
@@ -533,34 +571,29 @@
       <div class="arrow">→</div>
 
       <!-- STEP 2 -->
-      <div class="demo-card">
+      <div class="demo-card step2">
         <div class="step-number">2</div>
         <h3>AI Generates SQL</h3>
-        <pre class="sql-code">SELECT region,
-SUM(revenue) AS total_revenue
-FROM sales
-WHERE date >= CURRENT_DATE - 90
-GROUP BY region
-ORDER BY total_revenue DESC</pre>
+        <pre class="sql-code" id="sqlTyping"></pre>
       </div>
 
       <div class="arrow">→</div>
 
       <!-- STEP 3 -->
-      <div class="demo-card">
+      <div class="demo-card step3">
         <div class="step-number">3</div>
         <h3>Firewall Validates</h3>
         <ul class="checks">
-          <li>✓ Syntax correct</li>
-          <li>✓ No injection risk</li>
-          <li>✓ Policy compliant</li>
+          <li class="check1">✓ Syntax correct</li>
+          <li class="check2">✓ No injection risk</li>
+          <li class="check3">✓ Policy compliant</li>
         </ul>
       </div>
 
       <div class="arrow">→</div>
 
       <!-- STEP 4 -->
-      <div class="demo-card">
+      <div class="demo-card step4">
         <div class="step-number">4</div>
         <h3>Results Preview</h3>
         <table class="results">
@@ -692,5 +725,32 @@ ORDER BY total_revenue DESC</pre>
       <span>Secure AI for Data Access</span>
     </div>
   </footer>
+
+  <script>
+    // SQL Typing Animation
+    const sql = `SELECT region,
+SUM(revenue) AS total_revenue
+FROM sales
+WHERE date >= CURRENT_DATE - 90
+GROUP BY region
+ORDER BY total_revenue DESC`;
+
+    let i = 0;
+    function typeSQL() {
+      if (i < sql.length) {
+        const currentChar = sql.charAt(i);
+        if (currentChar === '\n') {
+          document.getElementById("sqlTyping").innerHTML += '<br>';
+        } else {
+          document.getElementById("sqlTyping").textContent += currentChar;
+        }
+        i++;
+        setTimeout(typeSQL, 20);
+      }
+    }
+
+    // Start typing after a small delay
+    setTimeout(typeSQL, 500);
+  </script>
 </body>
 </html>
