@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from typing import Optional
 
 # Load .env file explicitly - CRITICAL for environment variables
@@ -65,12 +66,17 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_cors_origins: list = ["http://localhost:3000", "http://localhost:8080"]
+
+    # Admin credentials (from .env)
+    voxcore_admin_username: Optional[str] = None
+    voxcore_admin_password: Optional[str] = None
     
-    class Config:
-        # Find .env file in backend directory
-        env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = ConfigDict(
+        extra='ignore',  # Ignore extra environment variables that aren't defined fields
+        case_sensitive=False,
+        env_file=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"),
+        env_file_encoding="utf-8",
+    )
 
 
 # Global settings instance
