@@ -74,7 +74,7 @@
 
 .database-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   margin-bottom: 24px;
 }
@@ -302,7 +302,7 @@
   }
 
   .database-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .modal-header h2 {
@@ -311,5 +311,11 @@
 
   .modal-content {
     padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .database-grid {
+    grid-template-columns: 1fr;
   }
 }
