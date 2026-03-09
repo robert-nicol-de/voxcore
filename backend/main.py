@@ -1,6 +1,8 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from backend.api.query import router as query_router
 from backend.api.scanner import router as scanner_router
+import os
 
 
 app = FastAPI(
@@ -29,6 +31,13 @@ def health():
     }
 
 
-# Include API routes
+# Include API routes BEFORE static files
 app.include_router(query_router)
 app.include_router(scanner_router)
+
+# Serve React frontend from dist folder
+frontend_dist = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')
+if os.path.exists(frontend_dist):
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="static")
+    print(f"Frontend mounted from: {frontend_dist}")
+
