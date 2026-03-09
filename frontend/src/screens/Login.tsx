@@ -15,6 +15,21 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // Validate input before submitting
+    if (!email.trim()) {
+      setError('Please enter your email address');
+      return;
+    }
+    if (!password.trim()) {
+      setError('Please enter your password');
+      return;
+    }
+    if (email.trim().length < 5 || !email.includes('@')) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -30,11 +45,18 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => 
       }
 
       const data = await response.json();
+      
+      // Validate response has required token
+      if (!data.access_token) {
+        throw new Error('Authentication failed: No token received');
+      }
+      
       // Store token & user info
       localStorage.setItem('voxcore_token', data.access_token);
       if (data.user_name) localStorage.setItem('voxcore_user_name', data.user_name);
       if (data.user_email) localStorage.setItem('voxcore_user_email', data.user_email);
 
+      // Only call onLogin after successful validation
       if (onLogin) {
         onLogin(data.user_name);
       }
