@@ -17,7 +17,7 @@ router = APIRouter()
 
 class LoginRequest(BaseModel):
     """Login request"""
-    username: str
+    username: str  # accepts email or username
     password: str
 
 
@@ -25,6 +25,27 @@ class LoginResponse(BaseModel):
     """Login response"""
     access_token: str
     token_type: str = "bearer"
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+
+
+# ── Authorized users ──────────────────────────────────────────────
+AUTHORIZED_USERS = [
+    {
+        "email": "ico@astutetech.co.za",
+        "name": "Ico",
+        "password": "VoxCore!@#$",
+        "role": "god",
+        "is_admin": True,
+    },
+    {
+        "email": "drikus.dewet@astutetech.co.za",
+        "name": "Drikus de Wet",
+        "password": "VoxCore!@#$",
+        "role": "god",
+        "is_admin": True,
+    },
+]
 
 
 class DatabaseCredentials(BaseModel):
@@ -58,30 +79,51 @@ class ConnectResponse(BaseModel):
 
 @router.post("/auth/login", response_model=LoginResponse)
 async def login(request: LoginRequest) -> LoginResponse:
-    """Developer/admin login endpoint."""
-    admin_username = os.getenv("VOXCORE_ADMIN_USERNAME", "admin")
-    admin_password = os.getenv("VOXCORE_ADMIN_PASSWORD", "VoxCore123!")
+    """Login endpoint supporting email-based multi-user auth."""
+    login_id = request.username.strip().lower()
+    login_pw = request.password
 
-    valid_username = secrets.compare_digest(request.username, admin_username)
-    valid_password = secrets.compare_digest(request.password, admin_password)
+    # Check against authorized users list (email-based)
+    matched_user = None
+    for user in AUTHORIZED_USERS:
+        if secrets.compare_digest(login_id, user["email"].lower()) and \
+           secrets.compare_digest(login_pw, user["password"]):
+            matched_user = user
+            break
 
-    if not (valid_username and valid_password):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+    # Fallback: legacy admin env-var login
+    if matched_user is None:
+        admin_username = os.getenv("VOXCORE_ADMIN_USERNAME", "admin")
+        admin_password = os.getenv("VOXCORE_ADMIN_PASSWORD", "VoxCore123!")
+        if secrets.compare_digest(login_id, admin_username) and \
+           secrets.compare_digest(login_pw, admin_password):
+            matched_user = {
+                "email": admin_username,
+                "name": "Admin",
+                "role": "god",
+                "is_admin": True,
+            }
+
+    if matched_user is None:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
     expire_at = datetime.now(timezone.utc) + timedelta(
         minutes=settings.access_token_expire_minutes
     )
     payload = {
-        "sub": request.username,
-        "role": "god",
-        "is_admin": True,
+        "sub": matched_user["email"],
+        "name": matched_user["name"],
+        "role": matched_user["role"],
+        "is_admin": matched_user["is_admin"],
         "exp": int(expire_at.timestamp()),
     }
     token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
     return LoginResponse(
         access_token=token,
-        token_type="bearer"
+        token_type="bearer",
+        user_name=matched_user["name"],
+        user_email=matched_user["email"],
     )
 
 

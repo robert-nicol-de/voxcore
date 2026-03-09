@@ -2,36 +2,46 @@ import React, { useState } from 'react';
 import './Login.css';
 
 interface LoginProps {
-  onLogin?: () => void;
+  onLogin?: (userName?: string) => void;
   isDemoMode?: boolean;
 }
 
 export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [showDemoDatabases, setShowDemoDatabases] = useState(false);
-  const loginsLocked = !isDemoMode; // Only lock non-demo logins
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const demoDatabases = [
-    { id: 'snowflake', name: 'Snowflake', description: 'Cloud Data Warehouse', icon: '❄️' },
-    { id: 'sqlserver', name: 'SQL Server', description: 'Microsoft SQL Server', icon: '◆' },
-    { id: 'semantic', name: 'Semantic Model', description: 'AI-Enhanced Semantic Layer', icon: '🧠' }
-  ];
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
 
-  const handleLogin = () => {
-    if (loginsLocked) {
-      return; // Do nothing if locked
-    }
-    setIsLoggedIn(true);
-    if (onLogin) {
-      onLogin();
-    }
-  };
+    try {
+      const response = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: email.trim().toLowerCase(), password }),
+      });
 
-  const handleDemodbSelect = () => {
-    // In demo mode, clicking a database logs the user in
-    setIsLoggedIn(true);
-    if (onLogin) {
-      onLogin();
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || 'Invalid email or password');
+      }
+
+      const data = await response.json();
+      // Store token & user info
+      localStorage.setItem('voxcore_token', data.access_token);
+      if (data.user_name) localStorage.setItem('voxcore_user_name', data.user_name);
+      if (data.user_email) localStorage.setItem('voxcore_user_email', data.user_email);
+
+      if (onLogin) {
+        onLogin(data.user_name);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -43,125 +53,50 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => 
           alt="VoxCore Logo"
           className="login-image login-image-small"
         />
-        
-        {isDemoMode && !showDemoDatabases ? (
-          <div className="demo-welcome">
-            <div className="demo-welcome-icon">🎯</div>
-            <h3 className="demo-welcome-title">Welcome to VoxCore Demo</h3>
-            <p className="demo-welcome-message">
-              Explore VoxCore with locked demo databases. All features are visible but read-only.
-            </p>
-            <button 
-              className="connect-demo-button" 
-              onClick={() => setShowDemoDatabases(true)}
-            >
-              Connect Demo Database
-            </button>
-          </div>
-        ) : isDemoMode && showDemoDatabases ? (
-          <div className="demo-databases">
-            <h3 style={{ 
-              marginBottom: '24px', 
-              color: '#fff', 
-              textAlign: 'center', 
-              fontSize: '18px',
-              fontWeight: '600'
-            }}>
-              Select Demo Database
-            </h3>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-              gap: '12px'
-            }}>
-              {demoDatabases.map(db => (
-                <div 
-                  key={db.id}
-                  onClick={handleDemodbSelect}
-                  style={{
-                    background: 'rgba(20, 30, 50, 0.7)',
-                    border: '2px solid rgba(100, 149, 255, 0.3)',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    textAlign: 'center',
-                    position: 'relative'
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.borderColor = '#6495ff';
-                    (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(20, 30, 50, 0.9)';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(100, 149, 255, 0.3)';
-                    (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(20, 30, 50, 0.7)';
-                  }}
-                >
-                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>{db.icon}</div>
-                  <div style={{ 
-                    color: '#fff', 
-                    fontWeight: '600', 
-                    marginBottom: '4px',
-                    fontSize: '14px'
-                  }}>
-                    {db.name}
-                  </div>
-                  <div style={{ 
-                    color: '#888', 
-                    fontSize: '12px',
-                    marginBottom: '8px'
-                  }}>
-                    {db.description}
-                  </div>
-                  <div style={{
-                    background: 'rgba(100, 149, 255, 0.1)',
-                    border: '1px solid rgba(100, 149, 255, 0.3)',
-                    borderRadius: '4px',
-                    padding: '4px 8px',
-                    fontSize: '11px',
-                    color: '#6495ff',
-                    fontWeight: '600'
-                  }}>
-                    🔒 Demo Mode
-                  </div>
-                </div>
-              ))}
+
+        <div className="login-form-card">
+          <h3 className="login-form-title">Sign in to VoxCore</h3>
+          <p className="login-form-subtitle">Enter your credentials to access the platform</p>
+
+          <form onSubmit={handleSubmit} className="login-form">
+            <div className="login-field">
+              <label htmlFor="email">Email Address</label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                autoComplete="email"
+                autoFocus
+              />
             </div>
-            <button 
-              className="browse-button"
-              onClick={() => setShowDemoDatabases(false)}
-              style={{ marginTop: '20px' }}
-            >
-              ← Back
+
+            <div className="login-field">
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                autoComplete="current-password"
+              />
+            </div>
+
+            {error && (
+              <div className="login-error">
+                <span>⚠️</span> {error}
+              </div>
+            )}
+
+            <button type="submit" className="login-button" disabled={isLoading}>
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
-          </div>
-        ) : loginsLocked ? (
-          <div className="lockout-notice">
-            <div className="lockout-icon">🔐</div>
-            <h3 className="lockout-title">Logins Currently Locked</h3>
-            <p className="lockout-message">
-              Authentication is temporarily disabled. You can browse the governance dashboard to explore features.
-            </p>
-            <button 
-              className="browse-button" 
-              onClick={() => {
-                setIsLoggedIn(true);
-                if (onLogin) {
-                  onLogin();
-                }
-              }}
-            >
-              Browse Dashboard
-            </button>
-          </div>
-        ) : (
-          <button 
-            className="login-button" 
-            onClick={handleLogin}
-          >
-            Enter VoxCore
-          </button>
-        )}
+          </form>
+        </div>
       </div>
     </div>
   );

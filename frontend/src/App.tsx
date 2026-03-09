@@ -38,8 +38,11 @@ function App() {
     console.log('Navigating to:', view);
   };
 
-  const handleLogin = () => {
+  const [userName, setUserName] = useState<string>('');
+
+  const handleLogin = (name?: string) => {
     setIsLoggedIn(true);
+    if (name) setUserName(name);
   };
 
   const handleQuestionSelect = (question: string) => {
