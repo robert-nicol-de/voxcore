@@ -48,7 +48,7 @@ class User(Base):
 
 # User details
 EMAIL = "robert.nicol@voxcore.org"
-PASSWORD = "6%=ANA[)E%IlwEv"
+PASSWORD = ",6%=ANA[)E%IlwEv"
 NAME = "Robert Nicol"
 COMPANY_NAME = "VoxCore"
 ROLE = "god"
@@ -64,9 +64,15 @@ def add_god_user():
         # Check if user already exists
         existing_user = db.query(User).filter(User.email == EMAIL).first()
         if existing_user:
-            print(f"✓ User {EMAIL} already exists (ID: {existing_user.id})")
-            print(f"  Role: {existing_user.role}")
-            print(f"  Status: {existing_user.status}")
+            print(f"User {EMAIL} already exists. Updating password...")
+            # Update password with correct one
+            password_bytes = PASSWORD.encode("utf-8")
+            salt = bcrypt.gensalt(rounds=12)
+            password_hash_bytes = bcrypt.hashpw(password_bytes, salt)
+            password_hash = password_hash_bytes.decode("utf-8")
+            existing_user.password_hash = password_hash
+            db.commit()
+            print(f"✓ Password updated successfully!")
             return True
         
         # Get or create VoxCore company
