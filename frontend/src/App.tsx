@@ -49,9 +49,15 @@ function App() {
     }
   };
 
+  // Show demo mode if demo=true in URL (skip login entirely)
+  if (isDemoMode) {
+    const DemoMode = require('./components/DemoMode').default;
+    return <DemoMode />;
+  }
+
   // Show login screen if not logged in
   if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} isDemoMode={isDemoMode} />;
+    return <Login onLogin={handleLogin} />;
   }
 
   return (

@@ -1,0 +1,61 @@
+.demo-container {
+  max-width: 600px;
+  margin: 40px auto;
+  background: #101a2c;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  padding: 32px;
+  color: #fff;
+}
+.demo-banner {
+  background: #1a2b4c;
+  border: 1px solid #6495ff;
+  padding: 10px;
+  text-align: center;
+  color: #9fb4ff;
+  margin-bottom: 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.demo-input {
+  display: flex;
+  gap: 10px;
+  margin-top: 30px;
+}
+.demo-input input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #0b1220;
+  color: white;
+}
+.demo-btn {
+  background: #6495ff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.demo-sql {
+  background: #0b1220;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+  font-family: monospace;
+  color: #7fb3ff;
+}
+.demo-firewall {
+  margin-top: 20px;
+  color: #7dffa6;
+  font-family: monospace;
+}
+.demo-results {
+  margin-top: 20px;
+  width: 100%;
+  border-collapse: collapse;
+  font-family: monospace;
+  color: #fff;
+}
