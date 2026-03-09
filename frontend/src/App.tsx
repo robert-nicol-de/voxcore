@@ -17,7 +17,7 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [isPreviewMode, setIsPreviewMode] = useState(true); // Preview mode enabled by default
+  const [isPreviewMode, setIsPreviewMode] = useState(false); // Preview mode disabled for authenticated users
   const [isDemoMode, setIsDemoMode] = useState(false);
   const chatRef = React.useRef<any>(null);
 
