@@ -100,7 +100,7 @@ function App() {
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
             <div className="user-menu">
-              <span>{isDemoMode ? '👤 Demo User' : 'Robert Nicol'}</span>
+              <span>{isDemoMode ? '👤 Demo User' : `👤 ${userName || 'User'}`}</span>
             </div>
           </div>
         </header>
