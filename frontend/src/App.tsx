@@ -15,8 +15,9 @@ import { Queries } from './screens/Queries';
 import { ApiKeys } from './screens/ApiKeys';
 import { Admin } from './screens/Admin';
 import { AdminUsers } from './screens/AdminUsers';
+import { DevSpace } from './pages/DevSpace';
 
-type ViewType = 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'profile' | 'queries' | 'api-keys' | 'admin' | 'admin-users';
+type ViewType = 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'profile' | 'queries' | 'api-keys' | 'admin' | 'admin-users' | 'devspace';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -25,6 +26,7 @@ function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [isPreviewMode, setIsPreviewMode] = useState(false); // Preview mode disabled for authenticated users
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [userRole, setUserRole] = useState<string>('');
   const chatRef = React.useRef<any>(null);
 
   // Check for demo mode from URL parameter
@@ -40,8 +42,29 @@ function App() {
       const name = localStorage.getItem('voxcore_user_name') || '';
       setIsLoggedIn(true);
       if (name) setUserName(name);
+      
+      // Fetch user role
+      fetchUserRole(token);
     }
   }, []);
+
+  const fetchUserRole = async (token: string) => {
+    try {
+      const response = await fetch('/auth/me', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const user = await response.json();
+        setUserRole(user.role);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user role:', error);
+    }
+  };
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -91,6 +114,7 @@ function App() {
           onQuestionSelect={handleQuestionSelect}
           isOpen={sidebarOpen}
           onToggle={toggleSidebar}
+          userRole={userRole}
         />
       </div>
 
@@ -186,6 +210,11 @@ function App() {
           {/* Admin Users View */}
           {currentView === 'admin-users' && (
             <AdminUsers token={localStorage.getItem('voxcore_token') || ''} />
+          )}
+
+          {/* Dev Space View */}
+          {currentView === 'devspace' && (
+            <DevSpace token={localStorage.getItem('voxcore_token') || ''} />
           )}
         </main>
       </div>

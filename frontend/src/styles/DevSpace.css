@@ -1,0 +1,218 @@
+.devspace-container {
+  padding: 40px;
+  color: #e0e0e0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.devspace-header {
+  margin-bottom: 50px;
+  text-align: center;
+  border-bottom: 2px solid #0f7fbf;
+  padding-bottom: 30px;
+}
+
+.devspace-header h1 {
+  font-size: 2.5em;
+  margin: 0 0 10px 0;
+  color: #00d4ff;
+  text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+.devspace-subtitle {
+  font-size: 1.1em;
+  color: #a0a0a0;
+  margin: 0;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+}
+
+/* Access Denied */
+.access-denied {
+  text-align: center;
+  padding: 60px 40px;
+  background: rgba(255, 0, 0, 0.05);
+  border: 2px solid #ff6b6b;
+  border-radius: 12px;
+  max-width: 500px;
+  margin: 50px auto;
+}
+
+.access-denied h2 {
+  color: #ff6b6b;
+  font-size: 1.8em;
+  margin-bottom: 20px;
+}
+
+.access-denied p {
+  color: #b0b0b0;
+  margin: 10px 0;
+  font-size: 1.05em;
+}
+
+/* Grid Layout */
+.devspace-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 25px;
+  margin-bottom: 50px;
+}
+
+/* Card Styling */
+.devspace-card {
+  background: linear-gradient(135deg, #0f7fbf 0%, #0a4a7f 100%);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 12px;
+  padding: 25px;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.devspace-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(0, 212, 255, 0.5);
+  box-shadow: 0 12px 30px rgba(0, 212, 255, 0.2);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.card-header h2 {
+  font-size: 1.3em;
+  color: #00d4ff;
+  margin: 0;
+  flex: 1;
+}
+
+.badge {
+  background: linear-gradient(135deg, #00d4ff, #0a8fbf);
+  color: #000;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-content p {
+  color: #b0b0b0;
+  font-size: 0.95em;
+  margin: 0 0 15px 0;
+  line-height: 1.5;
+}
+
+.code-block {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 212, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 15px 0;
+  overflow-x: auto;
+}
+
+.code-block pre {
+  margin: 0;
+  color: #00d4ff;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+.card-btn {
+  background: linear-gradient(135deg, #00d4ff, #0a8fbf);
+  color: #000;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.card-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+}
+
+.card-btn:active {
+  transform: scale(0.98);
+}
+
+/* Footer */
+.devspace-footer {
+  background: rgba(15, 127, 191, 0.1);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 12px;
+  padding: 30px;
+  margin-top: 40px;
+}
+
+.devspace-footer h3 {
+  color: #00d4ff;
+  font-size: 1.3em;
+  margin: 0 0 20px 0;
+}
+
+.devspace-footer ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.devspace-footer li {
+  margin: 0;
+}
+
+.devspace-footer a {
+  color: #00d4ff;
+  text-decoration: none;
+  font-size: 0.95em;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.devspace-footer a:hover {
+  background: rgba(0, 212, 255, 0.1);
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .devspace-container {
+    padding: 20px;
+  }
+
+  .devspace-header h1 {
+    font-size: 1.8em;
+  }
+
+  .devspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-header h2 {
+    font-size: 1.1em;
+  }
+}

@@ -4,10 +4,11 @@ import './Sidebar.css';
 interface SidebarProps {
   onClose?: () => void;
   onQuestionSelect?: (question: string) => void;
-  onNavigate?: (view: 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema') => void;
-  currentView?: 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema';
+  onNavigate?: (view: 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'devspace') => void;
+  currentView?: 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'devspace';
   isOpen?: boolean;
   onToggle?: () => void;
+  userRole?: string;
 }
 
 interface Question {
@@ -17,7 +18,7 @@ interface Question {
   pinned?: boolean;
 }
 
-function Sidebar({ onClose, onQuestionSelect, onNavigate, currentView, isOpen, onToggle }: SidebarProps) {
+function Sidebar({ onClose, onQuestionSelect, onNavigate, currentView, isOpen, onToggle, userRole }: SidebarProps) {
   const defaultQuestions: Question[] = [
     { id: '1', text: 'Show me sales trends' },
     { id: '2', text: 'What\'s the revenue by customer?' },
@@ -491,6 +492,19 @@ function Sidebar({ onClose, onQuestionSelect, onNavigate, currentView, isOpen, o
           >
             🔍 Schema Explorer
           </button>
+          
+          {(userRole === 'admin' || userRole === 'developer' || userRole === 'god') && (
+            <button 
+              className="nav-btn dev-space-btn"
+              onClick={() => {
+                console.log('Clicked: devspace');
+                if (onNavigate) onNavigate('devspace');
+              }}
+              title="Developer Space"
+            >
+              🛠️ Dev Space
+            </button>
+          )}
         </div>
       </div>
 
