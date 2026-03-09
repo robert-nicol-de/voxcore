@@ -1,18 +1,20 @@
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from backend.api.query import router as query_router
-from backend.api.scanner import router as scanner_router
+# Load environment variables from .env file FIRST (before any other imports)
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 env_path = Path(__file__).parent.parent / '.env'
 if env_path.exists():
     load_dotenv(env_path)
     print(f"[✓] Loaded environment variables from {env_path}")
 else:
     print(f"[⚠] No .env file found at {env_path}")
+
+# NOW import backend modules that depend on environment variables
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from backend.api.query import router as query_router
+from backend.api.scanner import router as scanner_router
 
 
 app = FastAPI(
