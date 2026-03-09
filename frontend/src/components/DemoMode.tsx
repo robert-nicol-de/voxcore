@@ -1,3 +1,7 @@
+  // Handle bar click
+  function handleBarClick(chartLabel: string, barData: { label: string; value: number; color?: string }) {
+    alert(`Clicked: ${chartLabel} - ${barData.label} (${barData.value})`);
+  }
 import { useState } from "react";
 import './DemoMode.css';
 
@@ -218,6 +222,9 @@ export default function DemoMode() {
                   <div
                     className="demo-hbar-fill"
                     style={{ width: `${(d.value / maxVal) * 100}%`, background: d.color || '#3b82f6' }}
+                    onClick={() => handleBarClick(resp.chartLabel, d)}
+                    role="button"
+                    tabIndex={0}
                   />
                 </div>
                 <span className="demo-hbar-value">{formatVal(d.value)}</span>
@@ -285,6 +292,9 @@ export default function DemoMode() {
                 <div
                   className="demo-vbar-fill"
                   style={{ height: `${(d.value / maxVal) * 100}%`, background: d.color || '#3b82f6' }}
+                  onClick={() => handleBarClick(resp.chartLabel, d)}
+                  role="button"
+                  tabIndex={0}
                 />
               </div>
               <span className="demo-vbar-label">{d.label}</span>

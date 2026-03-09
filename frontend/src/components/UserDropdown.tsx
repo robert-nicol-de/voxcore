@@ -13,9 +13,10 @@ interface UserInfo {
 interface UserDropdownProps {
   token: string;
   onLogout: () => void;
+  onNavigate?: (page: string) => void;
 }
 
-export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout }) => {
+export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout, onNavigate }) => {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,7 +25,7 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout }) =
   useEffect(() => {
     if (!token) return;
     setLoading(true);
-    fetch('/api/v1/auth/me', {
+    fetch('/auth/me', {
       headers: { 'Authorization': `Bearer ${token}` },
     })
       .then(res => res.ok ? res.json() : Promise.reject(res))
@@ -40,21 +41,31 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout }) =
 
   const handleLogout = () => {
     localStorage.removeItem('voxcore_token');
+    localStorage.removeItem('voxcore_user_name');
+    sessionStorage.clear();
     onLogout();
+    window.location.href = '/login';
   };
 
-  // Role-based menu
+  const handleNavigate = (page: string) => {
+    if (onNavigate) {
+      onNavigate(page);
+    }
+    setOpen(false);
+  };
+
+  // Role-based menu with navigation actions
   const menu = [
-    { label: 'Profile', action: () => {} },
-    { label: 'My Queries', action: () => {} },
-    { label: 'API Keys', action: () => {} },
+    { label: 'Profile', action: () => handleNavigate('profile') },
+    { label: 'My Queries', action: () => handleNavigate('queries') },
+    { label: 'API Keys', action: () => handleNavigate('api-keys') },
   ];
   if (user && (user.role === 'god' || user.role === 'admin')) {
-    menu.push({ label: 'Admin Panel', action: () => {} });
-    menu.push({ label: 'User Management', action: () => {} });
+    menu.push({ label: 'Admin Panel', action: () => handleNavigate('admin') });
+    menu.push({ label: 'User Management', action: () => handleNavigate('admin-users') });
   }
   if (user && user.role === 'developer') {
-    menu.push({ label: 'Dev Space', action: () => {} });
+    menu.push({ label: 'Dev Space', action: () => handleNavigate('dev-space') });
   }
 
   return (
@@ -78,10 +89,14 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout }) =
               </div>
               <hr />
               {menu.map((item, idx) => (
-                <div className="dropdown-item" key={idx} onClick={item.action}>{item.label}</div>
+                <button key={idx} className="dropdown-item" onClick={item.action}>
+                  {item.label}
+                </button>
               ))}
               <hr />
-              <div className="dropdown-item dropdown-logout" onClick={handleLogout}>Logout</div>
+              <button className="dropdown-item dropdown-logout" onClick={handleLogout}>
+                Logout
+              </button>
             </>
           ) : null}
         </div>

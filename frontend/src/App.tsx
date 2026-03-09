@@ -10,8 +10,13 @@ import { QueryHistory } from './components/QueryHistory';
 import { GovernanceLogs } from './components/GovernanceLogs';
 import { PoliciesManager } from './components/PoliciesManager';
 import { UserDropdown } from './components/UserDropdown';
+import { Profile } from './screens/Profile';
+import { Queries } from './screens/Queries';
+import { ApiKeys } from './screens/ApiKeys';
+import { Admin } from './screens/Admin';
+import { AdminUsers } from './screens/AdminUsers';
 
-type ViewType = 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema';
+type ViewType = 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'profile' | 'queries' | 'api-keys' | 'admin' | 'admin-users';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -106,7 +111,11 @@ function App() {
             >
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
-            <UserDropdown token={localStorage.getItem('voxcore_token') || ''} onLogout={handleLogout} />
+            <UserDropdown 
+              token={localStorage.getItem('voxcore_token') || ''} 
+              onLogout={handleLogout}
+              onNavigate={handleNavigate}
+            />
           </div>
         </header>
 
@@ -149,6 +158,34 @@ function App() {
           {/* Schema View */}
           {currentView === 'schema' && (
             <SchemaExplorer onClose={() => handleNavigate('query')} />
+          )}
+
+          {/* Profile View */}
+          {currentView === 'profile' && (
+            <Profile token={localStorage.getItem('voxcore_token') || ''} />
+          )}
+
+          {/* Queries View */}
+          {currentView === 'queries' && (
+            <Queries token={localStorage.getItem('voxcore_token') || ''} />
+          )}
+
+          {/* API Keys View */}
+          {currentView === 'api-keys' && (
+            <ApiKeys token={localStorage.getItem('voxcore_token') || ''} />
+          )}
+
+          {/* Admin View */}
+          {currentView === 'admin' && (
+            <Admin 
+              token={localStorage.getItem('voxcore_token') || ''} 
+              onNavigate={handleNavigate}
+            />
+          )}
+
+          {/* Admin Users View */}
+          {currentView === 'admin-users' && (
+            <AdminUsers token={localStorage.getItem('voxcore_token') || ''} />
           )}
         </main>
       </div>
