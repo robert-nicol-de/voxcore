@@ -36,184 +36,119 @@
     }
 
     .demo-section {
-      padding: 100px 32px;
+      text-align: center;
+      padding: 80px 20px;
       background: linear-gradient(180deg, rgba(30, 40, 60, 0.4) 0%, rgba(20, 30, 50, 0.6) 100%);
-      position: relative;
-      overflow: hidden;
     }
 
-    .demo-section::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent 0%, rgba(100, 149, 255, 0.3) 50%, transparent 100%);
+    .demo-section h2 {
+      font-size: 32px;
+      margin-bottom: 10px;
     }
 
-    .demo-grid {
+    .demo-subtitle {
+      color: #9fb4d9;
+      margin-bottom: 50px;
+    }
+
+    .demo-flow {
       display: flex;
-      gap: 32px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 25px;
       max-width: 1400px;
       margin: 0 auto;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .demo-arrow {
-      text-align: center;
-      font-size: 28px;
-      color: #6495ff;
-      font-weight: 700;
-      animation: pulse-arrow 2s ease-in-out infinite;
-      user-select: none;
-    }
-
-    @keyframes pulse-arrow {
-      0%, 100% { opacity: 0.5; transform: translateX(0); }
-      50% { opacity: 1; transform: translateX(4px); }
     }
 
     .demo-card {
       background: rgba(20, 30, 50, 0.7);
-      border: 1px solid rgba(100, 149, 255, 0.2);
+      border: 1px solid rgba(100, 149, 255, 0.25);
       border-radius: 14px;
-      padding: 28px;
-      width: 280px;
-      text-align: center;
-      position: relative;
-      backdrop-filter: blur(8px);
-      transition: all 0.3s ease;
-      flex-shrink: 0;
+      padding: 25px;
+      width: 260px;
+      text-align: left;
+      backdrop-filter: blur(6px);
+      transition: 0.3s;
     }
 
     .demo-card:hover {
       transform: translateY(-5px);
       border-color: #6495ff;
-      box-shadow: 0 0 30px rgba(100, 149, 255, 0.25);
+      box-shadow: 0 0 20px rgba(100, 149, 255, 0.3);
     }
 
-    .demo-step {
-      position: absolute;
-      top: -18px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 40px;
-      height: 40px;
-      background: linear-gradient(135deg, #6495ff 0%, #4a7fff 100%);
+    .step-number {
+      width: 30px;
+      height: 30px;
+      background: #6495ff;
       border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
+      text-align: center;
+      line-height: 30px;
+      font-weight: bold;
+      margin-bottom: 10px;
       color: #fff;
-      font-size: 18px;
-      box-shadow: 0 0 24px rgba(100, 149, 255, 0.5);
-      border: 2px solid rgba(255, 255, 255, 0.1);
+      font-size: 14px;
     }
 
-    .demo-card h3 {
-      font-size: 16px;
-      font-weight: 600;
-      margin: 20px 0 16px 0;
-      color: #fff;
+    .arrow {
+      font-size: 28px;
+      color: #6495ff;
+      user-select: none;
     }
 
-    .demo-box {
+    .question-box {
       background: #0b1220;
-      border: 1px solid rgba(100, 149, 255, 0.1);
+      padding: 15px;
       border-radius: 8px;
-      padding: 16px;
-      text-align: left;
-      min-height: 140px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .demo-input {
-      margin: 0;
-      color: #cbd5e1;
+      color: #d6e2ff;
       font-size: 13px;
-      line-height: 1.6;
-      font-style: italic;
+      line-height: 1.5;
     }
 
-    .demo-sql {
-      margin: 0;
-      color: #6fb3ff;
-      font-size: 12px;
-      font-family: 'Courier New', monospace;
-      line-height: 1.6;
+    .sql-code {
+      background: #0b1220;
+      padding: 15px;
+      border-radius: 8px;
+      color: #7fb3ff;
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: left;
       overflow-x: auto;
-      padding: 0;
+      margin: 0;
+      display: block;
     }
 
-    .demo-validation {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+    .checks {
+      list-style: none;
       padding: 0;
-      width: 100%;
+      margin: 0;
     }
 
-    .validation-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    .checks li {
+      margin: 8px 0;
+      color: #7dffa6;
       font-size: 13px;
-      justify-content: flex-start;
     }
 
-    .validation-item.valid {
-      color: #10b981;
+    .results {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
     }
 
-    .validation-item span {
-      font-weight: 700;
-      font-size: 18px;
-      flex-shrink: 0;
-    }
-
-    .demo-results {
-      background: #0b1220;
-      border: 1px solid rgba(100, 149, 255, 0.1);
-      border-radius: 8px;
-      padding: 16px;
+    .results th,
+    .results td {
+      padding: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       text-align: left;
-      min-height: 140px;
+      color: #d6e2ff;
     }
 
-    .results-header {
-      color: #6fb3ff;
+    .results th {
+      color: #7fb3ff;
       font-weight: 600;
-      font-size: 12px;
-      margin-bottom: 12px;
-      display: flex;
-      gap: 16px;
-    }
-
-    .results-header-col {
-      flex: 1;
-    }
-
-    .results-row {
-      display: flex;
-      gap: 16px;
-      padding: 8px 0;
-      font-size: 12px;
-      color: #cbd5e1;
-      border-top: 1px solid rgba(100, 149, 255, 0.08);
-    }
-
-    .results-row:first-of-type {
-      border-top: none;
-    }
-
-    .results-col {
-      flex: 1;
     }
 
     .featured-section {
@@ -278,22 +213,12 @@
         padding: 60px 24px;
       }
 
-      .demo-grid {
+      .demo-flow {
         gap: 20px;
       }
 
       .demo-card {
         width: 240px;
-        padding: 24px;
-      }
-
-      .demo-card h3 {
-        font-size: 15px;
-        margin: 16px 0 12px 0;
-      }
-
-      .demo-box {
-        min-height: 120px;
       }
 
       .cta-section {
@@ -338,44 +263,21 @@
         padding: 48px 16px;
       }
 
-      .demo-grid {
-        flex-direction: column;
-        gap: 24px;
-      }
-
-      .demo-arrow {
-        transform: rotate(90deg);
-        animation: pulse-arrow-vertical 2s ease-in-out infinite;
-      }
-
-      @keyframes pulse-arrow-vertical {
-        0%, 100% { opacity: 0.5; transform: rotate(90deg) translateX(0); }
-        50% { opacity: 1; transform: rotate(90deg) translateX(4px); }
+      .demo-flow {
+        gap: 20px;
       }
 
       .demo-card {
         width: 100%;
-        max-width: 280px;
-        margin: 0 auto;
-        padding: 24px;
+        max-width: 240px;
       }
 
-      .demo-card h3 {
+      .demo-section h2 {
+        font-size: 28px;
+      }
+
+      .demo-subtitle {
         font-size: 14px;
-        margin: 12px 0 12px 0;
-      }
-
-      .demo-box {
-        min-height: 100px;
-        padding: 12px;
-      }
-
-      .demo-input {
-        font-size: 12px;
-      }
-
-      .demo-sql {
-        font-size: 11px;
       }
 
       .featured-section {
@@ -443,43 +345,38 @@
         padding: 40px 12px;
       }
 
+      .demo-flow {
+        gap: 16px;
+      }
+
       .demo-card {
         width: 100%;
-        max-width: 260px;
+        max-width: 220px;
         padding: 20px;
       }
 
-      .demo-step {
-        width: 32px;
-        height: 32px;
-        font-size: 16px;
+      .step-number {
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        font-size: 12px;
       }
 
-      .demo-card h3 {
-        font-size: 14px;
-        margin: 10px 0 10px 0;
+      .arrow {
+        font-size: 24px;
       }
 
-      .demo-box {
-        min-height: 80px;
-        padding: 10px;
+      .sql-code {
+        font-size: 12px;
       }
 
-      .demo-input {
+      .results {
         font-size: 11px;
       }
 
-      .demo-sql {
-        font-size: 10px;
-      }
-
-      .results-header {
-        font-size: 11px;
-      }
-
-      .results-row {
-        font-size: 11px;
-        padding: 6px 0;
+      .results th,
+      .results td {
+        padding: 4px;
       }
 
       .featured-section {
@@ -565,79 +462,77 @@
 
   <!-- Query Demo Section -->
   <section id="demo" class="demo-section">
-    <div class="container">
-      <h2 style="text-align: center; margin-bottom: 56px;">See VoxCore In Action</h2>
-      <div class="demo-grid">
-        <div class="demo-card">
-          <div class="demo-step">1</div>
-          <h3>Ask in Plain English</h3>
-          <div class="demo-box">
-            <p class="demo-input">Show me total revenue by region for this quarter</p>
-          </div>
+    <h2>See VoxCore In Action</h2>
+    <p class="demo-subtitle">
+      How English questions turn into safe, secure SQL queries
+    </p>
+
+    <div class="demo-flow">
+      <!-- STEP 1 -->
+      <div class="demo-card">
+        <div class="step-number">1</div>
+        <h3>Ask in Plain English</h3>
+        <div class="question-box">
+          Show me total revenue by region for this quarter
         </div>
+      </div>
 
-        <div class="demo-arrow">→</div>
+      <div class="arrow">→</div>
 
-        <div class="demo-card">
-          <div class="demo-step">2</div>
-          <h3>AI Generates SQL</h3>
-          <div class="demo-box">
-            <pre class="demo-sql"><code>SELECT region,
+      <!-- STEP 2 -->
+      <div class="demo-card">
+        <div class="step-number">2</div>
+        <h3>AI Generates SQL</h3>
+        <pre class="sql-code">SELECT region,
 SUM(revenue) AS total_revenue
 FROM sales
 WHERE date >= CURRENT_DATE - 90
 GROUP BY region
-ORDER BY total_revenue DESC</code></pre>
-          </div>
-        </div>
-
-        <div class="demo-arrow">→</div>
-
-        <div class="demo-card">
-          <div class="demo-step">3</div>
-          <h3>Firewall Validates</h3>
-          <div class="demo-box demo-validation">
-            <div class="validation-item valid">
-              <span>✓</span> Syntax correct
-            </div>
-            <div class="validation-item valid">
-              <span>✓</span> No injection risk
-            </div>
-            <div class="validation-item valid">
-              <span>✓</span> Policy compliant
-            </div>
-          </div>
-        </div>
-
-        <div class="demo-arrow">→</div>
-
-        <div class="demo-card">
-          <div class="demo-step">4</div>
-          <h3>Results Preview</h3>
-          <div class="demo-results">
-            <div class="results-header">
-              <div class="results-header-col">Region</div>
-              <div class="results-header-col">Revenue</div>
-            </div>
-            <div class="results-row">
-              <div class="results-col">North</div>
-              <div class="results-col">$1.2M</div>
-            </div>
-            <div class="results-row">
-              <div class="results-col">South</div>
-              <div class="results-col">$980K</div>
-            </div>
-            <div class="results-row">
-              <div class="results-col">West</div>
-              <div class="results-col">$870K</div>
-            </div>
-          </div>
-        </div>
+ORDER BY total_revenue DESC</pre>
       </div>
-      <div style="text-align: center; margin-top: 56px;">
-        <p style="font-size: 16px; color: #aaa; margin-bottom: 24px;">Turn English questions into secure SQL. No database connection needed for this demo.</p>
-        <a href="/app" class="btn-primary">Try VoxCore Now</a>
+
+      <div class="arrow">→</div>
+
+      <!-- STEP 3 -->
+      <div class="demo-card">
+        <div class="step-number">3</div>
+        <h3>Firewall Validates</h3>
+        <ul class="checks">
+          <li>✓ Syntax correct</li>
+          <li>✓ No injection risk</li>
+          <li>✓ Policy compliant</li>
+        </ul>
       </div>
+
+      <div class="arrow">→</div>
+
+      <!-- STEP 4 -->
+      <div class="demo-card">
+        <div class="step-number">4</div>
+        <h3>Results Preview</h3>
+        <table class="results">
+          <tr>
+            <th>Region</th>
+            <th>Revenue</th>
+          </tr>
+          <tr>
+            <td>North</td>
+            <td>$1,250,000</td>
+          </tr>
+          <tr>
+            <td>South</td>
+            <td>$980,000</td>
+          </tr>
+          <tr>
+            <td>West</td>
+            <td>$875,000</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 50px;">
+      <a href="/app?demo=true" class="btn-primary">Try VoxCore Now</a>
     </div>
   </section>
   <section class="featured-section">
