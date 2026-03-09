@@ -61,6 +61,7 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout, onN
     { label: 'Profile', action: () => handleNavigate('profile') },
     { label: 'My Queries', action: () => handleNavigate('queries') },
     { label: 'API Keys', action: () => handleNavigate('api-keys') },
+    { label: '🎬 Try Demo', action: () => window.location.href = '/app?demo=true' },
   ];
   
   // Admin menu items (god and admin bypass)

@@ -32,13 +32,11 @@ function App() {
   const [appMode, setAppMode] = useState<AppMode>('standard');
   const chatRef = React.useRef<any>(null);
 
-  // Check for demo mode from URL parameter
+  // Check for demo mode from URL parameter - MUST BE AUTHENTICATED
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const demoParam = params.get('demo');
-    if (demoParam === 'true') {
-      setIsDemoMode(true);
-    }
+    
     // Auto-login if token exists (e.g., from login.html redirect)
     const token = localStorage.getItem('voxcore_token');
     if (token && !isLoggedIn) {
@@ -48,6 +46,11 @@ function App() {
       
       // Fetch user role
       fetchUserRole(token);
+      
+      // Only enable demo mode if authenticated
+      if (demoParam === 'true') {
+        setIsDemoMode(true);
+      }
     }
   }, []);
 
@@ -98,14 +101,14 @@ function App() {
     window.location.href = '/app';
   };
 
-  // Show demo mode if demo=true in URL (skip login entirely)
-  if (isDemoMode) {
-    return <DemoMode />;
-  }
-
-  // Show login screen if not logged in
+  // Show login screen if not logged in - ALWAYS CHECK AUTH FIRST
   if (!isLoggedIn) {
     return <Login onLogin={handleLogin} />;
+  }
+
+  // Show demo mode ONLY if authenticated AND demo param is set
+  if (isDemoMode) {
+    return <DemoMode />;
   }
 
   return (
