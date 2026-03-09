@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VoxCore — SQL Governance & Query Intelligence</title>
+  <link rel="icon" href="/images/voxcore-icon.png">
   <link rel="stylesheet" href="/styles/shared.css" />
   <style>
     .hero {
@@ -26,6 +27,27 @@
       color: #aaa;
       max-width: 600px;
       margin: 0 auto 32px;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 18px;
+      color: #fff;
+    }
+
+    .nav-logo img {
+      height: 36px;
+      width: auto;
+    }
+
+    .hero-logo {
+      width: 240px;
+      margin: 0 auto 30px;
+      opacity: 0.95;
+      filter: drop-shadow(0 0 15px rgba(100, 149, 255, 0.35));
     }
 
     .hero-buttons {
@@ -209,6 +231,10 @@
         font-size: 48px;
       }
 
+      .hero-logo {
+        width: 200px;
+      }
+
       .demo-section {
         padding: 60px 24px;
       }
@@ -245,6 +271,20 @@
       .hero p {
         font-size: 15px;
         margin-bottom: 24px;
+      }
+
+      .hero-logo {
+        width: 160px;
+        margin-bottom: 24px;
+      }
+
+      .nav-logo {
+        font-size: 16px;
+        gap: 8px;
+      }
+
+      .nav-logo img {
+        height: 32px;
       }
 
       .hero-buttons {
@@ -330,6 +370,20 @@
       .hero p {
         font-size: 14px;
         margin-bottom: 20px;
+      }
+
+      .hero-logo {
+        width: 140px;
+        margin-bottom: 20px;
+      }
+
+      .nav-logo {
+        font-size: 14px;
+        gap: 6px;
+      }
+
+      .nav-logo img {
+        height: 28px;
       }
 
       .hero-buttons {
@@ -427,8 +481,9 @@
   <!-- Header & Navigation -->
   <header>
     <div class="header-container">
-      <a href="/" class="logo">
-        <img src="/voxcore-landing.png" alt="VoxCore" style="height:120px;">
+      <a href="/" class="logo nav-logo">
+        <img src="/images/voxcore-icon.png" alt="VoxCore">
+        <span>VoxCore</span>
       </a>
       <nav>
         <a href="/" class="active">Home</a>
@@ -448,9 +503,7 @@
   <!-- Hero Section -->
   <section class="hero">
     <div class="container">
-      <div class="hero-logo">
-        <img src="/voxcore-landing.png" alt="VoxCore Logo" style="display:block;margin:0 auto;max-width:320px;width:100%;height:auto;">
-      </div>
+      <img class="hero-logo" src="/images/voxcore-full-logo.png" alt="VoxCore">
       <h1>Ask Your Database Anything</h1>
       <p>VoxCore generates secure SQL automatically. No more query writing.</p>
       <div class="hero-buttons">
