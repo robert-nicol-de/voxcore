@@ -38,9 +38,25 @@ if os.path.exists(frontend_public):
     styles_dir = os.path.join(frontend_public, "styles")
     if os.path.exists(styles_dir):
         app.mount("/styles", StaticFiles(directory=styles_dir), name="styles")
+    # Mount images folder if it exists
+    images_dir = os.path.join(frontend_public, "images")
+    if os.path.exists(images_dir):
+        app.mount("/images", StaticFiles(directory=images_dir), name="images")
     logger.info(f"✅ Marketing site static files mounted from {frontend_public}")
 else:
     logger.warning(f"⚠️  Frontend public folder not found at {frontend_public}")
+
+# Serve built React SPA from frontend/dist/ (the actual app)
+frontend_dist = os.path.join(os.path.dirname(__file__), "../../../../frontend/dist")
+frontend_dist = os.path.abspath(frontend_dist)
+if os.path.exists(frontend_dist):
+    # Mount the assets folder for JS/CSS bundles
+    assets_dir = os.path.join(frontend_dist, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="spa-assets")
+    logger.info(f"✅ React SPA static files mounted from {frontend_dist}")
+else:
+    logger.warning(f"⚠️  Frontend dist folder not found at {frontend_dist}")
 
 # Root endpoint - serve marketing home page
 @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
@@ -63,16 +79,35 @@ app.include_router(metrics.router, tags=["Metrics"])
 app.include_router(governance.router, tags=["Governance"])
 app.include_router(firewall.router, prefix="/api/v1/firewall", tags=["Firewall"])
 
+# /app route - serve the React SPA (demo mode, login, full app)
+@app.get("/app")
+def serve_app():
+    """Serve the React SPA for /app (handles demo mode, login, etc.)"""
+    spa_index = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(spa_index):
+        return FileResponse(spa_index, media_type="text/html")
+    # Fallback to landing page
+    frontend_index = os.path.join(frontend_public, "index.html")
+    if os.path.exists(frontend_index):
+        return FileResponse(frontend_index, media_type="text/html")
+    return JSONResponse(status_code=404, content={"detail": "React SPA not built. Run npm run build in frontend/"})
+
 # SPA catch-all route - serve marketing pages from public folder
 @app.get("/{full_path:path}")
 def spa_catchall(full_path: str):
-    """Catch-all route - serves pages from public folder"""
+    """Catch-all route - serves pages from public folder, or React SPA for /app sub-routes"""
     
     # Don't intercept API calls
     if full_path.startswith("api/"):
         return JSONResponse(status_code=404, content={"detail": "Not Found"})
     
-    # Try exact file match first
+    # Serve React SPA for /app and any sub-routes
+    if full_path == "app" or full_path.startswith("app/"):
+        spa_index = os.path.join(frontend_dist, "index.html")
+        if os.path.exists(spa_index):
+            return FileResponse(spa_index, media_type="text/html")
+    
+    # Try exact file match in public folder
     requested_file = os.path.join(frontend_public, full_path)
     requested_file = os.path.abspath(requested_file)
     
@@ -81,7 +116,7 @@ def spa_catchall(full_path: str):
         if os.path.isfile(requested_file):
             return FileResponse(requested_file, media_type="text/html")
     
-    # Try with .html extension (e.g., /app → app.html)
+    # Try with .html extension (e.g., /about → about.html)
     html_file = os.path.join(frontend_public, f"{full_path}.html")
     html_file = os.path.abspath(html_file)
     
@@ -89,7 +124,7 @@ def spa_catchall(full_path: str):
         if os.path.isfile(html_file):
             return FileResponse(html_file, media_type="text/html")
     
-    # For routes without extension or unknown routes, serve index.html (for React routing)
+    # For unknown routes, serve the landing page
     frontend_index = os.path.join(frontend_public, "index.html")
     if os.path.exists(frontend_index):
         return FileResponse(frontend_index, media_type="text/html")

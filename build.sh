@@ -14,5 +14,12 @@ echo "🐍 Installing Python dependencies..."
 pip install --no-cache-dir -r voxcore/voxquery/requirements.txt
 
 echo ""
+echo "⚛️  Building React frontend..."
+cd frontend
+npm install
+npm run build
+cd ..
+
+echo ""
 echo "✅ Build complete! VoxCore ready to start."
-echo "======================================"
+echo "======================================
