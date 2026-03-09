@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { RoleBadge } from '../components/RoleBadge';
 
 interface UserInfo {
   email: string;
@@ -56,7 +57,9 @@ export const Profile: React.FC<ProfileProps> = ({ token }) => {
         </div>
         <div className="profile-section">
           <label>Role:</label>
-          <p>{user.role_label}</p>
+          <div style={{ marginTop: '8px' }}>
+            <RoleBadge role={user.role} />
+          </div>
         </div>
         
         <hr />

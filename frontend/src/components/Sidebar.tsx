@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './Sidebar.css';
+import { isAdmin, isDeveloper } from '../utils/permissions';
 
 interface SidebarProps {
   onClose?: () => void;
@@ -493,7 +494,7 @@ function Sidebar({ onClose, onQuestionSelect, onNavigate, currentView, isOpen, o
             🔍 Schema Explorer
           </button>
           
-          {(userRole === 'admin' || userRole === 'developer' || userRole === 'god') && (
+          {(isAdmin(userRole) || isDeveloper(userRole)) && (
             <button 
               className="nav-btn dev-space-btn"
               onClick={() => {

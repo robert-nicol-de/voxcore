@@ -1,0 +1,29 @@
+.role-badge {
+  padding: 6px 12px;
+  border: 1.5px solid;
+  border-radius: 6px;
+  font-size: 0.85em;
+  font-weight: 600;
+  display: inline-block;
+  letter-spacing: 0.5px;
+}
+
+.role-badge-label {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.role-badge-compact {
+  padding: 3px 8px;
+  border: 1px solid;
+  border-radius: 4px;
+  font-size: 0.7em;
+  font-weight: 700;
+  display: inline-block;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.role-badge-compact:hover {
+  opacity: 0.8;
+}

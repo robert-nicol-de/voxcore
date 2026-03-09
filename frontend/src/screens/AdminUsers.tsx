@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { RoleBadge } from '../components/RoleBadge';
 
 interface CompanyUser {
   id: number;
@@ -118,7 +119,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ token }) => {
               <tr key={u.id}>
                 <td>{u.email}</td>
                 <td>{u.name}</td>
-                <td><span className="badge">{u.role}</span></td>
+                <td><RoleBadge role={u.role} compact /></td>
                 <td><span className={`badge badge-${u.status}`}>{u.status}</span></td>
                 <td>{new Date(u.created_at).toLocaleDateString()}</td>
                 <td>

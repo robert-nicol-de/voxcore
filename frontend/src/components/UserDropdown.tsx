@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './UserDropdown.css';
+import { RoleBadge } from './RoleBadge';
+import { isAdmin, isDeveloper } from '../utils/permissions';
 
 interface UserInfo {
   email: string;
@@ -60,12 +62,16 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout, onN
     { label: 'My Queries', action: () => handleNavigate('queries') },
     { label: 'API Keys', action: () => handleNavigate('api-keys') },
   ];
-  if (user && (user.role === 'god' || user.role === 'admin')) {
+  
+  // Admin menu items (god and admin bypass)
+  if (user && isAdmin(user.role)) {
     menu.push({ label: 'Admin Panel', action: () => handleNavigate('admin') });
     menu.push({ label: 'User Management', action: () => handleNavigate('admin-users') });
   }
-  if (user && user.role === 'developer') {
-    menu.push({ label: 'Dev Space', action: () => handleNavigate('dev-space') });
+  
+  // Developer menu items (god, admin, developer)
+  if (user && isDeveloper(user.role)) {
+    menu.push({ label: 'Dev Space', action: () => handleNavigate('devspace') });
   }
 
   return (
@@ -85,7 +91,9 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout, onN
               <div className="dropdown-header">
                 <div className="dropdown-email">{user.email}</div>
                 <div className="dropdown-company">Company: {user.company}</div>
-                <div className="dropdown-role">Role: {user.role_label}</div>
+                <div className="dropdown-role-container">
+                  <RoleBadge role={user.role} />
+                </div>
               </div>
               <hr />
               {menu.map((item, idx) => (

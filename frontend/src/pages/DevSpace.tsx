@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import '../styles/DevSpace.css';
+import { isAdmin, isDeveloper, getRoleLabel } from '../utils/permissions';
 
 interface DevSpaceProps {
   token: string;
@@ -45,14 +46,14 @@ export const DevSpace: React.FC<DevSpaceProps> = ({ token }) => {
     );
   }
 
-  // Check access: only admin and developer roles can access
-  if (userRole !== 'admin' && userRole !== 'developer' && userRole !== 'god') {
+  // Check access: admin (god/admin) + developer can access
+  if (!isAdmin(userRole) && !isDeveloper(userRole)) {
     return (
       <div className="devspace-container">
         <div className="access-denied">
           <h2>🔒 Access Denied</h2>
           <p>Developer Space is only available to Admin and Developer users.</p>
-          <p>Your role: <strong>{userRole}</strong></p>
+          <p>Your role: <strong>{getRoleLabel(userRole)}</strong></p>
         </div>
       </div>
     );
