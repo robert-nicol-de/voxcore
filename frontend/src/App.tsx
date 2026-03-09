@@ -9,6 +9,7 @@ import { Login } from './screens/Login';
 import { QueryHistory } from './components/QueryHistory';
 import { GovernanceLogs } from './components/GovernanceLogs';
 import { PoliciesManager } from './components/PoliciesManager';
+import { UserDropdown } from './components/UserDropdown';
 
 type ViewType = 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema';
 
@@ -60,6 +61,12 @@ function App() {
     }
   };
 
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUserName('');
+    window.location.href = '/app';
+  };
+
   // Show demo mode if demo=true in URL (skip login entirely)
   if (isDemoMode) {
     return <DemoMode />;
@@ -99,9 +106,7 @@ function App() {
             >
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
-            <div className="user-menu">
-              <span>{isDemoMode ? '👤 Demo User' : `👤 ${userName || 'User'}`}</span>
-            </div>
+            <UserDropdown token={localStorage.getItem('voxcore_token') || ''} onLogout={handleLogout} />
           </div>
         </header>
 
