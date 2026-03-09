@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
+import DemoMode from './components/DemoMode';
 import './App.css';
 import Sidebar from './components/Sidebar';
 import Chat from './components/Chat';
@@ -51,7 +52,6 @@ function App() {
 
   // Show demo mode if demo=true in URL (skip login entirely)
   if (isDemoMode) {
-    const DemoMode = require('./components/DemoMode').default;
     return <DemoMode />;
   }
 
