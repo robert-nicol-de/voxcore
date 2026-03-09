@@ -28,6 +28,13 @@ function App() {
     if (demoParam === 'true') {
       setIsDemoMode(true);
     }
+    // Auto-login if token exists (e.g., from login.html redirect)
+    const token = localStorage.getItem('voxcore_token');
+    if (token && !isLoggedIn) {
+      const name = localStorage.getItem('voxcore_user_name') || '';
+      setIsLoggedIn(true);
+      if (name) setUserName(name);
+    }
   }, []);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);

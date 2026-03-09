@@ -378,14 +378,44 @@
   </footer>
 
   <script>
-    document.getElementById('loginForm').addEventListener('submit', (e) => {
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      // TODO: Connect to backend auth endpoint
-      const email = document.getElementById('email').value;
+      const email = document.getElementById('email').value.trim().toLowerCase();
       const password = document.getElementById('password').value;
-      console.log('Login attempt:', { email, password });
-      // After successful login, redirect to /app
-      // window.location.href = '/app';
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Signing in...';
+      submitBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: email, password: password }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || 'Invalid email or password');
+        }
+
+        const data = await response.json();
+        localStorage.setItem('voxcore_token', data.access_token);
+        if (data.user_name) localStorage.setItem('voxcore_user_name', data.user_name);
+        if (data.user_email) localStorage.setItem('voxcore_user_email', data.user_email);
+        window.location.href = '/app';
+      } catch (err) {
+        let errorDiv = document.getElementById('login-error');
+        if (!errorDiv) {
+          errorDiv = document.createElement('div');
+          errorDiv.id = 'login-error';
+          errorDiv.style.cssText = 'background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:10px 14px;color:#fca5a5;font-size:14px;margin-bottom:16px;text-align:center;';
+          e.target.insertBefore(errorDiv, submitBtn.parentElement);
+        }
+        errorDiv.textContent = err.message || 'Login failed. Please try again.';
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
     });
   </script>
 </body>
