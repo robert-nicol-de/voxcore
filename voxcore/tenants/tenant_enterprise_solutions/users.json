@@ -1,0 +1,36 @@
+{
+  "tenant_id": "tenant_enterprise_solutions",
+  "company_name": "Enterprise Solutions Ltd",
+  "created_at": "2026-01-01T00:00:00Z",
+  "subscription_plan": "Enterprise",
+  "users": [
+    {
+      "id": "user_020",
+      "email": "ciso@enterprise-solutions.com",
+      "name": "Frank Wilson",
+      "role": "admin",
+      "created_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": "user_021",
+      "email": "dev1@enterprise-solutions.com",
+      "name": "Grace Chen",
+      "role": "developer",
+      "created_at": "2026-01-10T12:00:00Z"
+    },
+    {
+      "id": "user_022",
+      "email": "dev2@enterprise-solutions.com",
+      "name": "Henry Brown",
+      "role": "developer",
+      "created_at": "2026-01-15T14:00:00Z"
+    },
+    {
+      "id": "user_023",
+      "email": "viewer@enterprise-solutions.com",
+      "name": "Iris Martinez",
+      "role": "viewer",
+      "created_at": "2026-02-01T09:00:00Z"
+    }
+  ]
+}

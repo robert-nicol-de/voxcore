@@ -1,0 +1,22 @@
+{
+  "tenant_id": "tenant_techstartup_inc",
+  "company_name": "TechStartup Inc",
+  "created_at": "2026-02-01T08:00:00Z",
+  "subscription_plan": "Pro",
+  "users": [
+    {
+      "id": "user_010",
+      "email": "founder@techstartup-inc.com",
+      "name": "David Lee",
+      "role": "admin",
+      "created_at": "2026-02-01T08:00:00Z"
+    },
+    {
+      "id": "user_011",
+      "email": "data@techstartup-inc.com",
+      "name": "Emma Davis",
+      "role": "developer",
+      "created_at": "2026-02-15T10:00:00Z"
+    }
+  ]
+}

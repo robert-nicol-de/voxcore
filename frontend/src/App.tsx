@@ -16,8 +16,10 @@ import { ApiKeys } from './screens/ApiKeys';
 import { Admin } from './screens/Admin';
 import { AdminUsers } from './screens/AdminUsers';
 import { DevSpace } from './pages/DevSpace';
+import { DevWorkspace } from './components/DevWorkspace';
 
 type ViewType = 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'profile' | 'queries' | 'api-keys' | 'admin' | 'admin-users' | 'devspace';
+type AppMode = 'standard' | 'dev';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -27,6 +29,7 @@ function App() {
   const [isPreviewMode, setIsPreviewMode] = useState(false); // Preview mode disabled for authenticated users
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
+  const [appMode, setAppMode] = useState<AppMode>('standard');
   const chatRef = React.useRef<any>(null);
 
   // Check for demo mode from URL parameter
@@ -128,6 +131,22 @@ function App() {
             ☰
           </button>
           <div className="header-right">
+            <div className="mode-toggle">
+              <button
+                onClick={() => setAppMode('standard')}
+                className={appMode === 'standard' ? 'active' : ''}
+                title="Standard Mode (AI Query Interface)"
+              >
+                💬 Standard
+              </button>
+              <button
+                onClick={() => setAppMode('dev')}
+                className={appMode === 'dev' ? 'active' : ''}
+                title="Dev Mode (SQL Editor)"
+              >
+                ⚙️ Dev
+              </button>
+            </div>
             <button
               className="theme-toggle"
               onClick={toggleTheme}
@@ -144,77 +163,83 @@ function App() {
         </header>
 
         <main className="chat-container">
-          {/* Dashboard View */}
-          {currentView === 'dashboard' && (
-            <GovernanceDashboard onAskQuestion={() => handleNavigate('query')} />
-          )}
+          {appMode === 'standard' ? (
+            <>
+              {/* Dashboard View */}
+              {currentView === 'dashboard' && (
+                <GovernanceDashboard onAskQuestion={() => handleNavigate('query')} />
+              )}
 
-          {/* Query View */}
-          {currentView === 'query' && (
-            <Chat
-              ref={chatRef}
-              onBackToDashboard={() => handleNavigate('dashboard')}
-              isPreviewMode={isPreviewMode}
-            />
-          )}
+              {/* Query View */}
+              {currentView === 'query' && (
+                <Chat
+                  ref={chatRef}
+                  onBackToDashboard={() => handleNavigate('dashboard')}
+                  isPreviewMode={isPreviewMode}
+                />
+              )}
 
-          {/* History View */}
-          {currentView === 'history' && (
-            <div className="view-content">
-              <QueryHistory />
-            </div>
-          )}
+              {/* History View */}
+              {currentView === 'history' && (
+                <div className="view-content">
+                  <QueryHistory />
+                </div>
+              )}
 
-          {/* Logs View */}
-          {currentView === 'logs' && (
-            <div className="view-content">
-              <GovernanceLogs />
-            </div>
-          )}
+              {/* Logs View */}
+              {currentView === 'logs' && (
+                <div className="view-content">
+                  <GovernanceLogs />
+                </div>
+              )}
 
-          {/* Policies View */}
-          {currentView === 'policies' && (
-            <div className="view-content">
-              <PoliciesManager />
-            </div>
-          )}
+              {/* Policies View */}
+              {currentView === 'policies' && (
+                <div className="view-content">
+                  <PoliciesManager />
+                </div>
+              )}
 
-          {/* Schema View */}
-          {currentView === 'schema' && (
-            <SchemaExplorer onClose={() => handleNavigate('query')} />
-          )}
+              {/* Schema View */}
+              {currentView === 'schema' && (
+                <SchemaExplorer onClose={() => handleNavigate('query')} />
+              )}
 
-          {/* Profile View */}
-          {currentView === 'profile' && (
-            <Profile token={localStorage.getItem('voxcore_token') || ''} />
-          )}
+              {/* Profile View */}
+              {currentView === 'profile' && (
+                <Profile token={localStorage.getItem('voxcore_token') || ''} />
+              )}
 
-          {/* Queries View */}
-          {currentView === 'queries' && (
-            <Queries token={localStorage.getItem('voxcore_token') || ''} />
-          )}
+              {/* Queries View */}
+              {currentView === 'queries' && (
+                <Queries token={localStorage.getItem('voxcore_token') || ''} />
+              )}
 
-          {/* API Keys View */}
-          {currentView === 'api-keys' && (
-            <ApiKeys token={localStorage.getItem('voxcore_token') || ''} />
-          )}
+              {/* API Keys View */}
+              {currentView === 'api-keys' && (
+                <ApiKeys token={localStorage.getItem('voxcore_token') || ''} />
+              )}
 
-          {/* Admin View */}
-          {currentView === 'admin' && (
-            <Admin 
-              token={localStorage.getItem('voxcore_token') || ''} 
-              onNavigate={handleNavigate}
-            />
-          )}
+              {/* Admin View */}
+              {currentView === 'admin' && (
+                <Admin 
+                  token={localStorage.getItem('voxcore_token') || ''} 
+                  onNavigate={handleNavigate}
+                />
+              )}
 
-          {/* Admin Users View */}
-          {currentView === 'admin-users' && (
-            <AdminUsers token={localStorage.getItem('voxcore_token') || ''} />
-          )}
+              {/* Admin Users View */}
+              {currentView === 'admin-users' && (
+                <AdminUsers token={localStorage.getItem('voxcore_token') || ''} />
+              )}
 
-          {/* Dev Space View */}
-          {currentView === 'devspace' && (
-            <DevSpace token={localStorage.getItem('voxcore_token') || ''} />
+              {/* Dev Space View */}
+              {currentView === 'devspace' && (
+                <DevSpace token={localStorage.getItem('voxcore_token') || ''} />
+              )}
+            </>
+          ) : (
+            <DevWorkspace />
           )}
         </main>
       </div>

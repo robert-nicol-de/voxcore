@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 
-from . import health, query, schema, auth, connection, metrics, governance, firewall
+from . import health, query, schema, auth, connection, metrics, governance, firewall, connectors
 from .models import init_db
 
 logger = logging.getLogger(__name__)
@@ -76,6 +76,7 @@ app.include_router(connection.router, prefix="/api/v1", tags=["Connection"])
 app.include_router(query.router, prefix="/api/v1", tags=["Query"])
 app.include_router(schema.router, prefix="/api/v1", tags=["Schema"])
 app.include_router(auth.router, prefix="/api/v1", tags=["Auth"])
+app.include_router(connectors.router, prefix="/api/v1", tags=["Connectors"])
 app.include_router(metrics.router, tags=["Metrics"])
 app.include_router(governance.router, tags=["Governance"])
 app.include_router(firewall.router, prefix="/api/v1/firewall", tags=["Firewall"])

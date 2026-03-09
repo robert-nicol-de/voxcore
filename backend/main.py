@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from backend.api.query import router as query_router
+from backend.api.scanner import router as scanner_router
 
 
 app = FastAPI(
@@ -30,3 +31,4 @@ def health():
 
 # Include API routes
 app.include_router(query_router)
+app.include_router(scanner_router)
