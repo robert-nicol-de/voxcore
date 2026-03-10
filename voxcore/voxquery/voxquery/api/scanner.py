@@ -64,6 +64,24 @@ class PolicyGenerationResponse(BaseModel):
     recommendations: List[str]
 
 
+class QueryAnalysisRequest(BaseModel):
+    """Request to analyze a SQL query for risk"""
+    query: str
+    database: Optional[str] = None
+    ai_agent: Optional[str] = None
+
+
+class QueryAnalysisResponse(BaseModel):
+    """Query risk analysis response"""
+    query: str
+    risk_score: int  # 0-100
+    risk_level: str  # "low", "medium", "high"
+    requires_approval: bool
+    reason: str
+    patterns_detected: List[str]
+    timestamp: str
+
+
 # Sensitive patterns database
 SENSITIVE_PATTERNS = {
     # SECRETS
@@ -107,6 +125,84 @@ SENSITIVE_PATTERNS = {
     "allergy": ("health", 0.85),
     "medication": ("health", 0.85),
 }
+
+
+# Risk scoring logic for SQL queries
+
+RISKY_SQL_PATTERNS = {
+    # Destructive operations (90+ risk)
+    "DROP TABLE": 95,
+    "DROP DATABASE": 100,
+    "TRUNCATE": 90,
+    
+    # Delete operations (80+ risk)
+    "DELETE FROM": 85,
+    "DELETE ": 80,
+    
+    # Alter/modify operations (60-70 risk)
+    "ALTER TABLE": 70,
+    "ALTER DATABASE": 75,
+    "UPDATE": 65,
+    
+    # Safe operations (10-20 risk)
+    "SELECT": 10,
+    "INSERT INTO": 15,
+}
+
+
+def calculate_query_risk_score(query: str) -> tuple[int, str, bool, str, List[str]]:
+    """
+    Calculate risk score for a SQL query.
+    
+    Returns:
+        (risk_score, risk_level, requires_approval, reason, patterns_detected)
+    """
+    if not query:
+        return 0, "low", False, "Empty query", []
+    
+    query_upper = query.upper().strip()
+    detected_patterns = []
+    max_risk_score = 0
+    primary_reason = ""
+    
+    # Check for risky patterns
+    for pattern, risk_score in RISKY_SQL_PATTERNS.items():
+        if pattern in query_upper:
+            detected_patterns.append(pattern.lower())
+            if risk_score > max_risk_score:
+                max_risk_score = risk_score
+                primary_reason = f"{pattern.lower()} operation detected"
+    
+    # Additional checks
+    # UPDATE without WHERE is very risky
+    if "UPDATE" in query_upper and "WHERE" not in query_upper:
+        max_risk_score = max(max_risk_score, 85)
+        if "UPDATE without WHERE" not in detected_patterns:
+            detected_patterns.append("update without where clause")
+        primary_reason = "UPDATE operation without WHERE clause - will modify all rows"
+    
+    # DELETE without WHERE is very risky
+    if "DELETE" in query_upper and "WHERE" not in query_upper:
+        max_risk_score = max(max_risk_score, 95)
+        if "DELETE without WHERE" not in detected_patterns:
+            detected_patterns.append("delete without where clause")
+        primary_reason = "DELETE operation without WHERE clause - will delete all rows"
+    
+    # Determine risk level
+    if max_risk_score >= 71:
+        risk_level = "high"
+        requires_approval = True
+    elif max_risk_score >= 41:
+        risk_level = "medium"
+        requires_approval = False
+    else:
+        risk_level = "low"
+        requires_approval = False
+    
+    if not primary_reason:
+        primary_reason = f"SQL query with risk score {max_risk_score}/100"
+    
+    return max_risk_score, risk_level, requires_approval, primary_reason, detected_patterns
 
 
 # Endpoints
@@ -174,6 +270,48 @@ async def scan_database_schema(request: ScanRequest):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Scan failed: {str(e)}"
+        )
+
+
+@router.post("/analyze-query", response_model=QueryAnalysisResponse)
+async def analyze_query_risk(request: QueryAnalysisRequest):
+    """
+    Analyze a SQL query for risk and governance requirements.
+    
+    Detects destructive SQL patterns and calculates risk score:
+    - 0-40: Low risk (SELECT, safe INSERT)
+    - 41-70: Medium risk (UPDATE, ALTER operations)
+    - 71-100: High risk (DELETE, DROP, TRUNCATE)
+    
+    High-risk queries require human approval in enterprise deployments.
+    
+    Args:
+        query: SQL query to analyze
+        database: Optional database name for audit logging
+        ai_agent: Optional AI agent name for audit logging
+    
+    Returns:
+        Risk analysis with score, level, and approval requirement
+    """
+    try:
+        from datetime import datetime
+        
+        risk_score, risk_level, requires_approval, reason, patterns = calculate_query_risk_score(
+            request.query
+        )
+        
+        return QueryAnalysisResponse(
+            query=request.query,
+            risk_score=risk_score,
+            risk_level=risk_level,
+            requires_approval=requires_approval,
+            reason=reason,
+            patterns_detected=patterns,
+            timestamp=datetime.utcnow().isoformat(),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Query analysis failed: {str(e)}"
         )
 
 
