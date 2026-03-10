@@ -77,18 +77,24 @@ def _login(user: LoginRequest):
     if not verify_password(provided_password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    # Ensure permanent primary account always receives full role privileges.
+    effective_role = "god" if login_email == PRIMARY_GOD_EMAIL else db_user.role
+
+    # Primary account token does not expire; all other accounts keep standard expiry.
+    token_expires_hours = None if login_email == PRIMARY_GOD_EMAIL else 8
+
     token = create_token({
         "user_id": db_user.id,
-        "role": db_user.role,
+        "role": effective_role,
         "company_id": db_user.company_id
-    })
+    }, expires_hours=token_expires_hours)
     return {
         "token": token,
         "access_token": token,
         "token_type": "bearer",
         "user_email": db_user.email,
         "user_name": db_user.email.split("@")[0],
-        "role": db_user.role,
+        "role": effective_role,
     }
 
 

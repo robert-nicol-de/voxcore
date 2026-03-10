@@ -1,6 +1,7 @@
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
+from typing import Optional
 
 SECRET_KEY = "VOXCORE_SECRET"
 ALGORITHM = "HS256"
@@ -12,7 +13,9 @@ def hash_password(password):
 def verify_password(plain, hashed):
     return pwd_context.verify(plain, hashed)
 
-def create_token(data):
-    expire = datetime.utcnow() + timedelta(hours=8)
-    data.update({"exp": expire})
-    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+def create_token(data, expires_hours: Optional[int] = 8):
+    payload = dict(data)
+    if expires_hours is not None:
+        expire = datetime.utcnow() + timedelta(hours=expires_hours)
+        payload.update({"exp": expire})
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
