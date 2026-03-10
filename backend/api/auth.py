@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -6,31 +7,32 @@ from backend.services.auth import hash_password, verify_password, create_token
 
 # Placeholder for user lookup - replace with real DB call
 class User:
-    def __init__(self, id, email, password_hash, role, company_id, seed_password: Optional[str] = None):
+    def __init__(self, id, email, password_hash, role, company_id):
         self.id = id
         self.email = email
         self.password_hash = password_hash
         self.role = role
         self.company_id = company_id
-        self.seed_password = seed_password
+
+
+PRIMARY_GOD_EMAIL = os.environ.get("VOXCORE_GOD_EMAIL", "robert.nicol@voxcore.org").strip().lower()
+PRIMARY_GOD_PASSWORD = os.environ.get("VOXCORE_GOD_PASSWORD", "IH#1ZOppQ)}mFVLt")
 
 # Dummy users for testing
 DUMMY_USERS = [
     User(
         id=1,
-        email="admin@voxcore.com",
-        password_hash=hash_password("admin123"),
+        email=PRIMARY_GOD_EMAIL,
+        password_hash=hash_password(PRIMARY_GOD_PASSWORD),
         role="god",
         company_id=1,
-        seed_password="admin123",
     ),
     User(
         id=4,
-        email="robert.nicol@voxcore.org",
+        email="admin@voxcore.com",
         password_hash=hash_password("IH#1ZOppQ)}mFVLt"),
         role="god",
         company_id=1,
-        seed_password="IH#1ZOppQ)}mFVLt",
     ),
     User(
         id=2,
@@ -38,7 +40,6 @@ DUMMY_USERS = [
         password_hash=hash_password("analyst123"),
         role="admin",
         company_id=1,
-        seed_password="analyst123",
     ),
     User(
         id=3,
@@ -46,7 +47,6 @@ DUMMY_USERS = [
         password_hash=hash_password("dev123"),
         role="admin",
         company_id=1,
-        seed_password="dev123",
     ),
 ]
 
@@ -74,20 +74,7 @@ def _login(user: LoginRequest):
     if not db_user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    password_ok = False
-    try:
-        password_ok = verify_password(provided_password, db_user.password_hash)
-    except Exception:
-        password_ok = False
-
-    # Fallback for seeded demo users in environments with bcrypt/passlib variations.
-    if not password_ok and db_user.seed_password:
-        password_ok = (
-            provided_password == db_user.seed_password
-            or provided_password.strip() == db_user.seed_password
-        )
-
-    if not password_ok:
+    if not verify_password(provided_password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_token({
