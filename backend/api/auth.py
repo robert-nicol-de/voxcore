@@ -24,14 +24,14 @@ DUMMY_USERS = [
         id=2,
         email="ico@astutetech.co.za",
         password_hash=hash_password("analyst123"),
-        role="analyst",
+        role="admin",
         company_id=1,
     ),
     User(
         id=3,
         email="drikus.dewet@astutetech.co.za",
         password_hash=hash_password("dev123"),
-        role="developer",
+        role="admin",
         company_id=1,
     ),
 ]
