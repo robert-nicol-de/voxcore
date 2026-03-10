@@ -102,8 +102,28 @@ function App() {
   };
 
   // Show login screen if not logged in - ALWAYS CHECK AUTH FIRST
+  const [showLoginPage, setShowLoginPage] = useState(false);
   if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} />;
+    if (showLoginPage) {
+      return <Login onLogin={handleLogin} />;
+    }
+    // Show header navigation with Login button
+    return (
+      <div>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1f2937', padding: '16px' }}>
+          <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.5rem' }}>VoxCore</div>
+          <nav>
+            <button style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setShowLoginPage(true)}>
+              Login
+            </button>
+          </nav>
+        </header>
+        <main style={{ color: '#fff', background: '#111827', minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Your Database Anything</h1>
+          <p style={{ fontSize: '1.2rem', maxWidth: '600px', textAlign: 'center' }}>VoxCore generates secure SQL automatically. No more query writing.</p>
+        </main>
+      </div>
+    );
   }
 
   // Show demo mode ONLY if authenticated AND demo param is set
