@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from .v1 import auth, query
 from .governance import router as governance_router
+from .scanner import router as scanner_router
 
 # Create logs directory if it doesn't exist
 logs_dir = Path(__file__).parent.parent.parent / "logs"
@@ -82,6 +83,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(query.router, prefix="/api/v1", tags=["query"])
 app.include_router(governance_router, prefix="/api/v1", tags=["governance"])
+app.include_router(scanner_router)
 
 # ============================================================================
 # HEALTH CHECK
