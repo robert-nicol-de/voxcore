@@ -16,6 +16,7 @@ import { ThreatMonitor } from '../components/ThreatMonitor';
 import SecurityScore from '../components/SecurityScore';
 import TenantContext from '../components/TenantContext';
 import ZeroTrustPolicy from '../components/ZeroTrustPolicy';
+import { apiUrl } from '../lib/api';
 
 interface DevSpaceProps {
   token: string;
@@ -30,7 +31,7 @@ export const DevSpace: React.FC<DevSpaceProps> = ({ token }) => {
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
-        const response = await fetch('/auth/me', {
+        const response = await fetch(apiUrl('/api/v1/auth/me'), {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,

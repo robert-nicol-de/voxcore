@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RoleBadge } from '../components/RoleBadge';
+import { apiUrl } from '../lib/api';
 
 interface UserInfo {
   email: string;
@@ -21,7 +22,7 @@ export const Profile: React.FC<ProfileProps> = ({ token }) => {
 
   useEffect(() => {
     if (!token) return;
-    fetch('/auth/me', {
+    fetch(apiUrl('/api/v1/auth/me'), {
       headers: { 'Authorization': `Bearer ${token}` },
     })
       .then(res => res.ok ? res.json() : Promise.reject(res))

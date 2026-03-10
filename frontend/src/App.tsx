@@ -18,6 +18,7 @@ import { AdminUsers } from './screens/AdminUsers';
 import { DevSpace } from './pages/DevSpace';
 import { DevWorkspace } from './components/DevWorkspace';
 import { QueryInspectorDashboard } from './screens/QueryInspectorDashboard';
+import { apiUrl } from './lib/api';
 
 type ViewType = 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'profile' | 'queries' | 'api-keys' | 'admin' | 'admin-users' | 'devspace' | 'inspector';
 type AppMode = 'standard' | 'dev';
@@ -57,7 +58,7 @@ function App() {
 
   const fetchUserRole = async (token: string) => {
     try {
-      const response = await fetch('/auth/me', {
+      const response = await fetch(apiUrl('/api/v1/auth/me'), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

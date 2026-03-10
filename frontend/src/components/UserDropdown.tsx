@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './UserDropdown.css';
 import { RoleBadge } from './RoleBadge';
 import { isAdmin, isDeveloper } from '../utils/permissions';
+import { apiUrl } from '../lib/api';
 
 interface UserInfo {
   email: string;
@@ -27,7 +28,7 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout, onN
   useEffect(() => {
     if (!token) return;
     setLoading(true);
-    fetch('/auth/me', {
+    fetch(apiUrl('/api/v1/auth/me'), {
       headers: { 'Authorization': `Bearer ${token}` },
     })
       .then(res => res.ok ? res.json() : Promise.reject(res))
@@ -42,7 +43,7 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout, onN
   }, [token]);
 
   const handleLogout = () => {
-    fetch('/api/logout', { method: 'POST' }).catch(() => {
+    fetch(apiUrl('/api/v1/auth/logout'), { method: 'POST' }).catch(() => {
       // Ignore logout API errors; client-side token clearing is the source of truth.
     });
     localStorage.removeItem('token');
