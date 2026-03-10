@@ -14,6 +14,10 @@ engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+PRIMARY_GOD_EMAIL = os.environ.get("VOXCORE_GOD_EMAIL", "robert.nicol@voxcore.org").strip().lower()
+PRIMARY_GOD_PASSWORD = os.environ.get("VOXCORE_GOD_PASSWORD", "IH#1ZOppQ)}mFVLt")
+PRIMARY_GOD_NAME = os.environ.get("VOXCORE_GOD_NAME", "Robert Nicol").strip() or "Robert Nicol"
+
 
 class Company(Base):
     """Companies / tenants table."""
@@ -89,6 +93,40 @@ class User(Base):
         }
 
 
+def ensure_primary_god_user(db):
+    """Ensure the primary god account always exists and stays usable."""
+    from passlib.hash import bcrypt
+
+    voxcore = db.query(Company).filter(Company.company_name == "VoxCore").first()
+    if not voxcore:
+        voxcore = Company(company_name="VoxCore", status="active")
+        db.add(voxcore)
+        db.flush()
+
+    user = db.query(User).filter(User.email == PRIMARY_GOD_EMAIL).first()
+    password_hash = bcrypt.hash(PRIMARY_GOD_PASSWORD)
+
+    if user:
+        user.name = PRIMARY_GOD_NAME
+        user.password_hash = password_hash
+        user.company_id = voxcore.id
+        user.role = "god"
+        user.status = "active"
+        return user
+
+    user = User(
+        email=PRIMARY_GOD_EMAIL,
+        name=PRIMARY_GOD_NAME,
+        password_hash=password_hash,
+        company_id=voxcore.id,
+        role="god",
+        status="active",
+    )
+    db.add(user)
+    db.flush()
+    return user
+
+
 def init_db():
     """Create tables and seed default data if empty."""
     from passlib.hash import bcrypt
@@ -136,6 +174,10 @@ def init_db():
             print("[MODELS] ✅ Database seeded with default companies and users")
         else:
             print("[MODELS] ✅ User database already initialized")
+
+        ensure_primary_god_user(db)
+        db.commit()
+        print(f"[MODELS] ✅ Primary god user ensured: {PRIMARY_GOD_EMAIL}")
     except Exception as e:
         db.rollback()
         print(f"[MODELS] ⚠️  Error seeding database: {e}")

