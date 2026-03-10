@@ -3,6 +3,7 @@ import './Chat.css';
 import ConnectionHeader from './ConnectionHeader';
 import ChartRenderer from './ChartRenderer';
 import { ClientDetailsModal } from './ClientDetailsModal';
+import { apiUrl, API_BASE_URL } from '../lib/api';
 
 interface Message {
   id: string;
@@ -140,7 +141,7 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/query', {
+      const response = await fetch(apiUrl('/api/v1/query'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -187,7 +188,7 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
       }
     } catch (error) {
       console.error('Error:', error);
-      let errorText = '⚠️ Backend connection error. Make sure the API server is running on http://localhost:8000';
+      let errorText = `⚠️ Backend connection error. Make sure the API server is running on ${API_BASE_URL}`;
       
       if (error instanceof Error) {
         if (error.name === 'AbortError') {

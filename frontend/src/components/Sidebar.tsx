@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Sidebar.css';
 import { isAdmin, isDeveloper } from '../utils/permissions';
+import { apiUrl } from '../lib/api';
 
 interface SidebarProps {
   onClose?: () => void;
@@ -265,7 +266,7 @@ function Sidebar({ onClose, onQuestionSelect, onNavigate, currentView, isOpen, o
 
     try {
       // Send test connection request to backend
-      const response = await fetch('http://localhost:8000/api/v1/auth/test-connection', {
+      const response = await fetch(apiUrl('/api/v1/auth/test-connection'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -306,7 +307,7 @@ function Sidebar({ onClose, onQuestionSelect, onNavigate, currentView, isOpen, o
 
     try {
       // Call backend connect endpoint
-      const response = await fetch('http://localhost:8000/api/v1/auth/connect', {
+      const response = await fetch(apiUrl('/api/v1/auth/connect'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -367,7 +368,7 @@ function Sidebar({ onClose, onQuestionSelect, onNavigate, currentView, isOpen, o
     try {
       setConnectionStatus('🔄 Generating smart questions...');
       
-      const response = await fetch('http://localhost:8000/api/v1/schema/generate-questions', {
+      const response = await fetch(apiUrl('/api/v1/schema/generate-questions'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

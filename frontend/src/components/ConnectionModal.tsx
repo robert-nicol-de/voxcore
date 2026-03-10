@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './ConnectionModal.css';
+import { apiUrl } from '../lib/api';
 
 interface ConnectionModalProps {
   isOpen: boolean;
@@ -116,7 +117,7 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
 
   const loadSavedCredentials = async (dbType: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/auth/load-ini-credentials/${dbType}`, {
+      const response = await fetch(apiUrl(`/api/v1/auth/load-ini-credentials/${dbType}`), {
         method: 'POST'
       });
       if (response.ok) {
@@ -187,7 +188,7 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/auth/connect', {
+      const response = await fetch(apiUrl('/api/v1/auth/connect'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

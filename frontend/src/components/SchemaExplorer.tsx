@@ -1,5 +1,6 @@
 import { X, Database, Table2, Columns, ChevronDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../lib/api';
 
 interface Column {
   name: string;
@@ -24,7 +25,7 @@ export default function SchemaExplorer({ onClose }: SchemaExplorerProps) {
   useEffect(() => {
     const fetchSchema = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/v1/schema');
+        const response = await fetch(apiUrl('/api/v1/schema'));
         if (!response.ok) {
           throw new Error('Failed to fetch schema');
         }
