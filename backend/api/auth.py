@@ -22,14 +22,14 @@ DUMMY_USERS = [
     ),
     User(
         id=2,
-        email="analyst@voxcore.com",
+        email="ico@astutetech.co.za",
         password_hash=hash_password("analyst123"),
         role="analyst",
         company_id=1,
     ),
     User(
         id=3,
-        email="developer@voxcore.com",
+        email="drikus.dewet@astutetech.co.za",
         password_hash=hash_password("dev123"),
         role="developer",
         company_id=1,
