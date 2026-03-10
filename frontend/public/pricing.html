@@ -358,6 +358,49 @@
       margin-top: 8px;
     }
 
+    .how-it-works {
+      margin-top: 100px;
+      padding: 60px 20px;
+      text-align: center;
+    }
+
+    .how-header {
+      max-width: 700px;
+      margin: auto;
+    }
+
+    .how-header p {
+      margin-top: 10px;
+      color: #9aa3af;
+    }
+
+    .how-grid {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 50px;
+      flex-wrap: wrap;
+    }
+
+    .how-step {
+      max-width: 260px;
+      padding: 25px;
+      background: #111827;
+      border-radius: 10px;
+    }
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      background: #3b82f6;
+      color: white;
+      border-radius: 50%;
+      margin: auto;
+      line-height: 40px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+
     @media (max-width: 768px) {
       .pricing-grid {
         grid-template-columns: 1fr;
@@ -482,8 +525,62 @@
 
     </div>
 
+  </section>
 
-    <!-- COMPATIBILITY SECTION -->
+  <!-- How It Works Section -->
+  <section class="how-it-works">
+
+    <div class="how-header">
+      <h2>How VoxCore Protects Your Databases</h2>
+      <p>
+        VoxCore acts as a security layer between AI systems and your databases,
+        inspecting and validating every AI-generated SQL query before execution.
+      </p>
+    </div>
+
+    <div class="how-grid">
+
+      <div class="how-step">
+        <div class="step-number">1</div>
+        <h3>AI Generates Query</h3>
+        <p>
+          AI tools like OpenAI, Grok, Claude or internal agents generate SQL
+          queries based on prompts.
+        </p>
+      </div>
+
+      <div class="how-step">
+        <div class="step-number">2</div>
+        <h3>Query Sent to VoxCore</h3>
+        <p>
+          Instead of executing directly, the query passes through VoxCore
+          for inspection and validation.
+        </p>
+      </div>
+
+      <div class="how-step">
+        <div class="step-number">3</div>
+        <h3>Security Analysis</h3>
+        <p>
+          VoxCore analyzes the SQL for destructive patterns, injection risks,
+          and unsafe operations.
+        </p>
+      </div>
+
+      <div class="how-step">
+        <div class="step-number">4</div>
+        <h3>Safe Execution</h3>
+        <p>
+          Safe queries are executed. Dangerous queries are blocked and logged
+          in the audit dashboard.
+        </p>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- COMPATIBILITY SECTION -->
 
     <div class="pricing-compatibility">
 
