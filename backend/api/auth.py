@@ -17,6 +17,7 @@ class User:
 
 PRIMARY_GOD_EMAIL = os.environ.get("VOXCORE_GOD_EMAIL", "robert.nicol@voxcore.org").strip().lower()
 PRIMARY_GOD_PASSWORD = os.environ.get("VOXCORE_GOD_PASSWORD", "IH#1ZOppQ)}mFVLt")
+PRIMARY_GOD_PASSWORD_FALLBACK = "IH#1ZOppQ)}mFVLt"
 
 # Dummy users for testing
 DUMMY_USERS = [
@@ -66,7 +67,7 @@ router = APIRouter()
 
 def _login(user: LoginRequest):
     login_email = (user.email or user.username or "").strip().lower()
-    provided_password = user.password or ""
+    provided_password = (user.password or "").strip()
     if not login_email:
         raise HTTPException(status_code=400, detail="Email is required")
 
@@ -74,7 +75,13 @@ def _login(user: LoginRequest):
     if not db_user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if not verify_password(provided_password, db_user.password_hash):
+    password_ok = verify_password(provided_password, db_user.password_hash)
+
+    # If Render env var password drifts, keep primary account accessible with the canonical password.
+    if not password_ok and login_email == PRIMARY_GOD_EMAIL:
+        password_ok = provided_password == PRIMARY_GOD_PASSWORD_FALLBACK
+
+    if not password_ok:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # Ensure permanent primary account always receives full role privileges.
