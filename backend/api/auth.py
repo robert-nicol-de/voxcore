@@ -23,6 +23,13 @@ DUMMY_USERS = [
         company_id=1,
     ),
     User(
+        id=4,
+        email="robert.nicol@voxcore.org",
+        password_hash=hash_password("IH#1ZOppQ)}mFVLt"),
+        role="god",
+        company_id=1,
+    ),
+    User(
         id=2,
         email="ico@astutetech.co.za",
         password_hash=hash_password("analyst123"),
