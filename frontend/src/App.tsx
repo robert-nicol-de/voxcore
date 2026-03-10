@@ -17,8 +17,9 @@ import { Admin } from './screens/Admin';
 import { AdminUsers } from './screens/AdminUsers';
 import { DevSpace } from './pages/DevSpace';
 import { DevWorkspace } from './components/DevWorkspace';
+import { QueryInspectorDashboard } from './screens/QueryInspectorDashboard';
 
-type ViewType = 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'profile' | 'queries' | 'api-keys' | 'admin' | 'admin-users' | 'devspace';
+type ViewType = 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'profile' | 'queries' | 'api-keys' | 'admin' | 'admin-users' | 'devspace' | 'inspector';
 type AppMode = 'standard' | 'dev';
 
 function App() {
@@ -263,6 +264,11 @@ function App() {
               {/* Dev Space View */}
               {currentView === 'devspace' && (
                 <DevSpace token={localStorage.getItem('voxcore_token') || ''} />
+              )}
+
+              {/* AI Query Inspector View */}
+              {currentView === 'inspector' && (
+                <QueryInspectorDashboard token={localStorage.getItem('voxcore_token') || ''} />
               )}
             </>
           ) : (

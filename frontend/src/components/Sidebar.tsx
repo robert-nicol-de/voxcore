@@ -5,8 +5,8 @@ import { isAdmin, isDeveloper } from '../utils/permissions';
 interface SidebarProps {
   onClose?: () => void;
   onQuestionSelect?: (question: string) => void;
-  onNavigate?: (view: 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'devspace') => void;
-  currentView?: 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'devspace';
+  onNavigate?: (view: 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'devspace' | 'inspector') => void;
+  currentView?: 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'devspace' | 'inspector';
   isOpen?: boolean;
   onToggle?: () => void;
   userRole?: string;
@@ -506,6 +506,17 @@ function Sidebar({ onClose, onQuestionSelect, onNavigate, currentView, isOpen, o
               🛠️ Dev Space
             </button>
           )}
+
+          <button
+            className="nav-btn"
+            onClick={() => {
+              console.log('Clicked: inspector');
+              if (onNavigate) onNavigate('inspector');
+            }}
+            title="AI Query Inspector"
+          >
+            🔍 Query Inspector
+          </button>
         </div>
       </div>
 

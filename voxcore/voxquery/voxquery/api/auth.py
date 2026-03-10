@@ -20,6 +20,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+ROLE_ACCESS_MESSAGES = {
+    "god": "God admin access required",
+    "admin": "Admin access required",
+    "developer": "Developer access required",
+    "user": "User access required",
+    "viewer": "Viewer access required",
+}
+
+
 # ── Pydantic schemas ──────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
@@ -128,6 +137,27 @@ def _get_current_user(request: Request, db: Session) -> User:
     return user
 
 
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+    """FastAPI dependency wrapper for resolving the authenticated user."""
+    return _get_current_user(request, db)
+
+
+def require_role(required_role: str):
+    """Create a dependency that enforces a minimum role level."""
+    if required_role not in User.ROLE_HIERARCHY:
+        raise ValueError(f"Unknown role: {required_role}")
+
+    def role_dependency(current_user: User = Depends(get_current_user)) -> User:
+        if not current_user.has_permission(required_role):
+            raise HTTPException(
+                status_code=403,
+                detail=ROLE_ACCESS_MESSAGES.get(required_role, "Insufficient permissions"),
+            )
+        return current_user
+
+    return role_dependency
+
+
 # ── Auth endpoints ────────────────────────────────────────────────
 
 @router.post("/auth/login", response_model=LoginResponse)
@@ -181,25 +211,23 @@ async def login(request: LoginRequest) -> LoginResponse:
 
 
 @router.get("/auth/me", response_model=MeResponse)
-async def get_me(request: Request):
+async def get_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Return the currently logged-in user's profile."""
-    db = SessionLocal()
-    try:
-        user = _get_current_user(request, db)
-        company = db.query(Company).filter(Company.id == user.company_id).first()
-        return MeResponse(
-            user_id=user.id,
-            email=user.email,
-            name=user.name,
-            role=user.role,
-            role_label=User.ROLE_LABELS.get(user.role, user.role),
-            company=company.company_name if company else "",
-            company_id=user.company_id,
-            status=user.status,
-            last_login=user.last_login.isoformat() if user.last_login else None,
-        )
-    finally:
-        db.close()
+    company = db.query(Company).filter(Company.id == current_user.company_id).first()
+    return MeResponse(
+        user_id=current_user.id,
+        email=current_user.email,
+        name=current_user.name,
+        role=current_user.role,
+        role_label=User.ROLE_LABELS.get(current_user.role, current_user.role),
+        company=company.company_name if company else "",
+        company_id=current_user.company_id,
+        status=current_user.status,
+        last_login=current_user.last_login.isoformat() if current_user.last_login else None,
+    )
 
 
 @router.post("/auth/logout")
@@ -211,170 +239,149 @@ async def logout():
 # ── User management (admin/god only) ─────────────────────────────
 
 @router.get("/auth/users", response_model=List[UserResponse])
-async def list_users(request: Request):
+async def list_users(
+    current: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
     """List users in the current user's company (admin+), or all users (god)."""
-    db = SessionLocal()
-    try:
-        current = _get_current_user(request, db)
-        if not current.has_permission("admin"):
-            raise HTTPException(status_code=403, detail="Admin access required")
+    if current.role == "god":
+        users = db.query(User).all()
+    else:
+        users = db.query(User).filter(User.company_id == current.company_id).all()
 
-        if current.role == "god":
-            users = db.query(User).all()
-        else:
-            users = db.query(User).filter(User.company_id == current.company_id).all()
-
-        return [
-            UserResponse(
-                id=u.id,
-                email=u.email,
-                name=u.name,
-                role=u.role,
-                role_label=User.ROLE_LABELS.get(u.role, u.role),
-                status=u.status,
-                company_id=u.company_id,
-                company_name=u.company.company_name if u.company else None,
-                created_at=u.created_at.isoformat() if u.created_at else None,
-                last_login=u.last_login.isoformat() if u.last_login else None,
-            )
-            for u in users
-        ]
-    finally:
-        db.close()
+    return [
+        UserResponse(
+            id=u.id,
+            email=u.email,
+            name=u.name,
+            role=u.role,
+            role_label=User.ROLE_LABELS.get(u.role, u.role),
+            status=u.status,
+            company_id=u.company_id,
+            company_name=u.company.company_name if u.company else None,
+            created_at=u.created_at.isoformat() if u.created_at else None,
+            last_login=u.last_login.isoformat() if u.last_login else None,
+        )
+        for u in users
+    ]
 
 
 @router.post("/auth/users", response_model=UserResponse)
-async def invite_user(body: InviteUserRequest, request: Request):
+async def invite_user(
+    body: InviteUserRequest,
+    current: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
     """Create/invite a user into the current user's company."""
-    db = SessionLocal()
-    try:
-        current = _get_current_user(request, db)
-        if not current.has_permission("admin"):
-            raise HTTPException(status_code=403, detail="Admin access required")
+    # Cannot create a role higher than your own
+    if User.ROLE_HIERARCHY.get(body.role, 0) > User.ROLE_HIERARCHY.get(current.role, 0):
+        raise HTTPException(status_code=403, detail="Cannot assign a role higher than your own")
 
-        # Cannot create a role higher than your own
-        if User.ROLE_HIERARCHY.get(body.role, 0) > User.ROLE_HIERARCHY.get(current.role, 0):
-            raise HTTPException(status_code=403, detail="Cannot assign a role higher than your own")
+    # Check duplicate email
+    existing = db.query(User).filter(User.email == body.email.strip().lower()).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="A user with this email already exists")
 
-        # Check duplicate email
-        existing = db.query(User).filter(User.email == body.email.strip().lower()).first()
-        if existing:
-            raise HTTPException(status_code=409, detail="A user with this email already exists")
+    new_user = User(
+        email=body.email.strip().lower(),
+        name=body.name.strip(),
+        password_hash=bcrypt.hash(body.password),
+        company_id=current.company_id,
+        role=body.role,
+        status="active",
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
 
-        new_user = User(
-            email=body.email.strip().lower(),
-            name=body.name.strip(),
-            password_hash=bcrypt.hash(body.password),
-            company_id=current.company_id,
-            role=body.role,
-            status="active",
-        )
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-
-        return UserResponse(
-            id=new_user.id,
-            email=new_user.email,
-            name=new_user.name,
-            role=new_user.role,
-            role_label=User.ROLE_LABELS.get(new_user.role, new_user.role),
-            status=new_user.status,
-            company_id=new_user.company_id,
-            company_name=current.company.company_name if current.company else None,
-            created_at=new_user.created_at.isoformat() if new_user.created_at else None,
-            last_login=None,
-        )
-    finally:
-        db.close()
+    return UserResponse(
+        id=new_user.id,
+        email=new_user.email,
+        name=new_user.name,
+        role=new_user.role,
+        role_label=User.ROLE_LABELS.get(new_user.role, new_user.role),
+        status=new_user.status,
+        company_id=new_user.company_id,
+        company_name=current.company.company_name if current.company else None,
+        created_at=new_user.created_at.isoformat() if new_user.created_at else None,
+        last_login=None,
+    )
 
 
 @router.patch("/auth/users/{user_id}", response_model=UserResponse)
-async def update_user(user_id: int, body: UpdateUserRequest, request: Request):
+async def update_user(
+    user_id: int,
+    body: UpdateUserRequest,
+    current: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
     """Update a user (role, status, name). Admin+ only."""
-    db = SessionLocal()
-    try:
-        current = _get_current_user(request, db)
-        if not current.has_permission("admin"):
-            raise HTTPException(status_code=403, detail="Admin access required")
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
 
-        target = db.query(User).filter(User.id == user_id).first()
-        if not target:
-            raise HTTPException(status_code=404, detail="User not found")
+    # Company isolation: admins can only manage own company
+    if current.role != "god" and target.company_id != current.company_id:
+        raise HTTPException(status_code=403, detail="Cannot manage users from another company")
 
-        # Company isolation: admins can only manage own company
-        if current.role != "god" and target.company_id != current.company_id:
-            raise HTTPException(status_code=403, detail="Cannot manage users from another company")
+    if body.name is not None:
+        target.name = body.name.strip()
+    if body.role is not None:
+        if User.ROLE_HIERARCHY.get(body.role, 0) > User.ROLE_HIERARCHY.get(current.role, 0):
+            raise HTTPException(status_code=403, detail="Cannot assign a role higher than your own")
+        target.role = body.role
+    if body.status is not None:
+        target.status = body.status
 
-        if body.name is not None:
-            target.name = body.name.strip()
-        if body.role is not None:
-            if User.ROLE_HIERARCHY.get(body.role, 0) > User.ROLE_HIERARCHY.get(current.role, 0):
-                raise HTTPException(status_code=403, detail="Cannot assign a role higher than your own")
-            target.role = body.role
-        if body.status is not None:
-            target.status = body.status
+    db.commit()
+    db.refresh(target)
 
-        db.commit()
-        db.refresh(target)
-
-        return UserResponse(
-            id=target.id,
-            email=target.email,
-            name=target.name,
-            role=target.role,
-            role_label=User.ROLE_LABELS.get(target.role, target.role),
-            status=target.status,
-            company_id=target.company_id,
-            company_name=target.company.company_name if target.company else None,
-            created_at=target.created_at.isoformat() if target.created_at else None,
-            last_login=target.last_login.isoformat() if target.last_login else None,
-        )
-    finally:
-        db.close()
+    return UserResponse(
+        id=target.id,
+        email=target.email,
+        name=target.name,
+        role=target.role,
+        role_label=User.ROLE_LABELS.get(target.role, target.role),
+        status=target.status,
+        company_id=target.company_id,
+        company_name=target.company.company_name if target.company else None,
+        created_at=target.created_at.isoformat() if target.created_at else None,
+        last_login=target.last_login.isoformat() if target.last_login else None,
+    )
 
 
 @router.delete("/auth/users/{user_id}")
-async def delete_user(user_id: int, request: Request):
+async def delete_user(
+    user_id: int,
+    current: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
     """Delete a user. Admin+ only."""
-    db = SessionLocal()
-    try:
-        current = _get_current_user(request, db)
-        if not current.has_permission("admin"):
-            raise HTTPException(status_code=403, detail="Admin access required")
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
 
-        target = db.query(User).filter(User.id == user_id).first()
-        if not target:
-            raise HTTPException(status_code=404, detail="User not found")
+    if current.role != "god" and target.company_id != current.company_id:
+        raise HTTPException(status_code=403, detail="Cannot delete users from another company")
 
-        if current.role != "god" and target.company_id != current.company_id:
-            raise HTTPException(status_code=403, detail="Cannot delete users from another company")
+    if target.id == current.id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
 
-        if target.id == current.id:
-            raise HTTPException(status_code=400, detail="Cannot delete yourself")
-
-        db.delete(target)
-        db.commit()
-        return {"message": f"User {target.email} deleted"}
-    finally:
-        db.close()
+    db.delete(target)
+    db.commit()
+    return {"message": f"User {target.email} deleted"}
 
 
 # ── Company listing (god only) ────────────────────────────────────
 
 @router.get("/auth/companies")
-async def list_companies(request: Request):
+async def list_companies(
+    current: User = Depends(require_role("god")),
+    db: Session = Depends(get_db),
+):
     """List all companies (god only)."""
-    db = SessionLocal()
-    try:
-        current = _get_current_user(request, db)
-        if current.role != "god":
-            raise HTTPException(status_code=403, detail="God admin access required")
-
-        companies = db.query(Company).all()
-        return [c.to_dict() for c in companies]
-    finally:
-        db.close()
+    companies = db.query(Company).all()
+    return [c.to_dict() for c in companies]
 
 
 @router.post("/auth/connect", response_model=ConnectResponse)
