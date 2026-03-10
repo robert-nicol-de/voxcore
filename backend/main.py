@@ -13,6 +13,7 @@ else:
 # NOW import backend modules that depend on environment variables
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from backend.api.query import router as query_router
@@ -30,6 +31,21 @@ app = FastAPI(
     title="VoxCore API",
     description="AI Data Governance and SQL Risk Engine",
     version="1.0"
+)
+
+# Enable CORS to allow frontend requests from voxcore.org
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://voxcore.org",
+        "https://www.voxcore.org",
+        "https://voxquery-api.onrender.com",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.state.limiter = limiter
