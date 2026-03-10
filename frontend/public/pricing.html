@@ -285,6 +285,79 @@
       line-height: 1.6;
     }
 
+    .risk-comparison {
+      margin-top: 100px;
+      padding: 60px 20px;
+      text-align: center;
+    }
+
+    .risk-header {
+      max-width: 700px;
+      margin: auto;
+    }
+
+    .risk-header p {
+      color: #9aa3af;
+      margin-top: 10px;
+    }
+
+    .comparison-grid {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 50px;
+      flex-wrap: wrap;
+    }
+
+    .risk-card {
+      max-width: 380px;
+      padding: 30px;
+      border-radius: 12px;
+      background: #111827;
+      text-align: left;
+    }
+
+    .risk-danger {
+      border: 1px solid #ef4444;
+    }
+
+    .risk-safe {
+      border: 1px solid #3b82f6;
+    }
+
+    .risk-card ul {
+      margin-top: 15px;
+      padding-left: 20px;
+    }
+
+    .risk-card li {
+      margin-bottom: 10px;
+    }
+
+    .risk-example {
+      margin-top: 20px;
+      background: #020617;
+      padding: 15px;
+      border-radius: 6px;
+    }
+
+    .risk-example pre {
+      background: #000;
+      padding: 10px;
+      color: #22c55e;
+      overflow-x: auto;
+    }
+
+    .risk-result {
+      color: #ef4444;
+      margin-top: 8px;
+    }
+
+    .risk-blocked {
+      color: #22c55e;
+      margin-top: 8px;
+    }
+
     @media (max-width: 768px) {
       .pricing-grid {
         grid-template-columns: 1fr;
@@ -463,6 +536,65 @@
           <p>Track and review all AI activity across your databases.</p>
         </div>
 
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- Risk Comparison Section -->
+  <section class="risk-comparison">
+
+    <div class="risk-header">
+      <h2>Protect Your Database From Unsafe AI Queries</h2>
+      <p>
+        AI tools can generate powerful SQL queries, but without proper safeguards
+        they can also damage or delete critical data. VoxCore inspects every
+        AI-generated query before it reaches your database.
+      </p>
+    </div>
+
+    <div class="comparison-grid">
+
+      <!-- WITHOUT VOXCORE -->
+
+      <div class="risk-card risk-danger">
+        <h3>⚠️ Without VoxCore</h3>
+
+        <ul>
+          <li>AI agent generates unsafe SQL</li>
+          <li>Accidental <code>DELETE</code> or <code>DROP TABLE</code> commands</li>
+          <li>Production data deleted or corrupted</li>
+          <li>No validation or query inspection</li>
+          <li>No audit trail for AI actions</li>
+        </ul>
+
+        <div class="risk-example">
+          <p><strong>Example AI Query:</strong></p>
+          <pre>DROP TABLE customers;</pre>
+          <p class="risk-result">Database table permanently deleted.</p>
+        </div>
+      </div>
+
+
+      <!-- WITH VOXCORE -->
+
+      <div class="risk-card risk-safe">
+        <h3>🛡️ With VoxCore</h3>
+
+        <ul>
+          <li>AI queries inspected before execution</li>
+          <li>Dangerous SQL patterns detected</li>
+          <li>Query risk scoring engine</li>
+          <li>Unsafe queries automatically blocked</li>
+          <li>Full audit log of AI activity</li>
+        </ul>
+
+        <div class="risk-example">
+          <p><strong>Example AI Query:</strong></p>
+          <pre>DROP TABLE customers;</pre>
+          <p class="risk-blocked">Query blocked: destructive SQL detected.</p>
+        </div>
       </div>
 
     </div>
