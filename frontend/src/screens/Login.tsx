@@ -71,7 +71,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => 
     <div className="login-container">
       <div className="login-content">
         <img 
-          src="/voxcore-landing-new.png"
+          src="/images/voxcore-full-logo.png"
           alt="VoxCore Logo"
           className="login-image login-image-small"
         />
