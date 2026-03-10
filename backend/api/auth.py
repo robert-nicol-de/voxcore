@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from backend.services.auth import hash_password, verify_password, create_token
@@ -44,14 +46,18 @@ def get_user_by_email(email):
     return None
 
 class LoginRequest(BaseModel):
-    email: str
+    email: Optional[str] = None
+    username: Optional[str] = None
     password: str
 
 router = APIRouter()
 
-@router.post("/api/login")
-def login(user: LoginRequest):
-    db_user = get_user_by_email(user.email)
+def _login(user: LoginRequest):
+    login_email = (user.email or user.username or "").strip().lower()
+    if not login_email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    db_user = get_user_by_email(login_email)
     if not db_user or not verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_token({
@@ -59,9 +65,31 @@ def login(user: LoginRequest):
         "role": db_user.role,
         "company_id": db_user.company_id
     })
-    return {"token": token}
+    return {
+        "token": token,
+        "access_token": token,
+        "token_type": "bearer",
+        "user_email": db_user.email,
+        "user_name": db_user.email.split("@")[0],
+        "role": db_user.role,
+    }
+
+
+@router.post("/api/login")
+def login(user: LoginRequest):
+    return _login(user)
+
+
+@router.post("/api/v1/auth/login")
+def login_v1(user: LoginRequest):
+    return _login(user)
 
 
 @router.post("/api/logout")
 def logout():
+    return {"message": "Logged out"}
+
+
+@router.post("/api/v1/auth/logout")
+def logout_v1():
     return {"message": "Logged out"}
