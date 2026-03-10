@@ -13,8 +13,15 @@ else:
 # NOW import backend modules that depend on environment variables
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from backend.api.query import router as query_router
 from backend.api.scanner import router as scanner_router
+from backend.api.auth import router as auth_router
+from backend.api.admin import router as admin_router
+from backend.api.metrics import router as metrics_router
+from backend.api.simulate import router as simulate_router
+from backend.services.rate_limiter import limiter
 
 
 app = FastAPI(
@@ -22,6 +29,9 @@ app = FastAPI(
     description="AI Data Governance and SQL Risk Engine",
     version="1.0"
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # Root endpoint
@@ -44,8 +54,12 @@ def health():
 
 
 # Include API routes BEFORE static files
+app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(query_router)
 app.include_router(scanner_router)
+app.include_router(metrics_router)
+app.include_router(simulate_router)
 
 # Serve React frontend from dist folder
 frontend_dist = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')

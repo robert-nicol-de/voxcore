@@ -98,7 +98,11 @@ function App() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     setUserName('');
-    window.location.href = '/app';
+    localStorage.removeItem('token');
+    localStorage.removeItem('voxcore_token');
+    localStorage.removeItem('voxcore_user_name');
+    localStorage.removeItem('voxcore_user_email');
+    window.location.href = '/login';
   };
 
   // Show login screen if not logged in - ALWAYS CHECK AUTH FIRST
@@ -135,7 +139,7 @@ function App() {
     <div className="app" data-theme={theme}>
       <div className={`sidebar ${!sidebarOpen ? 'closed' : ''}`}>
         <Sidebar 
-          currentView={currentView}
+          currentView={currentView as any}
           onNavigate={handleNavigate}
           onQuestionSelect={handleQuestionSelect}
           isOpen={sidebarOpen}
@@ -247,7 +251,7 @@ function App() {
               {currentView === 'admin' && (
                 <Admin 
                   token={localStorage.getItem('voxcore_token') || ''} 
-                  onNavigate={handleNavigate}
+                  onNavigate={(page) => handleNavigate(page as ViewType)}
                 />
               )}
 

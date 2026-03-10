@@ -15,7 +15,7 @@ interface UserInfo {
 interface UserDropdownProps {
   token: string;
   onLogout: () => void;
-  onNavigate?: (page: string) => void;
+  onNavigate?: (page: any) => void;
 }
 
 export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout, onNavigate }) => {
@@ -42,8 +42,13 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout, onN
   }, [token]);
 
   const handleLogout = () => {
+    fetch('/api/logout', { method: 'POST' }).catch(() => {
+      // Ignore logout API errors; client-side token clearing is the source of truth.
+    });
+    localStorage.removeItem('token');
     localStorage.removeItem('voxcore_token');
     localStorage.removeItem('voxcore_user_name');
+    localStorage.removeItem('voxcore_user_email');
     sessionStorage.clear();
     onLogout();
     window.location.href = '/login';
