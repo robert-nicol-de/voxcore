@@ -25,7 +25,14 @@
       max-width: 500px;
       margin: 0 auto;
     }
-
+    .pricing-container {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+      max-width: 1400px;
+      margin: 0 auto 60px;
+    }
     .pricing-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -43,6 +50,8 @@
       flex-direction: column;
       transition: all 0.3s ease;
       position: relative;
+      width: 100%;
+      max-width: 340px;
     }
 
     .pricing-card:hover {
@@ -60,6 +69,13 @@
     .pricing-card.featured:hover {
       transform: scale(1.05) translateY(-8px);
       box-shadow: 0 20px 40px rgba(100, 150, 255, 0.2);
+    }
+
+    .pricing-card h3 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #fff;
     }
 
     .pricing-badge {
@@ -130,6 +146,24 @@
 
     .pricing-card.featured .btn-primary {
       flex: 1;
+    }
+
+    .features {
+      list-style: none;
+      padding: 0;
+      margin: 20px 0 32px;
+      flex: 1;
+    }
+
+    .features li {
+      padding: 12px 0;
+      font-size: 14px;
+      color: #aaa;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .features li:last-child {
+      border-bottom: none;
     }
 
     .faq-section {
