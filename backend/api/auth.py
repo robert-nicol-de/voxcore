@@ -11,19 +11,36 @@ class User:
         self.role = role
         self.company_id = company_id
 
-# Dummy user for testing
-DUMMY_USER = User(
-    id=1,
-    email="admin@voxcore.com",
-    password_hash=hash_password("admin123"),
-    role="god",
-    company_id=1
-)
+# Dummy users for testing
+DUMMY_USERS = [
+    User(
+        id=1,
+        email="admin@voxcore.com",
+        password_hash=hash_password("admin123"),
+        role="god",
+        company_id=1,
+    ),
+    User(
+        id=2,
+        email="analyst@voxcore.com",
+        password_hash=hash_password("analyst123"),
+        role="analyst",
+        company_id=1,
+    ),
+    User(
+        id=3,
+        email="developer@voxcore.com",
+        password_hash=hash_password("dev123"),
+        role="developer",
+        company_id=1,
+    ),
+]
 
 def get_user_by_email(email):
     # Replace with real DB lookup
-    if email == DUMMY_USER.email:
-        return DUMMY_USER
+    for user in DUMMY_USERS:
+        if email == user.email:
+            return user
     return None
 
 class LoginRequest(BaseModel):
