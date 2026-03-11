@@ -9,7 +9,7 @@ import Policies from './pages/Policies';
 import QueryLogs from './pages/QueryLogs';
 import Sandbox from './pages/Sandbox';
 import SqlAssistant from './pages/SqlAssistant';
-import { VoxCloudSidebar } from './components/VoxCloudSidebar';
+import { Sidebar } from './components/Sidebar';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -66,7 +66,7 @@ function App() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0f172a' }}>
-      <VoxCloudSidebar />
+      <Sidebar />
       <div style={{ flex: 1, minWidth: 0 }}>
         <header style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <UserDropdown token={localStorage.getItem('voxcore_token') || ''} onLogout={handleLogout} />
