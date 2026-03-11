@@ -1,125 +1,208 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import './PoliciesManager.css';
+import { apiUrl } from '../lib/api';
 
-interface Policy {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  category: string;
-  rules: string[];
-  lastModified: string;
+interface CompanyPolicies {
+  block_destructive_queries: {
+    enabled: boolean;
+    blocked_keywords: string[];
+  };
+  protect_sensitive_columns: {
+    enabled: boolean;
+    blocked_columns: string[];
+  };
+  read_only_ai_mode: {
+    enabled: boolean;
+    allowed_statements: string[];
+  };
+  query_result_limits: {
+    enabled: boolean;
+    max_rows: number;
+  };
 }
 
+interface QueryTestResult {
+  allowed: boolean;
+  message: string;
+  blocked: boolean;
+  reasons: string[];
+  original_query: string;
+  rewritten_query: string;
+}
+
+const DEFAULT_POLICIES: CompanyPolicies = {
+  block_destructive_queries: {
+    enabled: true,
+    blocked_keywords: ['drop', 'truncate', 'alter', 'delete'],
+  },
+  protect_sensitive_columns: {
+    enabled: false,
+    blocked_columns: ['ssn', 'credit_card', 'password', 'email'],
+  },
+  read_only_ai_mode: {
+    enabled: false,
+    allowed_statements: ['select', 'with'],
+  },
+  query_result_limits: {
+    enabled: false,
+    max_rows: 1000,
+  },
+};
+
+const normalizeCsv = (value: string): string[] =>
+  value
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+const getCompanyId = async (): Promise<string> => {
+  const cached = localStorage.getItem('voxcore_company_id');
+  if (cached) {
+    return cached;
+  }
+
+  const token = localStorage.getItem('voxcore_token');
+  if (!token) {
+    return 'default';
+  }
+
+  try {
+    const response = await fetch(apiUrl('/api/v1/auth/me'), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.ok) {
+      const profile = await response.json();
+      const companyId = String(profile.company_id ?? 'default');
+      localStorage.setItem('voxcore_company_id', companyId);
+      return companyId;
+    }
+  } catch (error) {
+    console.warn('Failed to resolve company id for policy manager', error);
+  }
+
+  return 'default';
+};
+
 export const PoliciesManager: React.FC = () => {
-  const mockPolicies: Policy[] = [
-    {
-      id: '1',
-      name: 'Row-Level Security',
-      description: 'Restrict data access based on user roles and attributes',
-      enabled: true,
-      category: 'Access Control',
-      rules: [
-        'Users can only access rows where department matches their assigned department',
-        'Managers can access all rows in their department',
-        'Admins have unrestricted access',
-      ],
-      lastModified: '2024-02-28 10:30:00',
-    },
-    {
-      id: '2',
-      name: 'Data Masking',
-      description: 'Automatically mask sensitive data in query results',
-      enabled: true,
-      category: 'Data Protection',
-      rules: [
-        'Social Security Numbers are masked as XXX-XX-XXXX',
-        'Credit card numbers are masked as XXXX-XXXX-XXXX-****',
-        'Email addresses show only domain for non-admins',
-      ],
-      lastModified: '2024-02-27 14:15:00',
-    },
-    {
-      id: '3',
-      name: 'Query Rewriting',
-      description: 'Automatically rewrite queries to comply with policies',
-      enabled: true,
-      category: 'Query Governance',
-      rules: [
-        'Add WHERE clauses to enforce row-level security',
-        'Remove SELECT * and replace with explicit column lists',
-        'Add LIMIT clauses to prevent large data exports',
-      ],
-      lastModified: '2024-02-26 09:45:00',
-    },
-    {
-      id: '4',
-      name: 'Audit Logging',
-      description: 'Log all database access and modifications',
-      enabled: true,
-      category: 'Compliance',
-      rules: [
-        'Log all SELECT queries with user and timestamp',
-        'Log all INSERT, UPDATE, DELETE operations',
-        'Retain logs for minimum 90 days',
-      ],
-      lastModified: '2024-02-25 16:20:00',
-    },
-    {
-      id: '5',
-      name: 'Schema Protection',
-      description: 'Prevent unauthorized schema modifications',
-      enabled: false,
-      category: 'Data Integrity',
-      rules: [
-        'Block ALTER TABLE commands from non-admin users',
-        'Block DROP TABLE commands from all users',
-        'Require approval for schema changes',
-      ],
-      lastModified: '2024-02-24 11:00:00',
-    },
-    {
-      id: '6',
-      name: 'Performance Limits',
-      description: 'Enforce query performance and resource limits',
-      enabled: true,
-      category: 'Performance',
-      rules: [
-        'Maximum query execution time: 5 minutes',
-        'Maximum result set size: 1 million rows',
-        'Maximum concurrent queries per user: 5',
-      ],
-      lastModified: '2024-02-23 13:30:00',
-    },
-  ];
+  const [companyId, setCompanyId] = useState<string>('default');
+  const [policies, setPolicies] = useState<CompanyPolicies>(DEFAULT_POLICIES);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [message, setMessage] = useState<string>('');
 
-  const [policies, setPolicies] = useState<Policy[]>(mockPolicies);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [testQuery, setTestQuery] = useState<string>('SELECT * FROM customers');
+  const [testingQuery, setTestingQuery] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<QueryTestResult | null>(null);
 
-  const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
+  const enabledCount = useMemo(() => {
+    return [
+      policies.block_destructive_queries.enabled,
+      policies.protect_sensitive_columns.enabled,
+      policies.read_only_ai_mode.enabled,
+      policies.query_result_limits.enabled,
+    ].filter(Boolean).length;
+  }, [policies]);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      setMessage('');
+
+      const resolvedCompanyId = await getCompanyId();
+      setCompanyId(resolvedCompanyId);
+
+      try {
+        const response = await fetch(apiUrl(`/api/v1/policies/${resolvedCompanyId}`));
+        if (!response.ok) {
+          throw new Error('Failed to load policy configuration');
+        }
+        const data = await response.json();
+        setPolicies(data.policies || DEFAULT_POLICIES);
+      } catch (err: any) {
+        setError(err?.message || 'Failed to load policies');
+        setPolicies(DEFAULT_POLICIES);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const updatePolicyState = <K extends keyof CompanyPolicies>(key: K, patch: Partial<CompanyPolicies[K]>) => {
+    setPolicies((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        ...patch,
+      },
+    }));
   };
 
-  const togglePolicy = (id: string) => {
-    setPolicies(policies.map(p => 
-      p.id === id ? { ...p, enabled: !p.enabled } : p
-    ));
+  const savePolicies = async () => {
+    setSaving(true);
+    setError('');
+    setMessage('');
+    try {
+      const response = await fetch(apiUrl(`/api/v1/policies/${companyId}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ policies }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to save policies');
+      }
+      setMessage('Policies saved successfully');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to save policies');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const enabledCount = policies.filter(p => p.enabled).length;
-  const categories = [...new Set(policies.map(p => p.category))];
+  const runPolicyTest = async () => {
+    if (!testQuery.trim()) return;
+    setTestingQuery(true);
+    setError('');
+    setTestResult(null);
+    try {
+      const response = await fetch(apiUrl(`/api/v1/policies/${companyId}/test-query`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: testQuery }),
+      });
+      if (!response.ok) {
+        throw new Error('Policy test request failed');
+      }
+      const data = await response.json();
+      setTestResult(data);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to test query');
+    } finally {
+      setTestingQuery(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="policies-manager">Loading policy configuration...</div>;
+  }
 
   return (
     <div className="policies-manager">
       <div className="policies-header">
-        <h1>Governance Policies</h1>
-        <p className="policies-subtitle">Configure and manage data governance policies</p>
+        <h1>AI Security Policies</h1>
+        <p className="policies-subtitle">
+          Control how AI interacts with your data for company {companyId}
+        </p>
       </div>
 
       <div className="policies-stats">
         <div className="stat-card">
           <div className="stat-label">Total Policies</div>
-          <div className="stat-value">{policies.length}</div>
+          <div className="stat-value">4</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Enabled</div>
@@ -127,71 +210,199 @@ export const PoliciesManager: React.FC = () => {
         </div>
         <div className="stat-card">
           <div className="stat-label">Disabled</div>
-          <div className="stat-value">{policies.length - enabledCount}</div>
+          <div className="stat-value">{4 - enabledCount}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Categories</div>
-          <div className="stat-value">{categories.length}</div>
+          <div className="stat-label">Mode</div>
+          <div className="stat-value">Firewall</div>
         </div>
       </div>
 
-      <div className="policies-list">
-        {policies.map((policy) => (
-          <div key={policy.id} className={`policy-card ${policy.enabled ? 'enabled' : 'disabled'}`}>
-            <div className="policy-header">
-              <div className="policy-left">
-                <div className="policy-toggle">
-                  <input
-                    type="checkbox"
-                    checked={policy.enabled}
-                    onChange={() => togglePolicy(policy.id)}
-                    id={`toggle-${policy.id}`}
-                  />
-                  <label htmlFor={`toggle-${policy.id}`}></label>
-                </div>
-                <div className="policy-info">
-                  <div className="policy-name">{policy.name}</div>
-                  <div className="policy-description">{policy.description}</div>
-                  <div className="policy-meta">
-                    <span className="meta-category">📁 {policy.category}</span>
-                    <span className="meta-modified">📅 {policy.lastModified}</span>
-                  </div>
-                </div>
-              </div>
-              <button 
-                className="expand-btn"
-                onClick={() => toggleExpand(policy.id)}
-              >
-                {expandedId === policy.id ? '▼' : '▶'}
-              </button>
-            </div>
+      {error && <div className="policy-banner error">{error}</div>}
+      {message && <div className="policy-banner success">{message}</div>}
 
-            {expandedId === policy.id && (
-              <div className="policy-details">
-                <div className="rules-section">
-                  <h4>Policy Rules:</h4>
-                  <ul className="rules-list">
-                    {policy.rules.map((rule, idx) => (
-                      <li key={idx}>
-                        <span className="rule-bullet">•</span>
-                        {rule}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="policy-actions">
-                  <button className="action-btn edit">✏️ Edit</button>
-                  <button className="action-btn duplicate">📋 Duplicate</button>
-                  <button className="action-btn delete">🗑️ Delete</button>
-                </div>
+      <div className="policies-list">
+        <div className={`policy-card ${policies.block_destructive_queries.enabled ? 'enabled' : 'disabled'}`}>
+          <div className="policy-header">
+            <div className="policy-left">
+              <div className="policy-toggle">
+                <input
+                  type="checkbox"
+                  checked={policies.block_destructive_queries.enabled}
+                  onChange={(e) => updatePolicyState('block_destructive_queries', { enabled: e.target.checked })}
+                  id="toggle-destructive"
+                />
+                <label htmlFor="toggle-destructive"></label>
+              </div>
+              <div className="policy-info">
+                <div className="policy-name">Block Destructive Queries</div>
+                <div className="policy-description">Blocks DROP, TRUNCATE, ALTER, DELETE or custom keywords</div>
+              </div>
+            </div>
+          </div>
+          <div className="policy-details open">
+            <div className="rules-section">
+              <h4>Blocked Keywords (comma separated)</h4>
+              <input
+                className="policy-input"
+                value={policies.block_destructive_queries.blocked_keywords.join(', ')}
+                onChange={(e) =>
+                  updatePolicyState('block_destructive_queries', {
+                    blocked_keywords: normalizeCsv(e.target.value),
+                  })
+                }
+                placeholder="drop, truncate, alter, delete"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className={`policy-card ${policies.protect_sensitive_columns.enabled ? 'enabled' : 'disabled'}`}>
+          <div className="policy-header">
+            <div className="policy-left">
+              <div className="policy-toggle">
+                <input
+                  type="checkbox"
+                  checked={policies.protect_sensitive_columns.enabled}
+                  onChange={(e) => updatePolicyState('protect_sensitive_columns', { enabled: e.target.checked })}
+                  id="toggle-sensitive"
+                />
+                <label htmlFor="toggle-sensitive"></label>
+              </div>
+              <div className="policy-info">
+                <div className="policy-name">Protect Sensitive Columns</div>
+                <div className="policy-description">Blocks AI access to protected columns like ssn and credit card</div>
+              </div>
+            </div>
+          </div>
+          <div className="policy-details open">
+            <div className="rules-section">
+              <h4>Blocked Columns (comma separated)</h4>
+              <input
+                className="policy-input"
+                value={policies.protect_sensitive_columns.blocked_columns.join(', ')}
+                onChange={(e) =>
+                  updatePolicyState('protect_sensitive_columns', {
+                    blocked_columns: normalizeCsv(e.target.value),
+                  })
+                }
+                placeholder="ssn, credit_card, password"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className={`policy-card ${policies.read_only_ai_mode.enabled ? 'enabled' : 'disabled'}`}>
+          <div className="policy-header">
+            <div className="policy-left">
+              <div className="policy-toggle">
+                <input
+                  type="checkbox"
+                  checked={policies.read_only_ai_mode.enabled}
+                  onChange={(e) => updatePolicyState('read_only_ai_mode', { enabled: e.target.checked })}
+                  id="toggle-readonly"
+                />
+                <label htmlFor="toggle-readonly"></label>
+              </div>
+              <div className="policy-info">
+                <div className="policy-name">Read-Only AI Mode</div>
+                <div className="policy-description">Allows only statement types you explicitly whitelist</div>
+              </div>
+            </div>
+          </div>
+          <div className="policy-details open">
+            <div className="rules-section">
+              <h4>Allowed Statements (comma separated)</h4>
+              <input
+                className="policy-input"
+                value={policies.read_only_ai_mode.allowed_statements.join(', ')}
+                onChange={(e) =>
+                  updatePolicyState('read_only_ai_mode', {
+                    allowed_statements: normalizeCsv(e.target.value),
+                  })
+                }
+                placeholder="select, with"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className={`policy-card ${policies.query_result_limits.enabled ? 'enabled' : 'disabled'}`}>
+          <div className="policy-header">
+            <div className="policy-left">
+              <div className="policy-toggle">
+                <input
+                  type="checkbox"
+                  checked={policies.query_result_limits.enabled}
+                  onChange={(e) => updatePolicyState('query_result_limits', { enabled: e.target.checked })}
+                  id="toggle-limit"
+                />
+                <label htmlFor="toggle-limit"></label>
+              </div>
+              <div className="policy-info">
+                <div className="policy-name">Query Result Limit</div>
+                <div className="policy-description">Automatically appends LIMIT to eligible SELECT queries</div>
+              </div>
+            </div>
+          </div>
+          <div className="policy-details open">
+            <div className="rules-section">
+              <h4>Maximum Rows</h4>
+              <input
+                className="policy-input"
+                type="number"
+                min={1}
+                max={1000000}
+                value={policies.query_result_limits.max_rows}
+                onChange={(e) =>
+                  updatePolicyState('query_result_limits', {
+                    max_rows: Math.max(1, Number(e.target.value || '1')),
+                  })
+                }
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="policy-tester">
+        <h3>Test Query Against Policy</h3>
+        <textarea
+          className="policy-textarea"
+          value={testQuery}
+          onChange={(e) => setTestQuery(e.target.value)}
+          rows={5}
+          placeholder="SELECT * FROM transactions"
+        />
+        <div className="policy-actions">
+          <button className="action-btn edit" onClick={runPolicyTest} disabled={testingQuery}>
+            {testingQuery ? 'Testing...' : 'Run Policy Test'}
+          </button>
+        </div>
+
+        {testResult && (
+          <div className={`test-result ${testResult.allowed ? 'allowed' : 'blocked'}`}>
+            <div className="test-title">{testResult.message}</div>
+            {!testResult.allowed && testResult.reasons?.length > 0 && (
+              <ul className="rules-list">
+                {testResult.reasons.map((reason, idx) => (
+                  <li key={idx}>{reason}</li>
+                ))}
+              </ul>
+            )}
+            {testResult.rewritten_query && testResult.rewritten_query !== testResult.original_query && (
+              <div className="rewritten-query">
+                Rewritten query: {testResult.rewritten_query}
               </div>
             )}
           </div>
-        ))}
+        )}
       </div>
 
       <div className="policies-footer">
-        <button className="btn-primary">+ Create New Policy</button>
+        <button className="btn-primary" onClick={savePolicies} disabled={saving}>
+          {saving ? 'Saving...' : 'Save Policies'}
+        </button>
       </div>
     </div>
   );
