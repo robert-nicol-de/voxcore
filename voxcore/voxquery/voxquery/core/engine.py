@@ -218,6 +218,7 @@ class VoxQueryEngine:
         """
         from sqlalchemy import pool
         import time
+        from urllib.parse import quote_plus
         
         logger.info(f"\n{'='*80}")
         logger.info(f"CREATING SQL SERVER ENGINE")
@@ -238,25 +239,42 @@ class VoxQueryEngine:
         if server == ".":
             server = "(local)"  # SQL Server convention for local connections
             logger.info(f"Converted server '.' to '(local)'")
+
+        # Prefer installed SQL Server ODBC driver; fallback to known driver names.
+        preferred_driver = "ODBC Driver 18 for SQL Server"
+        installed_driver = None
+        try:
+            available_drivers = pyodbc.drivers()
+            for candidate in ["ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server"]:
+                if candidate in available_drivers:
+                    installed_driver = candidate
+                    break
+        except Exception as drv_error:
+            logger.warning(f"Could not enumerate ODBC drivers: {drv_error}")
+
+        selected_driver = installed_driver or preferred_driver
+        logger.info(f"Selected SQL Server ODBC driver: {selected_driver}")
+        encoded_driver = selected_driver.replace(" ", "+")
         
         # Build connection URL
         if self.auth_type == "windows":
             connection_url = (
-                f"mssql+pyodbc:///?odbc_connect="
-                f"Driver={{ODBC Driver 17 for SQL Server}};"
-                f"Server={server};"
-                f"Database={self.warehouse_database};"
-                f"Trusted_Connection=yes"
+                f"mssql+pyodbc://@{server}/{self.warehouse_database}"
+                f"?driver={encoded_driver}&trusted_connection=yes&TrustServerCertificate=yes"
             )
         else:
             if not self.warehouse_user:
                 raise ValueError("warehouse_user is required for SQL authentication")
             if not self.warehouse_password:
                 raise ValueError("warehouse_password is required for SQL authentication")
+
+            safe_user = quote_plus(self.warehouse_user)
+            safe_password = quote_plus(self.warehouse_password)
             
             connection_url = (
-                f"mssql+pyodbc://{self.warehouse_user}:{self.warehouse_password}"
+                f"mssql+pyodbc://{safe_user}:{safe_password}"
                 f"@{server}/{self.warehouse_database}"
+                f"?driver={encoded_driver}&TrustServerCertificate=yes"
             )
         
         logger.info(f"SQLAlchemy URL: {connection_url[:80]}...")
@@ -311,6 +329,15 @@ class VoxQueryEngine:
                     logger.error(f"✗ All {max_retries} connection attempts failed")
                     logger.error(f"Exception Type: {type(e).__name__}")
                     logger.error(f"Exception Args: {e.args}")
+                    err_text = str(e).lower()
+                    if (
+                        "im002" in err_text
+                        or "data source name not found" in err_text
+                        or "can't open lib 'odbc driver" in err_text
+                    ):
+                        logger.error(
+                            "SQL Server ODBC driver appears missing. Install msodbcsql17 or msodbcsql18 and verify with 'odbcinst -q -d'."
+                        )
                     logger.info(f"{'='*80}\n")
                     raise
     

@@ -21,6 +21,34 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _friendly_connection_error(database_type: str, raw_error: Exception) -> str:
+    """Map low-level connection errors to clear user-facing guidance."""
+    message = str(raw_error)
+    lower = message.lower()
+
+    if database_type == "sqlserver":
+        if "no module named 'pyodbc'" in lower or "module named pyodbc" in lower:
+            return (
+                "SQL Server connector missing on VoxCore server. "
+                "Install Python package: pip install pyodbc"
+            )
+
+        if (
+            "im002" in lower
+            or "data source name not found" in lower
+            or "can't open lib 'odbc driver" in lower
+            or "odbc driver" in lower and "not found" in lower
+        ):
+            return (
+                "SQL Server driver not installed on VoxCore server. "
+                "Install ODBC Driver 17 or 18, then restart VoxCore. "
+                "Example checks: `odbcinst -q -d` and ensure an entry like "
+                "`ODBC Driver 17 for SQL Server` or `ODBC Driver 18 for SQL Server`."
+            )
+
+    return message
+
+
 ROLE_ACCESS_MESSAGES = {
     "god": "God admin access required",
     "admin": "Admin access required",
@@ -488,7 +516,7 @@ async def connect(request: ConnectRequest, req: Request) -> ConnectResponse:
             logger.error(traceback.format_exc())
             raise HTTPException(
                 status_code=400,
-                detail=f"Connection test failed: {str(conn_error)}"
+                detail=f"Connection test failed: {_friendly_connection_error(request.database, conn_error)}"
             )
     
     except HTTPException:
@@ -551,7 +579,7 @@ async def test_connection(request: ConnectRequest) -> Dict[str, Any]:
             logger.error(f"Connection test failed: {conn_error}")
             raise HTTPException(
                 status_code=400,
-                detail=f"Connection test failed: {str(conn_error)}"
+                detail=f"Connection test failed: {_friendly_connection_error(request.database, conn_error)}"
             )
         finally:
             # Close the temporary connection
