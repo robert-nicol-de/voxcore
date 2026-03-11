@@ -4,6 +4,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import logging
+import re
+
+from sqlalchemy import text
 
 from . import engine_manager
 from ..formatting.formatter import ResultsFormatter
@@ -14,6 +17,134 @@ from ..core.query_monitor import log_query
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+INSPECTOR_DANGEROUS_KEYWORDS = ["DROP", "DELETE", "TRUNCATE", "ALTER", "UPDATE"]
+
+
+def _extract_table_references(sql: str) -> List[str]:
+    """Extract basic table references from SQL tokens."""
+    pattern = re.compile(r"\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+([A-Za-z0-9_\-\[\]\.]+)", re.IGNORECASE)
+    refs = []
+    for match in pattern.findall(sql):
+        token = match.strip().rstrip(",")
+        token = token.replace("[", "").replace("]", "")
+        refs.append(token)
+    return list(dict.fromkeys(refs))
+
+
+def _extract_select_columns(sql: str) -> List[str]:
+    """Extract simple selected columns from SQL for existence validation."""
+    match = re.search(r"\bSELECT\b(.+?)\bFROM\b", sql, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return []
+
+    raw_section = match.group(1)
+    columns: List[str] = []
+    for raw_col in raw_section.split(","):
+        item = raw_col.strip()
+        if not item:
+            continue
+        if item == "*":
+            return ["*"]
+        if "(" in item:
+            # Skip function expressions (e.g. SUM(amount)) in this lightweight parser.
+            continue
+
+        # Remove alias tokens
+        item = re.sub(r"\s+AS\s+.+$", "", item, flags=re.IGNORECASE)
+        item = item.split()[0]
+        item = item.replace("[", "").replace("]", "")
+
+        columns.append(item)
+
+    return list(dict.fromkeys(columns))
+
+
+def _sanitize_identifier(value: str, field_name: str) -> str:
+    """Allow only safe identifier characters for database name input."""
+    if not value:
+        raise HTTPException(status_code=400, detail=f"{field_name} is required")
+    if not re.match(r"^[A-Za-z0-9_\- ]+$", value):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {field_name}. Only letters, numbers, spaces, underscore, and hyphen are allowed.",
+        )
+    return value
+
+
+def _quote_sqlserver_identifier(identifier: str) -> str:
+    return f"[{identifier.replace(']', ']]')}]"
+
+
+def _load_table_columns_snapshot(engine, database: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
+    """Load a table/column metadata snapshot for inspector validation."""
+    warehouse_type = (engine.warehouse_type or "").lower()
+
+    snapshot: Dict[str, Dict[str, Any]] = {}
+    if warehouse_type == "sqlserver":
+        target_database = _sanitize_identifier(database or engine.warehouse_database, "database")
+        quoted_db = _quote_sqlserver_identifier(target_database)
+        query = text(
+            f"""
+            SELECT
+                TABLE_SCHEMA,
+                TABLE_NAME,
+                COLUMN_NAME
+            FROM {quoted_db}.INFORMATION_SCHEMA.COLUMNS
+            ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION
+            """
+        )
+        with engine.engine.connect() as conn:
+            rows = conn.execute(query).mappings().all()
+
+        for row in rows:
+            schema = row["TABLE_SCHEMA"]
+            table = row["TABLE_NAME"]
+            col = row["COLUMN_NAME"]
+            full_name = f"{schema}.{table}".lower()
+
+            if full_name not in snapshot:
+                snapshot[full_name] = {
+                    "table_schema": schema,
+                    "table_name": table,
+                    "columns": set(),
+                }
+            snapshot[full_name]["columns"].add(col.lower())
+    else:
+        schema_rows = engine.get_schema()
+        for table_info in schema_rows:
+            schema = (table_info.get("schema") or "dbo").lower()
+            table = (table_info.get("name") or "").lower()
+            full_name = f"{schema}.{table}"
+            snapshot[full_name] = {
+                "table_schema": schema,
+                "table_name": table,
+                "columns": {str(col.get("name", "")).lower() for col in table_info.get("columns", [])},
+            }
+
+    return snapshot
+
+
+class QueryInspectRequest(BaseModel):
+    """Inspector request payload for AI-generated SQL."""
+
+    sql: str
+    database: Optional[str] = None
+
+
+class QueryInspectResponse(BaseModel):
+    """Inspector decision output."""
+
+    approved: bool
+    safe: bool
+    read_only: bool
+    dangerous_keywords: List[str]
+    table_checks: List[Dict[str, Any]]
+    column_checks: List[Dict[str, Any]]
+    missing_tables: List[str]
+    missing_columns: List[str]
+    reasons: List[str]
 
 
 class QueryRequest(BaseModel):
@@ -41,6 +172,101 @@ class QueryResponse(BaseModel):
     chart: Optional[Dict[str, Any]] = None
     charts: Optional[Dict[str, Dict[str, Any]]] = None  # All 4 chart specs: bar, pie, line, comparison
     model_fingerprint: Optional[str] = None  # e.g., "Groq / llama-3.3-70b-versatile | Dialect: snowflake"
+
+
+@router.post("/query/inspect", response_model=QueryInspectResponse)
+async def inspect_query(request: QueryInspectRequest) -> QueryInspectResponse:
+    """Inspect SQL for dangerous operations and schema validity before execution."""
+    try:
+        engine = engine_manager.get_engine()
+        if not engine:
+            raise HTTPException(status_code=400, detail="No database connected.")
+
+        sql = (request.sql or "").strip()
+        if not sql:
+            raise HTTPException(status_code=400, detail="SQL is required.")
+
+        upper_sql = sql.upper()
+        dangerous_hits = [kw for kw in INSPECTOR_DANGEROUS_KEYWORDS if re.search(rf"\b{kw}\b", upper_sql)]
+
+        read_only, read_only_error = is_read_only(sql, engine.warehouse_type)
+        snapshot = _load_table_columns_snapshot(engine, request.database)
+
+        table_refs = _extract_table_references(sql)
+        column_refs = _extract_select_columns(sql)
+
+        table_checks: List[Dict[str, Any]] = []
+        column_checks: List[Dict[str, Any]] = []
+        missing_tables: List[str] = []
+        missing_columns: List[str] = []
+        reasons: List[str] = []
+
+        resolved_tables: Dict[str, Dict[str, Any]] = {}
+        for table_ref in table_refs:
+            normalized = table_ref.lower()
+            matched_key = None
+
+            if "." in normalized:
+                if normalized in snapshot:
+                    matched_key = normalized
+            else:
+                candidates = [k for k, v in snapshot.items() if v["table_name"].lower() == normalized]
+                if len(candidates) == 1:
+                    matched_key = candidates[0]
+
+            exists = matched_key is not None
+            table_checks.append({"table": table_ref, "exists": exists})
+
+            if exists and matched_key:
+                resolved_tables[table_ref] = snapshot[matched_key]
+            else:
+                missing_tables.append(table_ref)
+
+        if column_refs and column_refs != ["*"]:
+            for col_ref in column_refs:
+                col_name = col_ref.split(".")[-1].lower()
+                exists = False
+
+                if "." in col_ref:
+                    table_prefix = ".".join(col_ref.split(".")[:-1]).lower()
+                    if table_prefix in snapshot:
+                        exists = col_name in snapshot[table_prefix]["columns"]
+                elif len(resolved_tables) == 1:
+                    only_table = next(iter(resolved_tables.values()))
+                    exists = col_name in only_table["columns"]
+                elif len(resolved_tables) > 1:
+                    # Ambiguous unqualified column in multi-table query.
+                    exists = any(col_name in table_info["columns"] for table_info in resolved_tables.values())
+
+                column_checks.append({"column": col_ref, "exists": exists})
+                if not exists:
+                    missing_columns.append(col_ref)
+
+        if dangerous_hits:
+            reasons.append(f"Dangerous SQL keyword(s) detected: {', '.join(dangerous_hits)}")
+        if not read_only:
+            reasons.append(read_only_error or "Query is not read-only.")
+        if missing_tables:
+            reasons.append(f"Missing table(s): {', '.join(missing_tables)}")
+        if missing_columns:
+            reasons.append(f"Missing column(s): {', '.join(missing_columns)}")
+
+        approved = len(reasons) == 0
+        return QueryInspectResponse(
+            approved=approved,
+            safe=not dangerous_hits,
+            read_only=read_only,
+            dangerous_keywords=dangerous_hits,
+            table_checks=table_checks,
+            column_checks=column_checks,
+            missing_tables=missing_tables,
+            missing_columns=missing_columns,
+            reasons=reasons,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/query", response_model=QueryResponse)

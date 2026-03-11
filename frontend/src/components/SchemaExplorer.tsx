@@ -5,12 +5,19 @@ import { apiUrl } from '../lib/api';
 interface Column {
   name: string;
   type: string;
-  nullable: boolean;
 }
 
 interface Table {
+  schema: string;
   name: string;
+  fullName: string;
   columns: Column[];
+}
+
+interface ViewItem {
+  schema: string;
+  name: string;
+  fullName: string;
 }
 
 interface SchemaExplorerProps {
@@ -18,75 +25,120 @@ interface SchemaExplorerProps {
 }
 
 export default function SchemaExplorer({ onClose }: SchemaExplorerProps) {
+  const [databases, setDatabases] = useState<string[]>([]);
+  const [selectedDatabase, setSelectedDatabase] = useState('');
   const [tables, setTables] = useState<Table[]>([]);
+  const [views, setViews] = useState<ViewItem[]>([]);
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [loadingDatabase, setLoadingDatabase] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchSchema = async () => {
+    const bootstrap = async () => {
       try {
-        const response = await fetch(apiUrl('/api/v1/schema'));
-        if (!response.ok) {
-          throw new Error('Failed to fetch schema');
+        setLoading(true);
+        setError(null);
+
+        const dbRes = await fetch(apiUrl('/api/v1/schema/databases'));
+        if (!dbRes.ok) {
+          throw new Error('Failed to fetch databases');
         }
-        const data = await response.json();
-        
-        // Transform backend schema to component format
-        const transformedTables = data.tables.map((table: any) => ({
-          name: table.name,
-          columns: table.columns.map((col: any) => ({
-            name: col.name,
-            type: col.type,
-            nullable: col.nullable !== false,
-          })),
-        }));
-        
-        setTables(transformedTables);
-        if (transformedTables.length > 0) {
-          setExpandedTables(new Set([transformedTables[0].name]));
-        }
-      } catch (error) {
-        console.error('Error fetching schema:', error);
-        // Fallback to mock data if API fails
-        const mockTables = [
-          {
-            name: 'ACCOUNTS',
-            columns: [
-              { name: 'ACCOUNT_ID', type: 'VARCHAR', nullable: false },
-              { name: 'ACCOUNT_NUMBER', type: 'TEXT', nullable: false },
-              { name: 'ACCOUNT_NAME', type: 'TEXT', nullable: true },
-              { name: 'BALANCE', type: 'DECIMAL', nullable: true },
-              { name: 'OPEN_DATE', type: 'DATE', nullable: true },
-              { name: 'STATUS', type: 'VARCHAR', nullable: true },
-            ],
-          },
-          {
-            name: 'TRANSACTIONS',
-            columns: [
-              { name: 'TRANSACTION_ID', type: 'NUMBER', nullable: false },
-              { name: 'ACCOUNT_ID', type: 'NUMBER', nullable: false },
-              { name: 'TRANSACTION_DATE', type: 'TIMESTAMP', nullable: false },
-              { name: 'AMOUNT', type: 'DECIMAL', nullable: false },
-              { name: 'DESCRIPTION', type: 'TEXT', nullable: true },
-            ],
-          },
-        ];
-        setTables(mockTables);
-        setExpandedTables(new Set(['ACCOUNTS']));
+
+        const dbData = await dbRes.json();
+        const availableDatabases: string[] = dbData.databases || [];
+        setDatabases(availableDatabases);
+
+        const preferred =
+          localStorage.getItem('dbDatabase') ||
+          dbData.current_database ||
+          (availableDatabases.length > 0 ? availableDatabases[0] : '');
+
+        setSelectedDatabase(preferred);
+      } catch (fetchError: any) {
+        console.error('Error fetching database list:', fetchError);
+        setError(fetchError?.message || 'Failed to load schema explorer');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSchema();
+    bootstrap();
   }, []);
 
-  const toggleTable = (tableName: string) => {
+  useEffect(() => {
+    const fetchSchemaForDatabase = async () => {
+      if (!selectedDatabase) {
+        setTables([]);
+        setViews([]);
+        return;
+      }
+
+      try {
+        setLoadingDatabase(true);
+        setError(null);
+
+        const [tablesRes, columnsRes, viewsRes] = await Promise.all([
+          fetch(apiUrl(`/api/v1/schema/tables?database=${encodeURIComponent(selectedDatabase)}`)),
+          fetch(apiUrl(`/api/v1/schema/columns?database=${encodeURIComponent(selectedDatabase)}`)),
+          fetch(apiUrl(`/api/v1/schema/views?database=${encodeURIComponent(selectedDatabase)}`)),
+        ]);
+
+        if (!tablesRes.ok || !columnsRes.ok || !viewsRes.ok) {
+          throw new Error('Failed to fetch schema metadata');
+        }
+
+        const tablesData = await tablesRes.json();
+        const columnsData = await columnsRes.json();
+        const viewsData = await viewsRes.json();
+
+        const columnsByTable = new Map<string, Column[]>();
+        for (const col of columnsData.columns || []) {
+          const fullName = `${col.table_schema}.${col.table_name}`;
+          const existing = columnsByTable.get(fullName) || [];
+          existing.push({ name: col.column_name, type: col.data_type });
+          columnsByTable.set(fullName, existing);
+        }
+
+        const discoveredTables: Table[] = (tablesData.tables || []).map((table: any) => ({
+          schema: table.table_schema,
+          name: table.table_name,
+          fullName: table.full_name,
+          columns: columnsByTable.get(table.full_name) || [],
+        }));
+
+        const discoveredViews: ViewItem[] = (viewsData.views || []).map((view: any) => ({
+          schema: view.table_schema,
+          name: view.table_name,
+          fullName: view.full_name,
+        }));
+
+        setTables(discoveredTables);
+        setViews(discoveredViews);
+        if (discoveredTables.length > 0) {
+          setExpandedTables(new Set([discoveredTables[0].fullName]));
+        } else {
+          setExpandedTables(new Set());
+        }
+      } catch (fetchError: any) {
+        console.error('Error fetching schema details:', fetchError);
+        setTables([]);
+        setViews([]);
+        setError(fetchError?.message || 'Failed to load schema metadata');
+      } finally {
+        setLoadingDatabase(false);
+      }
+    };
+
+    fetchSchemaForDatabase();
+  }, [selectedDatabase]);
+
+  const toggleTable = (tableFullName: string) => {
     const newExpanded = new Set(expandedTables);
-    if (newExpanded.has(tableName)) {
-      newExpanded.delete(tableName);
+    if (newExpanded.has(tableFullName)) {
+      newExpanded.delete(tableFullName);
     } else {
-      newExpanded.add(tableName);
+      newExpanded.add(tableFullName);
     }
     setExpandedTables(newExpanded);
   };
@@ -98,7 +150,7 @@ export default function SchemaExplorer({ onClose }: SchemaExplorerProps) {
         <div style={styles.headerTitle}>
           <Database size={20} style={{ color: '#a78bfa' }} />
           <h2 style={styles.title}>Schema Explorer</h2>
-          <span style={styles.tableCount}>({tables.length} tables)</span>
+          <span style={styles.tableCount}>({tables.length} tables, {views.length} views)</span>
         </div>
         <button 
           onClick={onClose} 
@@ -108,35 +160,54 @@ export default function SchemaExplorer({ onClose }: SchemaExplorerProps) {
         </button>
       </div>
 
+      <div style={styles.selectorSection}>
+        <label style={styles.selectorLabel}>Database</label>
+        <select
+          value={selectedDatabase}
+          onChange={(event) => setSelectedDatabase(event.target.value)}
+          style={styles.selectorInput}
+        >
+          {databases.map((db) => (
+            <option key={db} value={db}>
+              {db}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Content */}
       <div style={styles.content}>
-        {loading ? (
+        {loading || loadingDatabase ? (
           <div style={styles.loadingText}>Loading schema...</div>
+        ) : error ? (
+          <div style={styles.errorText}>{error}</div>
         ) : tables.length === 0 ? (
-          <div style={styles.loadingText}>No tables found</div>
+          <div style={styles.loadingText}>No tables found for this database</div>
         ) : (
-          tables.map((table) => (
-            <div key={table.name} style={styles.tableGroup}>
+          <>
+            <h3 style={styles.sectionTitle}>Tables</h3>
+            {tables.map((table) => (
+            <div key={table.fullName} style={styles.tableGroup}>
               {/* Table Header */}
               <button
-                onClick={() => toggleTable(table.name)}
+                onClick={() => toggleTable(table.fullName)}
                 style={styles.tableButton}
               >
                 <ChevronDown
                   size={16}
                   style={{
-                    transform: expandedTables.has(table.name) ? 'rotate(0deg)' : 'rotate(-90deg)',
+                    transform: expandedTables.has(table.fullName) ? 'rotate(0deg)' : 'rotate(-90deg)',
                     transition: 'transform 0.2s',
                     color: '#a78bfa',
                   }}
                 />
                 <Table2 size={16} style={{ color: '#a78bfa' }} />
-                <h3 style={styles.tableName}>{table.name}</h3>
+                <h3 style={styles.tableName}>{table.fullName}</h3>
                 <span style={styles.columnCount}>({table.columns.length})</span>
               </button>
 
               {/* Columns */}
-              {expandedTables.has(table.name) && (
+              {expandedTables.has(table.fullName) && (
                 <div style={styles.columnsContainer}>
                   {table.columns.map((col) => (
                     <div
@@ -149,18 +220,26 @@ export default function SchemaExplorer({ onClose }: SchemaExplorerProps) {
                       </div>
                       <div style={styles.columnRight}>
                         <span style={styles.columnType}>{col.type}</span>
-                        {col.nullable && (
-                          <span style={styles.nullableBadge}>
-                            nullable
-                          </span>
-                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          ))
+          ))}
+
+            <h3 style={styles.sectionTitle}>Views</h3>
+            {views.length === 0 ? (
+              <div style={styles.loadingText}>No views found</div>
+            ) : (
+              views.map((view) => (
+                <div key={view.fullName} style={styles.viewRow}>
+                  <Table2 size={14} style={{ color: '#94a3b8' }} />
+                  <span style={styles.viewText}>{view.fullName}</span>
+                </div>
+              ))
+            )}
+          </>
         )}
       </div>
     </div>
@@ -220,9 +299,47 @@ const styles: { [key: string]: React.CSSProperties } = {
     overflowY: 'auto',
     padding: '16px',
   },
+
+  selectorSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    padding: '12px 16px',
+    borderBottom: '1px solid #1e293b',
+  },
+
+  selectorLabel: {
+    color: '#94a3b8',
+    fontSize: '12px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    fontWeight: 700,
+  },
+
+  selectorInput: {
+    background: '#111827',
+    color: '#e5e7eb',
+    border: '1px solid #334155',
+    borderRadius: '6px',
+    padding: '8px 10px',
+    fontSize: '13px',
+  },
+
+  sectionTitle: {
+    margin: '6px 0 10px',
+    color: '#cbd5e1',
+    fontSize: '13px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+  },
   
   loadingText: {
     color: '#94a3b8',
+    fontSize: '14px',
+  },
+
+  errorText: {
+    color: '#fca5a5',
     fontSize: '14px',
   },
   
@@ -297,11 +414,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '12px',
   },
   
-  nullableBadge: {
-    color: '#fbbf24',
-    background: 'rgba(251, 191, 36, 0.1)',
-    padding: '2px 6px',
-    borderRadius: '3px',
-    fontSize: '11px',
+  viewRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '6px 8px',
+    borderRadius: '4px',
+    color: '#94a3b8',
+    fontSize: '13px',
+    marginBottom: '4px',
+  },
+
+  viewText: {
+    color: '#cbd5e1',
   },
 };
