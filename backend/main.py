@@ -24,6 +24,7 @@ from backend.api.metrics import router as metrics_router
 from backend.api.simulate import router as simulate_router
 from backend.api.approval import router as approval_router
 from backend.api.inspector import router as inspector_router
+from backend.api.policies import router as policies_router
 from backend.services.rate_limiter import limiter
 
 
@@ -80,6 +81,7 @@ app.include_router(metrics_router)
 app.include_router(simulate_router)
 app.include_router(approval_router)
 app.include_router(inspector_router)
+app.include_router(policies_router)
 
 # Serve React frontend from dist folder
 frontend_dist = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')

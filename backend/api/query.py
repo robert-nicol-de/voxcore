@@ -7,6 +7,7 @@ from backend.services.query_inspector import block_if_dangerous
 from backend.services.query_metrics import log_query
 from backend.services.rate_limiter import limiter
 from backend.services import approval_queue as queue
+from backend.services.policy_engine import apply_policies
 
 
 router = APIRouter()
@@ -15,6 +16,7 @@ router = APIRouter()
 class QueryRequest(BaseModel):
     query: str
     agent: str = "anonymous"  # identifies the AI agent or user submitting the query
+    company_id: str = "default"
 
 
 @router.post("/query")
@@ -22,6 +24,29 @@ class QueryRequest(BaseModel):
 def run_query(request: Request, payload: QueryRequest):
     start = time.perf_counter()
     query = payload.query
+
+    # Enforce company policy rules before risk scoring.
+    policy_result = apply_policies(payload.company_id, query)
+    if policy_result["blocked"]:
+        execution_time = time.perf_counter() - start
+        log_query(
+            company_id=1,
+            user_id=1,
+            query=query,
+            execution_time=execution_time,
+            risk_level="POLICY_BLOCK",
+            blocked=True,
+        )
+        return {
+            "status": "blocked",
+            "blocked_by": "policy_engine",
+            "message": "Query blocked by VoxCore policy",
+            "reasons": policy_result["reasons"],
+            "original_query": policy_result["original_query"],
+            "effective_query": policy_result["rewritten_query"],
+        }
+
+    query = policy_result["rewritten_query"]
 
     # --- Risk scoring (graded: LOW / MEDIUM / HIGH / CRITICAL) ---
     try:
@@ -96,9 +121,12 @@ def run_query(request: Request, payload: QueryRequest):
 
     return {
         "status": "allowed",
+        "company_id": payload.company_id,
         "risk_score": risk_score,
         "risk_level": risk_level,
         "requires_approval": False,
         "reasons": risk_result["reasons"],
         "ai_risk": risk,
+        "original_query": payload.query,
+        "effective_query": query,
     }
