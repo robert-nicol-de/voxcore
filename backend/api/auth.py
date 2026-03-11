@@ -1,11 +1,12 @@
 import os
 from configparser import ConfigParser
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from backend.services.auth import create_token
+from backend.db.connection_manager import ConnectionManager
 
 
 PRIMARY_GOD_EMAIL = "robert.nicol@voxcore.org"
@@ -57,11 +58,16 @@ class LoginRequest(BaseModel):
 
 
 class ConnectionCredentials(BaseModel):
+    type: Optional[str] = ""
     host: Optional[str] = ""
     username: Optional[str] = ""
     password: Optional[str] = ""
     database: Optional[str] = ""
     port: Optional[str] = ""
+    driver: Optional[str] = ""
+    encrypt: Optional[str] = ""
+    trust_server_certificate: Optional[str] = ""
+    timeout: Optional[str] = ""
     warehouse: Optional[str] = ""
     role: Optional[str] = ""
     schema_name: Optional[str] = "PUBLIC"
@@ -70,10 +76,21 @@ class ConnectionCredentials(BaseModel):
 
 class ConnectRequest(BaseModel):
     database: str
-    credentials: ConnectionCredentials
+    credentials: Optional[ConnectionCredentials] = None
+    company_id: Optional[str] = "default"
+    connection_name: Optional[str] = ""
     remember_me: Optional[bool] = False
+    save_connection: Optional[bool] = False
+
+
+class SaveConnectionRequest(BaseModel):
+    company_id: str
+    connection_name: str
+    database: str
+    credentials: ConnectionCredentials
 
 router = APIRouter()
+connection_manager = ConnectionManager()
 
 
 def _project_root() -> Path:
@@ -135,23 +152,68 @@ def _load_ini_credentials(db_type: str) -> dict:
     }
 
 
-def _validate_connect_request(request: ConnectRequest):
+def _credentials_to_config(db_type: str, creds: ConnectionCredentials) -> Dict[str, str]:
+    return {
+        "type": db_type,
+        "host": (creds.host or "").strip(),
+        "username": (creds.username or "").strip(),
+        "password": creds.password or "",
+        "database": (creds.database or "").strip(),
+        "port": (creds.port or "").strip(),
+        "driver": (creds.driver or "").strip(),
+        "encrypt": (creds.encrypt or "").strip(),
+        "trust_server_certificate": (creds.trust_server_certificate or "").strip(),
+        "timeout": (creds.timeout or "").strip(),
+    }
+
+
+def _resolve_connection_config(request: ConnectRequest) -> Dict[str, str]:
     db_type = (request.database or "").strip().lower()
-    creds = request.credentials
+    company_id = (request.company_id or "default").strip()
+    connection_name = (request.connection_name or db_type).strip()
 
-    if db_type not in {"snowflake", "semantic", "sqlserver", "postgres", "redshift", "bigquery"}:
-        raise HTTPException(status_code=400, detail=f"Unsupported database type: {request.database}")
+    config: Dict[str, str] = {"type": db_type}
 
-    if not (creds.host or "").strip() or not (creds.database or "").strip():
-        raise HTTPException(status_code=400, detail="Host and Database are required")
+    if connection_name:
+        try:
+            loaded = connection_manager.load_connection(company_id, connection_name, decrypt_password=True)
+            loaded["type"] = (loaded.get("type") or db_type).strip().lower()
+            config.update(loaded)
+        except FileNotFoundError:
+            pass
 
-    auth_type = (creds.auth_type or "sql").strip().lower()
-    if db_type in {"snowflake", "semantic"}:
-        if not (creds.username or "").strip() or not (creds.password or "").strip():
+    if request.credentials is not None:
+        config.update(_credentials_to_config(db_type, request.credentials))
+
+    # Ensure SQL Server defaults are consistently applied.
+    if config.get("type") == "sqlserver":
+        config.setdefault("driver", "ODBC Driver 18 for SQL Server")
+        config.setdefault("encrypt", "no")
+        config.setdefault("trust_server_certificate", "yes")
+
+    return config
+
+
+def _validate_connection_config(config: Dict[str, str]):
+    db_type = (config.get("type") or "").strip().lower()
+
+    if db_type not in {"snowflake", "semantic", "sqlserver", "postgres", "postgresql", "redshift", "bigquery", "mysql"}:
+        raise HTTPException(status_code=400, detail=f"Unsupported database type: {db_type}")
+
+    if db_type in {"sqlserver", "postgres", "postgresql", "mysql"}:
+        if not (config.get("host") or "").strip() or not (config.get("database") or "").strip():
+            raise HTTPException(status_code=400, detail="Host and Database are required")
+
+    if db_type in {"snowflake", "semantic", "sqlserver", "postgres", "postgresql", "mysql"}:
+        if not (config.get("username") or "").strip() or not (config.get("password") or "").strip():
             raise HTTPException(status_code=400, detail="Username and Password are required")
-    elif db_type == "sqlserver" and auth_type != "windows":
-        if not (creds.username or "").strip() or not (creds.password or "").strip():
-            raise HTTPException(status_code=400, detail="Username and Password are required for SQL Authentication")
+
+
+def _safe_credentials_view(config: Dict[str, str]) -> Dict[str, str]:
+    view = dict(config)
+    if view.get("password"):
+        view["password"] = "***"
+    return view
 
 def _login(user: LoginRequest):
     login_email = (user.email or user.username or "").strip().lower()
@@ -228,6 +290,25 @@ def debug_login(user: LoginRequest):
 
 @router.api_route("/api/v1/auth/load-ini-credentials/{db_type}", methods=["GET", "POST"])
 def load_ini_credentials(db_type: str):
+    # First try tenant-isolated config path (company=default).
+    try:
+        tenant_config = connection_manager.load_connection("default", db_type, decrypt_password=True)
+        return {
+            "database": db_type,
+            "credentials": {
+                "host": tenant_config.get("host", ""),
+                "username": tenant_config.get("username", ""),
+                "password": tenant_config.get("password", ""),
+                "database": tenant_config.get("database", ""),
+                "port": tenant_config.get("port", ""),
+                "driver": tenant_config.get("driver", ""),
+                "auth_type": tenant_config.get("auth_type", "sql"),
+            },
+        }
+    except FileNotFoundError:
+        pass
+
+    # Fallback to legacy global config discovery.
     credentials = _load_ini_credentials(db_type)
     return {
         "database": db_type,
@@ -237,22 +318,89 @@ def load_ini_credentials(db_type: str):
 
 @router.post("/api/v1/auth/test-connection")
 def test_connection(request: ConnectRequest):
-    _validate_connect_request(request)
+    config = _resolve_connection_config(request)
+    _validate_connection_config(config)
+
+    try:
+        connection_manager.test_connection(config)
+    except Exception as e:
+        return {
+            "ok": False,
+            "database": config.get("type"),
+            "message": f"Connection failed: {str(e)}",
+        }
+
     return {
         "ok": True,
-        "database": request.database,
-        "message": "Connection parameters validated",
+        "database": config.get("type"),
+        "message": "Connection validated successfully",
     }
 
 
 @router.post("/api/v1/auth/connect")
 def connect(request: ConnectRequest):
-    _validate_connect_request(request)
+    config = _resolve_connection_config(request)
+    _validate_connection_config(config)
+
+    try:
+        connection_manager.test_connection(config)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Connection failed: {str(e)}")
+
+    should_save = bool(request.remember_me) or bool(request.save_connection)
+    company_id = (request.company_id or "default").strip()
+    connection_name = (request.connection_name or config.get("type") or "connection").strip()
+
+    if should_save:
+        connection_manager.save_connection(company_id, connection_name, config)
+
     return {
         "connected": True,
-        "database": request.database,
+        "database": config.get("type"),
+        "company_id": company_id,
+        "connection_name": connection_name,
         "remember_me": bool(request.remember_me),
+        "saved": should_save,
+        "credentials": _safe_credentials_view(config),
         "message": "Connected successfully",
+    }
+
+
+@router.get("/api/v1/auth/connections/{company_id}")
+def list_company_connections(company_id: str):
+    return {
+        "company_id": company_id,
+        "connections": connection_manager.list_connections(company_id),
+    }
+
+
+@router.get("/api/v1/auth/connections/{company_id}/{connection_name}")
+def load_company_connection(company_id: str, connection_name: str):
+    try:
+        config = connection_manager.load_connection(company_id, connection_name, decrypt_password=True)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return {
+        "company_id": company_id,
+        "connection_name": connection_name,
+        "config": _safe_credentials_view(config),
+    }
+
+
+@router.post("/api/v1/auth/connections/save")
+def save_company_connection(request: SaveConnectionRequest):
+    db_type = (request.database or "").strip().lower()
+    config = _credentials_to_config(db_type, request.credentials)
+    _validate_connection_config(config)
+    path = connection_manager.save_connection(request.company_id, request.connection_name, config)
+
+    return {
+        "ok": True,
+        "company_id": request.company_id,
+        "connection_name": request.connection_name,
+        "path": str(path),
+        "message": "Connection saved",
     }
 
 
