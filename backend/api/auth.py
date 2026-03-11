@@ -254,3 +254,13 @@ def connect(request: ConnectRequest):
         "remember_me": bool(request.remember_me),
         "message": "Connected successfully",
     }
+
+
+@router.get("/api/v1/auth/deploy-check")
+def deploy_check():
+    return {
+        "ok": True,
+        "service": "auth",
+        "version": "auth-routes-v2",
+        "commit": os.environ.get("RENDER_GIT_COMMIT", "unknown"),
+    }
