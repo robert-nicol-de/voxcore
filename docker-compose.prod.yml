@@ -12,10 +12,29 @@ services:
       - ENV=production
       - ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
       - DATABASE_URL=mssql://sa:YourPassword@sqlserver:1433/AdventureWorks2022
+      - REDIS_URL=redis://redis:6379/0
     volumes:
       - ./voxcore/voxquery/logs:/app/logs
     depends_on:
       - sqlserver
+      - redis
+    restart: unless-stopped
+    networks:
+      - voxcore-network
+
+  query-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: voxcore-query-worker
+    environment:
+      - ENV=production
+      - DATABASE_URL=mssql://sa:YourPassword@sqlserver:1433/AdventureWorks2022
+      - REDIS_URL=redis://redis:6379/0
+    command: ["python", "-m", "backend.workers.query_worker"]
+    depends_on:
+      - sqlserver
+      - redis
     restart: unless-stopped
     networks:
       - voxcore-network
@@ -23,9 +42,9 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
       args:
-        VITE_API_URL=https://yourdomain.com/api
+        VITE_API_URL: https://yourdomain.com/api
     container_name: voxcore-frontend
     ports:
       - "5173:5173"
@@ -47,17 +66,22 @@ services:
       - voxcore-network
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: voxcore-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - voxcore-network
+
   nginx:
     image: nginx:alpine
     container_name: voxcore-nginx
     ports:
       - "80:80"
-      - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      - ./certbot/conf:/etc/letsencrypt:ro
-      - ./certbot/www:/var/www/certbot:ro
+      - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - backend
       - frontend

@@ -14,6 +14,7 @@ interface Message {
   results?: any[];
   chart?: any;
   column_mapping?: { [key: string]: string };
+  sandboxPreview?: any[];
 }
 
 interface EnlargedChart {
@@ -141,22 +142,178 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
     setLoading(true);
 
     try {
+      const sandboxResponse = await fetch(apiUrl('/api/v1/query/sandbox'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: questionText,
+        }),
+      });
+
+      if (!sandboxResponse.ok) {
+        const sandboxError = await sandboxResponse.json().catch(() => ({}));
+        throw new Error(sandboxError.detail || `Sandbox error: ${sandboxResponse.status}`);
+      }
+
+      const sandboxData = await sandboxResponse.json();
+      if (sandboxData.status === 'sandboxed') {
+        const sandboxPreviewMessage: Message = {
+          id: `${Date.now()}-sandbox`,
+          type: 'assistant',
+          text: `🧪 Sandbox preview ready (${sandboxData.rows} rows, showing first ${sandboxData.preview?.length || 0})`,
+          timestamp: new Date(),
+          sandboxPreview: sandboxData.preview || [],
+          results: sandboxData.preview || [],
+        };
+        setMessages(prev => [...prev, sandboxPreviewMessage]);
+      }
+
+      const riskResponse = await fetch(apiUrl('/api/v1/query/risk'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: questionText,
+        }),
+      });
+
+      if (!riskResponse.ok) {
+        const riskError = await riskResponse.json().catch(() => ({}));
+        throw new Error(riskError.detail || `Risk engine error: ${riskResponse.status}`);
+      }
+
+      const riskData = await riskResponse.json();
+      const riskInfoMessage: Message = {
+        id: `${Date.now()}-risk`,
+        type: 'assistant',
+        text: `🛡 Risk Level: ${(riskData.risk_level || 'unknown').toUpperCase()}${riskData.reasons?.length ? `\nReason: ${riskData.reasons.join(', ')}` : ''}`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, riskInfoMessage]);
+
+      if (riskData.risk_level === 'high') {
+        const proceed = window.confirm(
+          `Risk Level: HIGH\nReason: ${(riskData.reasons || []).join(', ') || 'High-risk pattern detected'}\n\nExecute anyway?`
+        );
+        if (!proceed) {
+          const cancelledMessage: Message = {
+            id: `${Date.now()}-risk-cancel`,
+            type: 'assistant',
+            text: 'Execution cancelled due to high risk query warning.',
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, cancelledMessage]);
+          return;
+        }
+      }
+
+      const inspectionResponse = await fetch(apiUrl('/api/v1/query/inspect'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: questionText,
+        }),
+      });
+
+      if (!inspectionResponse.ok) {
+        const inspectionError = await inspectionResponse.json().catch(() => ({}));
+        throw new Error(inspectionError.detail || `Inspector error: ${inspectionResponse.status}`);
+      }
+
+      const inspectionData = await inspectionResponse.json();
+      if (!inspectionData.allowed) {
+        const blockedMessage: Message = {
+          id: Date.now().toString(),
+          type: 'assistant',
+          text: `✖ Query blocked by VoxCore Inspector: ${inspectionData.reason || 'Blocked by policy'}`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, blockedMessage]);
+        return;
+      }
+
       const response = await fetch(apiUrl('/api/v1/query'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          question: questionText,
-          warehouse: selectedDatabase,
-          execute: true,
-          dry_run: false,
-          session_id: 'test'
+          query: questionText,
+          agent: 'sql_assistant',
+          company_id: 'default'
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
+        if (data.status === 'queued' && data.job_id) {
+          const queuedMessage: Message = {
+            id: `${Date.now()}-queued`,
+            type: 'assistant',
+            text: `⏳ Query queued for worker execution (job: ${data.job_id})`,
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, queuedMessage]);
+
+          let finalJob: any = null;
+          for (let attempt = 0; attempt < 25; attempt++) {
+            await new Promise((resolve) => setTimeout(resolve, 800));
+            const jobRes = await fetch(apiUrl(`/api/v1/query/jobs/${data.job_id}`));
+            if (!jobRes.ok) {
+              continue;
+            }
+            const jobData = await jobRes.json();
+            if (jobData.status === 'completed' || jobData.status === 'blocked' || jobData.status === 'failed') {
+              finalJob = jobData;
+              break;
+            }
+          }
+
+          if (!finalJob) {
+            const pendingMessage: Message = {
+              id: `${Date.now()}-pending`,
+              type: 'assistant',
+              text: `⏳ Job ${data.job_id} is still running. Check Query Logs for live status.`,
+              timestamp: new Date(),
+            };
+            setMessages(prev => [...prev, pendingMessage]);
+            return;
+          }
+
+          if (finalJob.status === 'failed') {
+            throw new Error(finalJob.error || 'Worker execution failed');
+          }
+
+          if (finalJob.status === 'blocked') {
+            const blockedMessage: Message = {
+              id: `${Date.now()}-blocked`,
+              type: 'assistant',
+              text: `✖ Worker blocked query execution`,
+              timestamp: new Date(),
+              results: finalJob.result?.analysis ? [finalJob.result.analysis] : undefined,
+            };
+            setMessages(prev => [...prev, blockedMessage]);
+            return;
+          }
+
+          const workerResult = finalJob.result || {};
+          const workerMessage: Message = {
+            id: `${Date.now()}-worker-result`,
+            type: 'assistant',
+            text: `✓ Worker completed query successfully\n\nStatus: ${workerResult.status || 'allowed'}\nRisk Level: ${workerResult.risk_level || 'N/A'}`,
+            timestamp: new Date(),
+            sql: workerResult.effective_query,
+            results: workerResult.analysis ? [workerResult.analysis] : [],
+          };
+          setMessages(prev => [...prev, workerMessage]);
+          return;
+        }
+
         let messageText = `✓ Query executed successfully\n\n`;
         if (data.sql) {
           messageText += `SQL: ${data.sql}\n`;

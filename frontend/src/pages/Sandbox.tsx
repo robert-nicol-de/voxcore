@@ -1,7 +1,6 @@
 import React from 'react';
-import { DevSpace } from './DevSpace';
+import QuerySandbox from '../components/QuerySandbox';
 
 export default function Sandbox() {
-  const token = localStorage.getItem('voxcore_token') || '';
-  return <DevSpace token={token} />;
+  return <QuerySandbox />;
 }
