@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { apiUrl } from '../lib/api';
 
 interface RecentQuery {
   id: number;
@@ -119,7 +120,7 @@ export function QueryInspectorDashboard({ token }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/inspector', {
+      const res = await fetch(apiUrl('/api/inspector'), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -140,7 +141,7 @@ export function QueryInspectorDashboard({ token }: Props) {
 
   const handleApproval = async (id: number, action: 'approve' | 'reject') => {
     try {
-      const res = await fetch(`/api/approval/${id}/${action}`, {
+      const res = await fetch(apiUrl(`/api/approval/${id}/${action}`), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

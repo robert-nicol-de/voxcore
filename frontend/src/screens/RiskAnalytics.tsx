@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Badge } from '../components';
 import './RiskAnalytics.css';
+import { apiUrl } from '../lib/api';
 
 interface TableStats {
   table: string;
@@ -38,9 +39,9 @@ export const RiskAnalytics: React.FC = () => {
     const fetchAnalytics = async () => {
       try {
         const [tablesRes, patternsRes, anomaliesRes] = await Promise.all([
-          fetch('/api/governance/analytics/tables?limit=10'),
-          fetch('/api/governance/analytics/patterns'),
-          fetch('/api/governance/analytics/anomalies'),
+          fetch(apiUrl('/api/governance/analytics/tables?limit=10')),
+          fetch(apiUrl('/api/governance/analytics/patterns')),
+          fetch(apiUrl('/api/governance/analytics/anomalies')),
         ]);
 
         if (!tablesRes.ok || !patternsRes.ok || !anomaliesRes.ok) {

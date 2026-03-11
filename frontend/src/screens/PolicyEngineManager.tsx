@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Badge } from '../components';
 import './PolicyEngineManager.css';
+import { apiUrl } from '../lib/api';
 
 interface PolicyConfig {
   risk_thresholds: {
@@ -34,7 +35,7 @@ export const PolicyEngineManager: React.FC = () => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await fetch('/api/governance/policies/config');
+        const response = await fetch(apiUrl('/api/governance/policies/config'));
         if (!response.ok) throw new Error('Failed to fetch policy config');
         const data = await response.json();
         setConfig(data);
@@ -52,7 +53,7 @@ export const PolicyEngineManager: React.FC = () => {
     if (!config) return;
     setSaving(true);
     try {
-      const response = await fetch('/api/governance/policies/update', {
+      const response = await fetch(apiUrl('/api/governance/policies/update'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),

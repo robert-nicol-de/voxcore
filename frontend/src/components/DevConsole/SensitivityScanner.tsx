@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './SensitivityScanner.css';
+import { apiUrl } from '../../lib/api';
 
 /**
  * SensitivityScanner Component
@@ -32,7 +33,7 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
 
   const fetchPatterns = async () => {
     try {
-      const response = await fetch('/api/scanner/patterns');
+      const response = await fetch(apiUrl('/api/scanner/patterns'));
       const data = await response.json();
       setPatterns(data);
     } catch (error) {
@@ -48,7 +49,7 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
 
     setScanning(true);
     try {
-      const response = await fetch('/api/scanner/scan', {
+      const response = await fetch(apiUrl('/api/scanner/scan'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -78,7 +79,7 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
 
     setGenerating(true);
     try {
-      const response = await fetch('/api/scanner/generate-policy', {
+      const response = await fetch(apiUrl('/api/scanner/generate-policy'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -93,7 +94,7 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
       setGeneratedPolicy(policy);
 
       // Also generate mask map
-      const maskResponse = await fetch('/api/scanner/generate-mask-map', {
+      const maskResponse = await fetch(apiUrl('/api/scanner/generate-mask-map'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -118,7 +119,7 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
 
     try {
       // Save policy to backend
-      const response = await fetch('/api/connectors/apply-policy', {
+      const response = await fetch(apiUrl('/api/connectors/apply-policy'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

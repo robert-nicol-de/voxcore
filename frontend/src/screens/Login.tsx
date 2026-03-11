@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './Login.css';
+import { apiUrl } from '../lib/api';
 
 interface LoginProps {
   onLogin?: (userName?: string) => void;
@@ -33,7 +34,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => 
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/v1/auth/login', {
+      const response = await fetch(apiUrl('/api/v1/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: email.trim().toLowerCase(), password }),

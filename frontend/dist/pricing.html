@@ -25,7 +25,14 @@
       max-width: 500px;
       margin: 0 auto;
     }
-
+    .pricing-container {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+      max-width: 1400px;
+      margin: 0 auto 60px;
+    }
     .pricing-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -43,6 +50,8 @@
       flex-direction: column;
       transition: all 0.3s ease;
       position: relative;
+      width: 100%;
+      max-width: 340px;
     }
 
     .pricing-card:hover {
@@ -60,6 +69,13 @@
     .pricing-card.featured:hover {
       transform: scale(1.05) translateY(-8px);
       box-shadow: 0 20px 40px rgba(100, 150, 255, 0.2);
+    }
+
+    .pricing-card h3 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #fff;
     }
 
     .pricing-badge {
@@ -132,6 +148,24 @@
       flex: 1;
     }
 
+    .features {
+      list-style: none;
+      padding: 0;
+      margin: 20px 0 32px;
+      flex: 1;
+    }
+
+    .features li {
+      padding: 12px 0;
+      font-size: 14px;
+      color: #aaa;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .features li:last-child {
+      border-bottom: none;
+    }
+
     .faq-section {
       padding: 80px 32px;
       background: rgba(30, 40, 60, 0.3);
@@ -189,6 +223,218 @@
       transform: rotate(180deg);
     }
 
+    .plan-desc {
+      font-size: 14px;
+      color: #a0aec0;
+      margin-bottom: 10px;
+    }
+
+    .trial-note {
+      font-size: 13px;
+      color: #9aa3af;
+      margin-top: 10px;
+    }
+
+    .pricing-compatibility {
+      margin-top: 80px;
+      text-align: center;
+      padding: 0 32px;
+    }
+
+    .pricing-compatibility h3 {
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+
+    .pricing-compatibility > p {
+      font-size: 16px;
+      color: #aaa;
+      max-width: 600px;
+      margin: 0 auto 40px;
+    }
+
+    .compatibility-grid {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .compat-item {
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .compat-item strong {
+      font-size: 16px;
+      color: #fff;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .compat-item p {
+      font-size: 14px;
+      color: #aaa;
+      margin: 0;
+    }
+
+    .trust-section {
+      margin-top: 80px;
+      padding: 0 32px;
+    }
+
+    .trust-section h3 {
+      text-align: center;
+      font-size: 32px;
+      margin-bottom: 60px;
+    }
+
+    .trust-grid {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .trust-item {
+      max-width: 260px;
+      text-align: center;
+    }
+
+    .trust-item strong {
+      font-size: 16px;
+      color: #fff;
+      display: block;
+      margin: 12px 0;
+    }
+
+    .trust-item p {
+      font-size: 14px;
+      color: #aaa;
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    .risk-comparison {
+      margin-top: 100px;
+      padding: 60px 20px;
+      text-align: center;
+    }
+
+    .risk-header {
+      max-width: 700px;
+      margin: auto;
+    }
+
+    .risk-header p {
+      color: #9aa3af;
+      margin-top: 10px;
+    }
+
+    .comparison-grid {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 50px;
+      flex-wrap: wrap;
+    }
+
+    .risk-card {
+      max-width: 380px;
+      padding: 30px;
+      border-radius: 12px;
+      background: #111827;
+      text-align: left;
+    }
+
+    .risk-danger {
+      border: 1px solid #ef4444;
+    }
+
+    .risk-safe {
+      border: 1px solid #3b82f6;
+    }
+
+    .risk-card ul {
+      margin-top: 15px;
+      padding-left: 20px;
+    }
+
+    .risk-card li {
+      margin-bottom: 10px;
+    }
+
+    .risk-example {
+      margin-top: 20px;
+      background: #020617;
+      padding: 15px;
+      border-radius: 6px;
+    }
+
+    .risk-example pre {
+      background: #000;
+      padding: 10px;
+      color: #22c55e;
+      overflow-x: auto;
+    }
+
+    .risk-result {
+      color: #ef4444;
+      margin-top: 8px;
+    }
+
+    .risk-blocked {
+      color: #22c55e;
+      margin-top: 8px;
+    }
+
+    .how-it-works {
+      margin-top: 100px;
+      padding: 60px 20px;
+      text-align: center;
+    }
+
+    .how-header {
+      max-width: 700px;
+      margin: auto;
+    }
+
+    .how-header p {
+      margin-top: 10px;
+      color: #9aa3af;
+    }
+
+    .how-grid {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 50px;
+      flex-wrap: wrap;
+    }
+
+    .how-step {
+      max-width: 260px;
+      padding: 25px;
+      background: #111827;
+      border-radius: 10px;
+    }
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      background: #3b82f6;
+      color: white;
+      border-radius: 50%;
+      margin: auto;
+      line-height: 40px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+
     @media (max-width: 768px) {
       .pricing-grid {
         grid-template-columns: 1fr;
@@ -232,107 +478,258 @@
 
   <!-- Pricing Section -->
   <section class="pricing-section">
-    <div class="container">
-      <div class="pricing-header">
-        <h1>Simple, Transparent Pricing</h1>
-        <p>Choose the plan that fits your needs. Start free, upgrade anytime.</p>
-      </div>
 
-      <div class="pricing-grid">
-        <!-- Starter Plan -->
-        <div class="pricing-card">
-          <h3 class="pricing-name">Starter</h3>
-          <div class="pricing-price">$29</div>
-          <div class="pricing-period">per month, billed annually</div>
-          <div class="pricing-features">
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>1 database connection</span>
-            </div>
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>100 AI queries / month</span>
-            </div>
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>Basic SQL firewall</span>
-            </div>
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>Email support</span>
-            </div>
-          </div>
-          <div class="pricing-actions">
-            <a href="/app" class="btn-secondary">Start Free</a>
-          </div>
-        </div>
-
-        <!-- Professional Plan (Featured) -->
-        <div class="pricing-card featured">
-          <div class="pricing-badge">Most Popular</div>
-          <h3 class="pricing-name">Professional</h3>
-          <div class="pricing-price">$99</div>
-          <div class="pricing-period">per month, billed annually</div>
-          <div class="pricing-features">
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>5 database connections</span>
-            </div>
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>Unlimited AI queries</span>
-            </div>
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>Advanced SQL firewall</span>
-            </div>
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>Query audit logs</span>
-            </div>
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>Priority support</span>
-            </div>
-          </div>
-          <div class="pricing-actions">
-            <a href="#contact" class="btn-primary">Subscribe Now</a>
-          </div>
-        </div>
-
-        <!-- Enterprise Plan -->
-        <div class="pricing-card">
-          <h3 class="pricing-name">Enterprise</h3>
-          <div class="pricing-price">Custom</div>
-          <div class="pricing-period">tailored to your needs</div>
-          <div class="pricing-features">
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>Unlimited databases</span>
-            </div>
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>Unlimited queries</span>
-            </div>
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>Custom firewall rules</span>
-            </div>
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>SSO integration</span>
-            </div>
-            <div class="pricing-feature">
-              <span class="pricing-feature-icon">✓</span>
-              <span>Dedicated support</span>
-            </div>
-          </div>
-          <div class="pricing-actions">
-            <a href="#contact" class="btn-secondary">Contact Sales</a>
-          </div>
-        </div>
-      </div>
+    <div class="pricing-header">
+      <h2>Simple Pricing for AI Database Security</h2>
+      <p>
+        VoxCore protects databases from AI access by inspecting,
+        validating, and auditing every AI-generated query before execution.
+      </p>
     </div>
+
+    <div class="pricing-container">
+
+      <!-- STARTER -->
+      <div class="pricing-card">
+        <h3>Starter</h3>
+        <p class="plan-desc">Best for individual developers and small AI projects</p>
+
+        <div class="pricing-price">$29</div>
+        <p class="pricing-period">per month, billed annually</p>
+
+        <ul class="features">
+          <li>✓ 1 Database Connection</li>
+          <li>✓ 100 AI Queries / Month</li>
+          <li>✓ Basic SQL Firewall</li>
+          <li>✓ Query Validation Engine</li>
+          <li>✓ Email Support</li>
+        </ul>
+
+        <button class="btn-primary">Start Free Trial</button>
+
+        <p class="trial-note">
+          14-day free trial – No credit card required
+        </p>
+      </div>
+
+
+      <!-- PROFESSIONAL -->
+      <div class="pricing-card featured">
+
+        <div class="pricing-badge">MOST POPULAR</div>
+
+        <h3>Professional</h3>
+        <p class="plan-desc">Ideal for AI startups and production applications</p>
+
+        <div class="pricing-price">$99</div>
+        <p class="pricing-period">per month, billed annually</p>
+
+        <ul class="features">
+          <li>✓ 5 Database Connections</li>
+          <li>✓ Unlimited AI Queries</li>
+          <li>✓ Advanced SQL Firewall</li>
+          <li>✓ AI Query Inspector Dashboard</li>
+          <li>✓ Query Audit Logs</li>
+          <li>✓ Priority Support</li>
+        </ul>
+
+        <button class="btn-primary">Start Professional Plan</button>
+      </div>
+
+
+      <!-- ENTERPRISE -->
+      <div class="pricing-card">
+        <h3>Enterprise</h3>
+        <p class="plan-desc">Designed for enterprises and AI platforms</p>
+
+        <div class="pricing-price">Custom</div>
+        <p class="pricing-period">Tailored to your needs</p>
+
+        <ul class="features">
+          <li>✓ Unlimited Databases</li>
+          <li>✓ Unlimited Queries</li>
+          <li>✓ Custom Firewall Policies</li>
+          <li>✓ SSO / SAML Integration</li>
+          <li>✓ Dedicated Support</li>
+          <li>✓ On-Premise Deployment Option</li>
+        </ul>
+
+        <button class="btn-secondary">Contact Sales</button>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- How It Works Section -->
+  <section class="how-it-works">
+
+    <div class="how-header">
+      <h2>How VoxCore Protects Your Databases</h2>
+      <p>
+        VoxCore acts as a security layer between AI systems and your databases,
+        inspecting and validating every AI-generated SQL query before execution.
+      </p>
+    </div>
+
+    <div class="how-grid">
+
+      <div class="how-step">
+        <div class="step-number">1</div>
+        <h3>AI Generates Query</h3>
+        <p>
+          AI tools like OpenAI, Grok, Claude or internal agents generate SQL
+          queries based on prompts.
+        </p>
+      </div>
+
+      <div class="how-step">
+        <div class="step-number">2</div>
+        <h3>Query Sent to VoxCore</h3>
+        <p>
+          Instead of executing directly, the query passes through VoxCore
+          for inspection and validation.
+        </p>
+      </div>
+
+      <div class="how-step">
+        <div class="step-number">3</div>
+        <h3>Security Analysis</h3>
+        <p>
+          VoxCore analyzes the SQL for destructive patterns, injection risks,
+          and unsafe operations.
+        </p>
+      </div>
+
+      <div class="how-step">
+        <div class="step-number">4</div>
+        <h3>Safe Execution</h3>
+        <p>
+          Safe queries are executed. Dangerous queries are blocked and logged
+          in the audit dashboard.
+        </p>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- COMPATIBILITY SECTION -->
+
+    <div class="pricing-compatibility">
+
+      <h3>Built for Modern AI Data Systems</h3>
+
+      <p>
+        VoxCore integrates seamlessly with leading AI models and databases.
+      </p>
+
+      <div class="compatibility-grid">
+
+        <div class="compat-item">
+          <strong>AI Models</strong>
+          <p>OpenAI • Grok • Claude • Gemini • Custom AI Agents</p>
+        </div>
+
+        <div class="compat-item">
+          <strong>Databases</strong>
+          <p>PostgreSQL • MySQL • SQL Server • Snowflake • BigQuery</p>
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- TRUST SECTION -->
+
+    <div class="trust-section">
+
+      <h3>Why Teams Trust VoxCore</h3>
+
+      <div class="trust-grid">
+
+        <div class="trust-item">
+          🔒
+          <strong>AI Query Security</strong>
+          <p>Block unsafe or malicious AI-generated SQL queries before execution.</p>
+        </div>
+
+        <div class="trust-item">
+          ⚡
+          <strong>Real-Time Query Inspection</strong>
+          <p>Every AI query is analyzed and validated instantly.</p>
+        </div>
+
+        <div class="trust-item">
+          📊
+          <strong>Full Audit Logging</strong>
+          <p>Track and review all AI activity across your databases.</p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- Risk Comparison Section -->
+  <section class="risk-comparison">
+
+    <div class="risk-header">
+      <h2>Protect Your Database From Unsafe AI Queries</h2>
+      <p>
+        AI tools can generate powerful SQL queries, but without proper safeguards
+        they can also damage or delete critical data. VoxCore inspects every
+        AI-generated query before it reaches your database.
+      </p>
+    </div>
+
+    <div class="comparison-grid">
+
+      <!-- WITHOUT VOXCORE -->
+
+      <div class="risk-card risk-danger">
+        <h3>⚠️ Without VoxCore</h3>
+
+        <ul>
+          <li>AI agent generates unsafe SQL</li>
+          <li>Accidental <code>DELETE</code> or <code>DROP TABLE</code> commands</li>
+          <li>Production data deleted or corrupted</li>
+          <li>No validation or query inspection</li>
+          <li>No audit trail for AI actions</li>
+        </ul>
+
+        <div class="risk-example">
+          <p><strong>Example AI Query:</strong></p>
+          <pre>DROP TABLE customers;</pre>
+          <p class="risk-result">Database table permanently deleted.</p>
+        </div>
+      </div>
+
+
+      <!-- WITH VOXCORE -->
+
+      <div class="risk-card risk-safe">
+        <h3>🛡️ With VoxCore</h3>
+
+        <ul>
+          <li>AI queries inspected before execution</li>
+          <li>Dangerous SQL patterns detected</li>
+          <li>Query risk scoring engine</li>
+          <li>Unsafe queries automatically blocked</li>
+          <li>Full audit log of AI activity</li>
+        </ul>
+
+        <div class="risk-example">
+          <p><strong>Example AI Query:</strong></p>
+          <pre>DROP TABLE customers;</pre>
+          <p class="risk-blocked">Query blocked: destructive SQL detected.</p>
+        </div>
+      </div>
+
+    </div>
+
   </section>
 
   <!-- FAQ Section -->
@@ -447,4 +844,36 @@
     });
   </script>
 </body>
+  <footer>
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>Product</h3>
+        <a href="/login.html">App</a>
+        <a href="/pricing.html">Pricing</a>
+        <a href="/">Features</a>
+      </div>
+      <div class="footer-section">
+        <h3>Company</h3>
+        <a href="/about.html">About</a>
+        <a href="#">Blog</a>
+        <a href="#">Careers</a>
+      </div>
+      <div class="footer-section">
+        <h3>Resources</h3>
+        <a href="#">Documentation</a>
+        <a href="#">API Docs</a>
+        <a href="#">Support</a>
+      </div>
+      <div class="footer-section">
+        <h3>Legal</h3>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Security</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2026 VoxCore. All rights reserved.</span>
+      <span>Secure AI for Data Access</span>
+    </div>
+  </footer>
 </html>

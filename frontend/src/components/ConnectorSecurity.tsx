@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../lib/api';
 
 interface ConnectorSecurityData {
   name: string;
@@ -21,7 +22,7 @@ export const ConnectorSecurity: React.FC = () => {
   const fetchConnectorSecurity = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/v1/connectors');
+      const response = await fetch(apiUrl('/api/v1/connectors'));
       if (!response.ok) {
         throw new Error('Failed to fetch connectors');
       }

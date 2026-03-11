@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../lib/api';
 
 interface DatabaseConfig {
   name: string;
@@ -40,7 +41,7 @@ export const ConnectorsPanel: React.FC = () => {
   const fetchConnectors = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/v1/connectors');
+      const response = await fetch(apiUrl('/api/v1/connectors'));
       if (!response.ok) {
         throw new Error(`Failed to fetch connectors: ${response.statusText}`);
       }

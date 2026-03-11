@@ -95,8 +95,6 @@ class User(Base):
 
 def ensure_primary_god_user(db):
     """Ensure the primary god account always exists and stays usable."""
-    from passlib.hash import bcrypt
-
     voxcore = db.query(Company).filter(Company.company_name == "VoxCore").first()
     if not voxcore:
         voxcore = Company(company_name="VoxCore", status="active")
@@ -104,7 +102,10 @@ def ensure_primary_god_user(db):
         db.flush()
 
     user = db.query(User).filter(User.email == PRIMARY_GOD_EMAIL).first()
-    password_hash = bcrypt.hash(PRIMARY_GOD_PASSWORD)
+
+    # Primary login path verifies plaintext directly in auth.py, so keep a
+    # static placeholder hash and avoid runtime bcrypt hashing here.
+    password_hash = "primary-god-placeholder-hash"
 
     if user:
         user.name = PRIMARY_GOD_NAME

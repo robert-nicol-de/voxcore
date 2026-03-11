@@ -3,6 +3,8 @@
  * Continuously monitors backend health and database connection status
  */
 
+import { apiUrl } from '../lib/api';
+
 let healthCheckInterval: ReturnType<typeof setInterval> | null = null;
 let isBackendHealthy = true;
 let isDatabaseConnected = false;
@@ -16,7 +18,7 @@ export const startHealthMonitoring = () => {
       const timeoutId = setTimeout(() => controller.abort(), 2000);
 
       // Check backend health
-      const response = await fetch('/health', {
+      const response = await fetch(apiUrl('/health'), {
         method: 'GET',
         signal: controller.signal,
       });
@@ -46,7 +48,7 @@ export const startHealthMonitoring = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-      const response = await fetch('/api/v1/connection/test', {
+      const response = await fetch(apiUrl('/api/v1/connection/test'), {
         method: 'GET',
         signal: controller.signal,
       });

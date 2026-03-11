@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../lib/api';
 
 interface TenantInfo {
   tenant_id: string;
@@ -22,7 +23,7 @@ export default function TenantContext() {
     // Fetch list of all tenants
     const fetchTenants = async () => {
       try {
-        const response = await fetch('/api/v1/tenants');
+        const response = await fetch(apiUrl('/api/v1/tenants'));
         if (response.ok) {
           const data = await response.json();
           setAllTenants(data.tenants || []);
@@ -43,7 +44,7 @@ export default function TenantContext() {
     const fetchTenantConfig = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/v1/tenants/${selectedTenant}/config`);
+        const response = await fetch(apiUrl(`/api/v1/tenants/${selectedTenant}/config`));
         if (response.ok) {
           const data = await response.json();
           setTenant(data);
