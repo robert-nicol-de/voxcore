@@ -1,4 +1,6 @@
 import os
+from configparser import ConfigParser
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -53,7 +55,103 @@ class LoginRequest(BaseModel):
     username: Optional[str] = None
     password: str
 
+
+class ConnectionCredentials(BaseModel):
+    host: Optional[str] = ""
+    username: Optional[str] = ""
+    password: Optional[str] = ""
+    database: Optional[str] = ""
+    port: Optional[str] = ""
+    warehouse: Optional[str] = ""
+    role: Optional[str] = ""
+    schema_name: Optional[str] = "PUBLIC"
+    auth_type: Optional[str] = "sql"
+
+
+class ConnectRequest(BaseModel):
+    database: str
+    credentials: ConnectionCredentials
+    remember_me: Optional[bool] = False
+
 router = APIRouter()
+
+
+def _project_root() -> Path:
+    # backend/api/auth.py -> backend/api -> backend -> project root
+    return Path(__file__).resolve().parents[2]
+
+
+def _resolve_config_path(db_type: str) -> Optional[Path]:
+    normalized = (db_type or "").strip().lower()
+    file_aliases = {
+        "semantic": ["semantic_model.ini", "semantic.ini"],
+        "sqlserver": ["sqlserver.ini"],
+        "snowflake": ["snowflake.ini"],
+        "postgres": ["postgres.ini", "postgresql.ini"],
+        "postgresql": ["postgresql.ini", "postgres.ini"],
+        "redshift": ["redshift.ini"],
+        "bigquery": ["bigquery.ini"],
+    }
+
+    candidate_files = file_aliases.get(normalized, [f"{normalized}.ini"])
+    candidate_dirs = [
+        _project_root() / "voxcore" / "voxquery" / "config",
+        _project_root() / "voxcore" / "voxquery" / "voxquery" / "config",
+        _project_root() / "connectors",
+    ]
+
+    for directory in candidate_dirs:
+        for filename in candidate_files:
+            candidate = directory / filename
+            if candidate.exists():
+                return candidate
+
+    return None
+
+
+def _load_ini_credentials(db_type: str) -> dict:
+    config_path = _resolve_config_path(db_type)
+    if not config_path:
+        return {}
+
+    parser = ConfigParser()
+    parser.read(config_path)
+
+    if not parser.has_section("connection"):
+        return {}
+
+    connection = parser["connection"]
+    # Normalize to frontend credential shape.
+    return {
+        "host": connection.get("host") or connection.get("account") or "",
+        "username": connection.get("username", ""),
+        "password": connection.get("password", ""),
+        "database": connection.get("database", ""),
+        "port": connection.get("port", ""),
+        "warehouse": connection.get("warehouse", ""),
+        "role": connection.get("role", ""),
+        "schema_name": connection.get("schema", "PUBLIC"),
+        "auth_type": connection.get("auth_type", "sql"),
+    }
+
+
+def _validate_connect_request(request: ConnectRequest):
+    db_type = (request.database or "").strip().lower()
+    creds = request.credentials
+
+    if db_type not in {"snowflake", "semantic", "sqlserver", "postgres", "redshift", "bigquery"}:
+        raise HTTPException(status_code=400, detail=f"Unsupported database type: {request.database}")
+
+    if not (creds.host or "").strip() or not (creds.database or "").strip():
+        raise HTTPException(status_code=400, detail="Host and Database are required")
+
+    auth_type = (creds.auth_type or "sql").strip().lower()
+    if db_type in {"snowflake", "semantic"}:
+        if not (creds.username or "").strip() or not (creds.password or "").strip():
+            raise HTTPException(status_code=400, detail="Username and Password are required")
+    elif db_type == "sqlserver" and auth_type != "windows":
+        if not (creds.username or "").strip() or not (creds.password or "").strip():
+            raise HTTPException(status_code=400, detail="Username and Password are required for SQL Authentication")
 
 def _login(user: LoginRequest):
     login_email = (user.email or user.username or "").strip().lower()
@@ -123,6 +221,36 @@ def debug_login(user: LoginRequest):
         "primary_god_email": PRIMARY_GOD_EMAIL,
         "emails_match": login_email == PRIMARY_GOD_EMAIL,
         "primary_god_env_var": os.environ.get("VOXCORE_GOD_EMAIL", "NOT_SET"),
-        "dummy_users_emails": [u.email for u in DUMMY_USERS],
+        "dummy_users_emails": [u["email"] for u in DUMMY_USERS],
         "user_found_in_cache": get_user_by_email(login_email) is not None,
+    }
+
+
+@router.api_route("/api/v1/auth/load-ini-credentials/{db_type}", methods=["GET", "POST"])
+def load_ini_credentials(db_type: str):
+    credentials = _load_ini_credentials(db_type)
+    return {
+        "database": db_type,
+        "credentials": credentials,
+    }
+
+
+@router.post("/api/v1/auth/test-connection")
+def test_connection(request: ConnectRequest):
+    _validate_connect_request(request)
+    return {
+        "ok": True,
+        "database": request.database,
+        "message": "Connection parameters validated",
+    }
+
+
+@router.post("/api/v1/auth/connect")
+def connect(request: ConnectRequest):
+    _validate_connect_request(request)
+    return {
+        "connected": True,
+        "database": request.database,
+        "remember_me": bool(request.remember_me),
+        "message": "Connected successfully",
     }
