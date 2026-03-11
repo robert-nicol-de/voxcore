@@ -518,7 +518,7 @@ async def test_connection(request: ConnectRequest) -> Dict[str, Any]:
     """
     try:
         from sqlalchemy import text
-        from voxquery.core.engine import VoxQueryEngine
+        from ..core.engine import VoxQueryEngine
         import logging
         
         logger = logging.getLogger(__name__)

@@ -23,9 +23,16 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://voxcore.org",
+    "https://www.voxcore.org",
+    "https://voxcore.onrender.com",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure in production
+    allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

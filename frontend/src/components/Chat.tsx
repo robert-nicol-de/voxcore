@@ -158,17 +158,20 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
       if (response.ok) {
         const data = await response.json();
         let messageText = `✓ Query executed successfully\n\n`;
-        if (data.generated_sql) {
-          messageText += `SQL: ${data.generated_sql}\n`;
-        }
-        if (data.risk_score !== undefined) {
-          messageText += `Risk Score: ${data.risk_score}\n`;
+        if (data.sql) {
+          messageText += `SQL: ${data.sql}\n`;
         }
         if (data.execution_time_ms !== undefined) {
           messageText += `Execution Time: ${data.execution_time_ms}ms\n`;
         }
-        if (data.rows_returned !== undefined) {
-          messageText += `Rows Returned: ${data.rows_returned}\n`;
+        if (data.row_count !== undefined) {
+          messageText += `Rows Returned: ${data.row_count}\n`;
+        }
+        if (data.error) {
+          messageText += `\n⚠️ ${data.error}`;
+        }
+        if (data.message) {
+          messageText += `\n💡 ${data.message}`;
         }
         
         const assistantMessage: Message = {
@@ -176,8 +179,8 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
           type: 'assistant',
           text: messageText,
           timestamp: new Date(),
-          sql: data.generated_sql || data.final_sql,
-          results: data.results,
+          sql: data.sql,
+          results: data.data,
           chart: data.chart,
           column_mapping: data.column_mapping || {},
         };

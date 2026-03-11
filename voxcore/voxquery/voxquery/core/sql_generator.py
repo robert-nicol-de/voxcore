@@ -356,7 +356,7 @@ HIGHEST PRIORITY FINANCE QUESTION RULES – OVERRIDE EVERYTHING ELSE:
             # LINE 1: Build platform-specific system prompt BEFORE LLM call
             system_prompt = None
             try:
-                from voxquery.core import platform_dialect_engine
+                from . import platform_dialect_engine
                 
                 platform = self.dialect or "snowflake"
                 system_prompt = platform_dialect_engine.build_system_prompt(
@@ -376,7 +376,7 @@ HIGHEST PRIORITY FINANCE QUESTION RULES – OVERRIDE EVERYTHING ELSE:
             )
             
             # Generate SQL with automatic fallback on rate limit
-            from voxquery.core.llm_fallback import generate_sql_with_fallback
+            from .llm_fallback import generate_sql_with_fallback
             
             messages = [
                 {"role": "user", "content": prompt_text}
@@ -438,8 +438,8 @@ HIGHEST PRIORITY FINANCE QUESTION RULES – OVERRIDE EVERYTHING ELSE:
         system_prompt: str = None,
     ) -> str:
         """Build the prompt for SQL generation"""
-        from voxquery.config.dialects.dialect_config import get_dialect_config
-        from voxquery.core.few_shot_templates import get_few_shot_prompt
+        from ..config.dialects.dialect_config import get_dialect_config
+        from .few_shot_templates import get_few_shot_prompt
         
         # LINE 1: Use platform-specific system prompt if provided
         if system_prompt:

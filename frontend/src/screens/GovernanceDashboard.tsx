@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Badge } from '../components';
 import FirewallMonitor from '../components/FirewallMonitor';
+import { apiUrl } from '../lib/api';
 import './GovernanceDashboard.css';
 
 interface MetricsData {
@@ -81,9 +82,70 @@ export const GovernanceDashboard: React.FC<GovernanceDashboardProps> = ({ onAskQ
     ],
   };
 
-  const [metrics] = useState<MetricsData>(mockMetrics);
+  const [metrics, setMetrics] = useState<MetricsData>(mockMetrics);
   const [showBlockedModal, setShowBlockedModal] = useState(false);
   const [selectedQuery, setSelectedQuery] = useState<MetricsData['recent_activity'][0] | null>(null);
+
+  useEffect(() => {
+    const fetchGovernanceData = async () => {
+      try {
+        const [metricsRes, activityRes, violationsRes] = await Promise.all([
+          fetch(apiUrl('/api/governance/metrics')),
+          fetch(apiUrl('/api/governance/activity/feed?limit=10')),
+          fetch(apiUrl('/api/governance/violations?limit=20')),
+        ]);
+
+        const [metricsData, activityData, violationsData] = await Promise.all([
+          metricsRes.ok ? metricsRes.json() : null,
+          activityRes.ok ? activityRes.json() : null,
+          violationsRes.ok ? violationsRes.json() : null,
+        ]);
+
+        const actionToStatus: Record<string, 'safe' | 'warning' | 'blocked'> = {
+          executed: 'safe',
+          rewritten: 'warning',
+          blocked: 'blocked',
+        };
+
+        const recentActivity = (activityData?.activities ?? []).map((a: any) => {
+          const ts = new Date(a.timestamp);
+          const time = ts.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+          return {
+            time,
+            user: a.user,
+            query: a.prompt || a.query || '',
+            status: actionToStatus[a.action_taken] ?? 'safe',
+            risk: a.risk_score ?? 0,
+          };
+        });
+
+        const violationGroups: Record<string, number> = {};
+        for (const v of (Array.isArray(violationsData) ? violationsData : [])) {
+          const key = (v.violation_type || 'Unknown').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+          violationGroups[key] = (violationGroups[key] || 0) + 1;
+        }
+        const policyViolationsBreakdown = Object.entries(violationGroups).map(([violation, count]) => ({ violation, count }));
+
+        setMetrics(prev => ({
+          ...prev,
+          ...(metricsData ? {
+            total_requests: metricsData.total_requests ?? prev.total_requests,
+            risk_distribution: metricsData.risk_distribution ?? prev.risk_distribution,
+            blocked_attempts: metricsData.blocked_attempts ?? prev.blocked_attempts,
+            policy_violations: metricsData.policy_violations ?? prev.policy_violations,
+            query_trends: metricsData.query_trends ?? prev.query_trends,
+            data_access_heatmap: metricsData.data_access_heatmap ?? prev.data_access_heatmap,
+          } : {}),
+          ...(recentActivity.length > 0 ? { recent_activity: recentActivity } : {}),
+          ...(policyViolationsBreakdown.length > 0 ? { policy_violations_breakdown: policyViolationsBreakdown } : {}),
+        }));
+      } catch (err) {
+        console.error('Failed to load governance metrics:', err);
+      }
+    };
+
+    fetchGovernanceData();
+  }, []);
 
   const safePercentage = ((metrics.risk_distribution.safe / metrics.total_requests) * 100).toFixed(1);
   const warningPercentage = ((metrics.risk_distribution.warning / metrics.total_requests) * 100).toFixed(1);

@@ -455,237 +455,107 @@ class ChartGenerator:
 
     def generate_all_charts(
         self,
-        data: List[Dict[str, Any]],
-        title: str = "",
-    ) -> Dict[str, Dict[str, Any]]:
-        """Generate charts with smart fallback to count-based when no real metrics exist"""
+        data,
+        title="",
+    ):
+        """Generate ECharts-compatible chart specs from query result data."""
         if not data:
             return {}
-        
-        if len(data) < 1:
-            logger.info(f"No data available for charts.")
-            return {}
-        
+
         columns = list(data[0].keys())
-        rows = data
-        
-        # ────────────────────────────────────────────────
-        # Identify meaningful numeric columns (exclude IDs/codes)
-        # ────────────────────────────────────────────────
+
         numeric_cols = [
             c for c in columns
             if any(k in c.lower() for k in ["balance", "amount", "price", "quantity", "total", "value", "duration", "cost", "revenue", "profit"])
-            and not any(k in c.lower() for k in ["id", "number", "line", "state", "severity"])  # exclude codes/IDs
+            and not any(k in c.lower() for k in ["id", "number", "line", "state", "severity"])
         ]
-        
-        # Time column (for line/trend)
         time_cols = [c for c in columns if any(k in c.lower() for k in ["time", "date", "created", "modified"])]
-        
-        # Categorical columns (for grouping)
         cat_cols = [c for c in columns if c not in numeric_cols and c not in time_cols]
-        
+
         specs = {}
-        
-        # ────────────────────────────────────────────────
-        # Case 1: Real numeric metrics exist → use them
-        # ────────────────────────────────────────────────
+        clean_title = self._extract_chart_title(title) or title
+
+        def _to_num(v):
+            try:
+                return float(v) if v is not None else 0.0
+            except (ValueError, TypeError):
+                return 0.0
+
         if numeric_cols:
-            y = numeric_cols[0]  # primary metric
+            y = numeric_cols[0]
             x = cat_cols[0] if cat_cols else (time_cols[0] if time_cols else columns[0])
-            
-            # Bar chart
+            x_label = x.replace("_", " ").title()
+            y_label = y.replace("_", " ").title()
+            x_data = [str(row.get(x, "")) for row in data]
+            y_data = [_to_num(row.get(y)) for row in data]
+            chart_title = clean_title or f"{y_label} by {x_label}"
+
             specs["bar"] = {
-                "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-                "width": 600,
-                "height": 340,
-                "data": {"values": rows},
-                "title": f"Sum of {y.replace('_', ' ').title()} by {x.replace('_', ' ').title()}",
-                "mark": {"type": "bar", "tooltip": True, "cornerRadius": 4},
-                "encoding": {
-                    "x": {
-                        "field": x,
-                        "type": "nominal" if x in cat_cols else "temporal",
-                        "title": x.replace('_', ' ').title(),
-                        "axis": {"labelAngle": -45, "labelOverlap": False, "labelFontSize": 12}
-                    },
-                    "y": {
-                        "field": y,
-                        "type": "quantitative",
-                        "aggregate": "sum",
-                        "title": y.replace('_', ' ').title(),
-                        "axis": {"format": ",.2f", "labelFontSize": 12}
-                    },
-                    "color": {
-                        "field": x,
-                        "type": "nominal",
-                        "scale": {"scheme": "category20"},
-                        "legend": None
-                    },
-                    "tooltip": [
-                        {"field": x, "type": "nominal" if x in cat_cols else "temporal"},
-                        {"field": y, "type": "quantitative", "aggregate": "sum", "format": ",.2f"}
-                    ]
-                },
-                "autosize": "fit"
+                "type": "bar",
+                "title": chart_title,
+                "xAxis": {"data": x_data},
+                "yAxis": {"name": y_label},
+                "series": [{"name": y_label, "data": y_data}],
             }
-            
-            # Pie chart
+
             specs["pie"] = {
-                "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-                "width": 380,
-                "height": 380,
-                "data": {"values": rows},
-                "title": f"Proportion of {y.replace('_', ' ').title()} by {x.replace('_', ' ').title()}",
-                "mark": {"type": "arc", "tooltip": True},
-                "encoding": {
-                    "theta": {
-                        "field": y,
-                        "type": "quantitative",
-                        "aggregate": "sum"
-                    },
-                    "color": {
-                        "field": x,
-                        "type": "nominal",
-                        "scale": {"scheme": "category20"},
-                        "title": x.replace('_', ' ').title(),
-                        "legend": {"orient": "right", "titleFontSize": 13, "labelFontSize": 12}
-                    },
-                    "tooltip": [
-                        {"field": x, "type": "nominal"},
-                        {"field": y, "type": "quantitative", "aggregate": "sum", "format": ",.2f"}
-                    ]
-                },
-                "autosize": "fit"
+                "type": "pie",
+                "title": f"Proportion of {y_label} by {x_label}",
+                "data": [{"value": _to_num(row.get(y)), "name": str(row.get(x, ""))} for row in data],
             }
-            
-            # Line chart (if time column exists)
+
             if time_cols:
+                t = time_cols[0]
+                t_label = t.replace("_", " ").title()
                 specs["line"] = {
-                    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-                    "width": 600,
-                    "height": 340,
-                    "data": {"values": rows},
-                    "title": f"{y.replace('_', ' ').title()} over {time_cols[0].replace('_', ' ').title()}",
-                    "mark": {"type": "line", "point": True, "tooltip": True},
-                    "encoding": {
-                        "x": {
-                            "field": time_cols[0],
-                            "type": "temporal",
-                            "title": time_cols[0].replace("_", " ").title(),
-                            "axis": {"format": "%d %b %Y", "labelFontSize": 12}
-                        },
-                        "y": {
-                            "field": y,
-                            "type": "quantitative",
-                            "title": y.replace('_', ' ').title(),
-                            "axis": {"format": ",.2f", "labelFontSize": 12}
-                        },
-                        "tooltip": [
-                            {"field": time_cols[0], "type": "temporal"},
-                            {"field": y, "type": "quantitative", "format": ",.2f"}
-                        ]
-                    },
-                    "autosize": "fit"
+                    "type": "line",
+                    "title": f"{y_label} over {t_label}",
+                    "xAxis": {"data": [str(row.get(t, "")) for row in data]},
+                    "yAxis": {"name": y_label},
+                    "series": [{"name": y_label, "data": [_to_num(row.get(y)) for row in data]}],
                 }
-        
-        # ────────────────────────────────────────────────
-        # Case 2: No real metrics → fallback to count-based charts
-        # ────────────────────────────────────────────────
+
         else:
+            # Count-based charts when no numeric metrics exist
             if cat_cols:
-                x = cat_cols[0]  # e.g. ErrorSeverity, UserName, ErrorProcedure
-                
-                # Count-based bar chart
+                x = cat_cols[0]
+                x_label = x.replace("_", " ").title()
+                counts = {}
+                for row in data:
+                    key = str(row.get(x, ""))
+                    counts[key] = counts.get(key, 0) + 1
+
+                x_data = list(counts.keys())
+                y_data_int = list(counts.values())
+
                 specs["bar"] = {
-                    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-                    "width": 600,
-                    "height": 340,
-                    "data": {"values": rows},
-                    "title": f"Count by {x.replace('_', ' ').title()}",
-                    "mark": {"type": "bar", "tooltip": True, "cornerRadius": 4},
-                    "encoding": {
-                        "x": {
-                            "field": x,
-                            "type": "nominal",
-                            "title": x.replace('_', ' ').title(),
-                            "axis": {"labelAngle": -45, "labelOverlap": False, "labelFontSize": 12}
-                        },
-                        "y": {
-                            "aggregate": "count",
-                            "type": "quantitative",
-                            "title": "Count",
-                            "axis": {"labelFontSize": 12}
-                        },
-                        "color": {
-                            "field": x,
-                            "type": "nominal",
-                            "scale": {"scheme": "category20"},
-                            "legend": None
-                        },
-                        "tooltip": [
-                            {"field": x, "type": "nominal"},
-                            {"aggregate": "count", "type": "quantitative"}
-                        ]
-                    },
-                    "autosize": "fit"
+                    "type": "bar",
+                    "title": clean_title or f"Count by {x_label}",
+                    "xAxis": {"data": x_data},
+                    "yAxis": {"name": "Count"},
+                    "series": [{"name": "Count", "data": y_data_int}],
                 }
-                
-                # Count-based pie chart
+
                 specs["pie"] = {
-                    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-                    "width": 380,
-                    "height": 380,
-                    "data": {"values": rows},
-                    "title": f"Proportion by {x.replace('_', ' ').title()}",
-                    "mark": {"type": "arc", "tooltip": True},
-                    "encoding": {
-                        "theta": {
-                            "aggregate": "count",
-                            "type": "quantitative"
-                        },
-                        "color": {
-                            "field": x,
-                            "type": "nominal",
-                            "scale": {"scheme": "category20"},
-                            "title": x.replace('_', ' ').title(),
-                            "legend": {"orient": "right", "titleFontSize": 13, "labelFontSize": 12}
-                        },
-                        "tooltip": [
-                            {"field": x, "type": "nominal"},
-                            {"aggregate": "count", "type": "quantitative"}
-                        ]
-                    },
-                    "autosize": "fit"
+                    "type": "pie",
+                    "title": f"Proportion by {x_label}",
+                    "data": [{"value": count, "name": name} for name, count in counts.items()],
                 }
-                
-                # Time-series count chart (if time column exists)
+
                 if time_cols:
+                    t = time_cols[0]
+                    t_label = t.replace("_", " ").title()
+                    t_counts = {}
+                    for row in data:
+                        key = str(row.get(t, ""))
+                        t_counts[key] = t_counts.get(key, 0) + 1
+                    t_sorted = sorted(t_counts.items())
                     specs["line"] = {
-                        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-                        "width": 600,
-                        "height": 340,
-                        "data": {"values": rows},
-                        "title": f"Count over {time_cols[0].replace('_', ' ').title()}",
-                        "mark": {"type": "line", "point": True, "tooltip": True},
-                        "encoding": {
-                            "x": {
-                                "field": time_cols[0],
-                                "type": "temporal",
-                                "title": time_cols[0].replace("_", " ").title(),
-                                "axis": {"format": "%d %b %Y", "labelFontSize": 12}
-                            },
-                            "y": {
-                                "aggregate": "count",
-                                "type": "quantitative",
-                                "title": "Count",
-                                "axis": {"labelFontSize": 12}
-                            },
-                            "tooltip": [
-                                {"field": time_cols[0], "type": "temporal"},
-                                {"aggregate": "count", "type": "quantitative"}
-                            ]
-                        },
-                        "autosize": "fit"
+                        "type": "line",
+                        "title": f"Count over {t_label}",
+                        "xAxis": {"data": [k for k, _ in t_sorted]},
+                        "yAxis": {"name": "Count"},
+                        "series": [{"name": "Count", "data": [v for _, v in t_sorted]}],
                     }
-        
+
         return specs

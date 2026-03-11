@@ -57,7 +57,6 @@ async def ask_question(request: QueryRequest) -> QueryResponse:
     """
     try:
         import time
-        from voxquery.core.sql_safety import normalize_tsql
         
         t_total_start = time.time()
         

@@ -282,7 +282,7 @@ async def execute_query(data: dict):
         
         # Use the actual SQL generator engine from voxcore
         try:
-            from voxquery.core.engine import VoxQueryEngine
+            from ...core.engine import VoxQueryEngine
             
             logger.critical(f"✓ [ENGINE] Initializing SQL generation engine for {warehouse}")
             

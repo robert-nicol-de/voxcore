@@ -68,13 +68,13 @@ def process_sql(llm_output, platform):
 
 def get_live_platforms():
     """Get list of active platforms (ready to use)"""
-    from voxquery.engines.platform_engine import get_live_platforms as _get_live_platforms
+    from ...engines.platform_engine import get_live_platforms as _get_live_platforms
     return _get_live_platforms()
 
 
 def get_coming_soon_platforms():
     """Get list of platforms coming soon"""
-    from voxquery.engines.platform_engine import get_coming_soon_platforms as _get_coming_soon_platforms
+    from ...engines.platform_engine import get_coming_soon_platforms as _get_coming_soon_platforms
     return _get_coming_soon_platforms()
 
 

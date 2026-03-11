@@ -348,7 +348,7 @@ class VoxQueryEngine:
             final_sql = generated_sql.sql
             if self.warehouse_type:
                 logger.info(f"[LAYER 2] Applying platform dialect engine for {self.warehouse_type}")
-                from voxquery.core import platform_dialect_engine
+                from . import platform_dialect_engine
                 
                 dialect_result = platform_dialect_engine.process_sql(final_sql, self.warehouse_type)
                 final_sql = dialect_result["final_sql"]
