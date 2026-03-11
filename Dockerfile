@@ -4,8 +4,24 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
     curl \
+    gnupg \
+    unixodbc \
+    unixodbc-dev \
+    gcc \
+    g++ \
+    build-essential \
+    apt-transport-https \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add Microsoft repository for SQL Server ODBC driver
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+RUN curl https://packages.microsoft.com/config/debian/11/prod.list \
+    > /etc/apt/sources.list.d/mssql-release.list
+RUN apt-get update
+
+# Install SQL Server ODBC Driver
+RUN ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
