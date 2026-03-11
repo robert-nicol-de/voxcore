@@ -2,6 +2,7 @@
 
 import os
 import logging
+import configparser
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 
@@ -573,6 +574,58 @@ async def test_connection(request: ConnectRequest) -> Dict[str, Any]:
             status_code=400,
             detail=f"Connection test failed: {str(e)}"
         )
+
+
+@router.api_route("/auth/load-ini-credentials/{db_type}", methods=["GET", "POST"])
+async def load_ini_credentials(db_type: str) -> Dict[str, Any]:
+    """Load connection credentials from INI for frontend prefill."""
+    try:
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        candidate_files = [
+            os.path.join(project_root, "config", f"{db_type}.ini"),
+            os.path.join(project_root, "config", "semantic_model.ini") if db_type == "semantic" else "",
+        ]
+        candidate_files = [p for p in candidate_files if p]
+
+        ini_path = next((p for p in candidate_files if os.path.exists(p)), None)
+        if not ini_path:
+            return {"credentials": None}
+
+        cfg = configparser.ConfigParser()
+        cfg.read(ini_path)
+
+        section = "connection" if cfg.has_section("connection") else (db_type if cfg.has_section(db_type) else None)
+        if not section:
+            return {"credentials": None}
+
+        src = cfg[section]
+        credentials = {
+            "host": src.get("host") or src.get("account") or "",
+            "username": src.get("username", ""),
+            "password": src.get("password", ""),
+            "database": src.get("database", ""),
+            "port": src.get("port", ""),
+            "warehouse": src.get("warehouse", ""),
+            "role": src.get("role", ""),
+            "schema_name": src.get("schema", src.get("schema_name", "PUBLIC")),
+            "auth_type": src.get("auth_type", "sql"),
+        }
+
+        return {"credentials": credentials}
+    except Exception as e:
+        logger.warning(f"Could not load INI credentials for {db_type}: {e}")
+        return {"credentials": None}
+
+
+@router.get("/auth/deploy-check")
+async def deploy_check() -> Dict[str, Any]:
+    """Simple deployment verification endpoint for production checks."""
+    return {
+        "ok": True,
+        "service": "auth",
+        "version": "auth-routes-v2",
+        "commit": os.environ.get("RENDER_GIT_COMMIT", "unknown"),
+    }
 
 
 def _save_credentials_to_ini(database_type: str, credentials: DatabaseCredentials) -> None:
