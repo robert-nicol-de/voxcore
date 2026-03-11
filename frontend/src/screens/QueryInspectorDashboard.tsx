@@ -14,13 +14,29 @@ interface RecentQuery {
 
 interface PendingApproval {
   id: number;
-  company_id: number;
-  user_id: string;
-  query: string;
+  company_id?: number;
+  user_id?: string;
+  query?: string;
+  query_text?: string;
+  ai_agent?: string;
   risk_score: number;
   risk_level: string;
-  reasons: string[];
+  reasons: string[] | string;
   submitted_at: string;
+}
+
+interface FirewallAuditEvent {
+  timestamp: string;
+  company_id?: string;
+  agent?: string;
+  status?: string;
+  stage?: string;
+  query_type?: string;
+  tables?: string[];
+  columns?: string[];
+  query?: string;
+  reasons?: string[];
+  queue_id?: number;
 }
 
 interface RiskDistribution {
@@ -38,6 +54,7 @@ interface SystemMetrics {
 interface InspectorData {
   recent_queries: RecentQuery[];
   pending_approvals: PendingApproval[];
+  firewall_audit: FirewallAuditEvent[];
   risk_distribution: RiskDistribution;
   system_metrics: SystemMetrics;
 }
@@ -346,7 +363,7 @@ export function QueryInspectorDashboard({ token }: Props) {
                     }}
                   >
                     <td style={{ padding: '10px 14px', color: '#64748b' }}>{row.id}</td>
-                    <td style={{ padding: '10px 14px' }}>{row.user_id}</td>
+                    <td style={{ padding: '10px 14px' }}>{row.ai_agent || row.user_id || 'anonymous'}</td>
                     <td style={{ padding: '10px 14px' }}>
                       <RiskBadge level={row.risk_level} />
                     </td>
@@ -365,7 +382,7 @@ export function QueryInspectorDashboard({ token }: Props) {
                       }}
                       title={row.query}
                     >
-                      {row.query}
+                      {row.query || row.query_text || '—'}
                     </td>
                     <td style={{ padding: '10px 14px', color: '#64748b', whiteSpace: 'nowrap' }}>
                       {new Date(row.submitted_at).toLocaleString()}
@@ -409,6 +426,93 @@ export function QueryInspectorDashboard({ token }: Props) {
           </div>
         </section>
       )}
+
+      {/* Firewall Audit */}
+      <section style={{ marginBottom: 28 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 14px', color: '#cbd5e1' }}>
+          🛡 Firewall Audit Log
+        </h2>
+        <div
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 12,
+            overflow: 'hidden',
+          }}
+        >
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
+                {['Time', 'Agent', 'Stage', 'Status', 'Type', 'Query'].map((h) => (
+                  <th
+                    key={h}
+                    style={{
+                      padding: '10px 14px',
+                      textAlign: 'left',
+                      color: '#94a3b8',
+                      fontWeight: 600,
+                      borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {!data!.firewall_audit || data!.firewall_audit.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: '18px 14px', textAlign: 'center', color: '#64748b' }}>
+                    No firewall audit events yet.
+                  </td>
+                </tr>
+              ) : (
+                data!.firewall_audit.map((evt, i) => (
+                  <tr
+                    key={`${evt.timestamp}-${i}`}
+                    style={{
+                      borderBottom: '1px solid rgba(255,255,255,0.04)',
+                      background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)',
+                    }}
+                  >
+                    <td style={{ padding: '9px 14px', color: '#64748b', whiteSpace: 'nowrap' }}>
+                      {new Date(evt.timestamp).toLocaleString()}
+                    </td>
+                    <td style={{ padding: '9px 14px' }}>{evt.agent || 'anonymous'}</td>
+                    <td style={{ padding: '9px 14px', color: '#cbd5e1' }}>{evt.stage || '—'}</td>
+                    <td style={{ padding: '9px 14px' }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: evt.status === 'allowed' ? '#22c55e' : evt.status === 'approval_required' ? '#f59e0b' : '#ef4444',
+                        }}
+                      >
+                        {(evt.status || 'unknown').toUpperCase()}
+                      </span>
+                    </td>
+                    <td style={{ padding: '9px 14px' }}>{evt.query_type || '—'}</td>
+                    <td
+                      style={{
+                        padding: '9px 14px',
+                        maxWidth: 360,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontFamily: 'monospace',
+                        color: '#cbd5e1',
+                      }}
+                      title={evt.query}
+                    >
+                      {evt.query || '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {/* Recent Queries Table */}
       <section>
