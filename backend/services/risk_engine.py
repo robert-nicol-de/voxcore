@@ -9,12 +9,12 @@ client = None
 if groq_api_key:
     try:
         client = Groq(api_key=groq_api_key)
-        print("[✓] Groq AI client initialized successfully")
+        print("[OK] Groq AI client initialized successfully")
     except Exception as e:
-        print(f"[⚠] Failed to initialize Groq client: {e}")
+        print(f"[WARN] Failed to initialize Groq client: {e}")
         client = None
 else:
-    print("[⚠] GROQ_API_KEY not set - AI risk classification disabled")
+    print("[WARN] GROQ_API_KEY not set - AI risk classification disabled")
 
 
 def ai_risk_classification(query: str):
@@ -56,7 +56,7 @@ SQL Query:
                 "reason": "AI parsing failed"
             }
     except Exception as e:
-        print(f"[⚠] AI risk classification error: {e}")
+        print(f"[WARN] AI risk classification error: {e}")
         return {
             "risk_score": 50,
             "status": "WARNING",
