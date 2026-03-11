@@ -37,7 +37,10 @@ def _friendly_connection_error(database_type: str, raw_error: Exception) -> str:
             "im002" in lower
             or "data source name not found" in lower
             or "can't open lib 'odbc driver" in lower
+            or "can't open lib" in lower
+            or "driver manager]can't open lib" in lower
             or "odbc driver" in lower and "not found" in lower
+            or "sql server" in lower and "file not found" in lower
         ):
             return (
                 "SQL Server driver not installed on VoxCore server. "

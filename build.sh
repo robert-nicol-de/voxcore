@@ -26,10 +26,34 @@ if command -v apt-get >/dev/null 2>&1; then
 		curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | run_root gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg
 
 		source /etc/os-release
-		run_root sh -c "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/${VERSION_ID}/prod ${VERSION_CODENAME} main' > /etc/apt/sources.list.d/microsoft-prod.list"
+		if [ "${ID:-}" = "ubuntu" ]; then
+			REPO_URL="https://packages.microsoft.com/ubuntu/${VERSION_ID}/prod"
+			REPO_SUITE="${VERSION_CODENAME}"
+		elif [ "${ID:-}" = "debian" ]; then
+			MAJOR_VERSION="${VERSION_ID%%.*}"
+			REPO_URL="https://packages.microsoft.com/debian/${MAJOR_VERSION}/prod"
+			REPO_SUITE="${VERSION_CODENAME}"
+		else
+			REPO_URL=""
+			REPO_SUITE=""
+			echo "Unsupported distro for automatic Microsoft ODBC repo setup: ${ID:-unknown}"
+		fi
+
+		if [ -n "$REPO_URL" ] && [ -n "$REPO_SUITE" ]; then
+			run_root sh -c "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] ${REPO_URL} ${REPO_SUITE} main' > /etc/apt/sources.list.d/microsoft-prod.list"
+		fi
 
 		run_root apt-get update
-		ACCEPT_EULA=Y run_root apt-get install -y --no-install-recommends msodbcsql18
+
+		if apt-cache show msodbcsql18 >/dev/null 2>&1; then
+			ACCEPT_EULA=Y run_root apt-get install -y --no-install-recommends msodbcsql18
+		elif apt-cache show msodbcsql17 >/dev/null 2>&1; then
+			ACCEPT_EULA=Y run_root apt-get install -y --no-install-recommends msodbcsql17
+		else
+			echo "Microsoft SQL Server ODBC package not available from apt sources."
+			echo "Install manually and verify with: odbcinst -q -d"
+			exit 1
+		fi
 	else
 		echo "ODBC Driver 18 already installed"
 	fi
