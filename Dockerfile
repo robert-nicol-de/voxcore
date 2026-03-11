@@ -6,6 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
+    dirmngr \
     unixodbc \
     unixodbc-dev \
     gcc \
@@ -15,8 +16,18 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Add Microsoft repository for SQL Server ODBC driver
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-RUN curl https://packages.microsoft.com/config/debian/11/prod.list \
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft-rolling.asc \
+    | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+RUN mkdir -p /root/.gnupg && chmod 700 /root/.gnupg
+RUN gpg --batch --no-default-keyring \
+    --keyring /usr/share/keyrings/microsoft-prod.gpg \
+    --keyserver hkps://keyserver.ubuntu.com \
+    --recv-keys EB3E94ADBE1229CF
+RUN . /etc/os-release; \
+    DEBIAN_VERSION="${VERSION_ID%%.*}"; \
+    if [ "$DEBIAN_VERSION" -ge 12 ]; then REPO_VERSION=12; else REPO_VERSION=11; fi; \
+    curl -fsSL "https://packages.microsoft.com/config/debian/${REPO_VERSION}/prod.list" \
+    | sed 's#deb \[arch=amd64\]#deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg]#' \
     > /etc/apt/sources.list.d/mssql-release.list
 RUN apt-get update
 
