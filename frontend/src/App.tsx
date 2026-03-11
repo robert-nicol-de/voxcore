@@ -1,280 +1,86 @@
-﻿import React, { useState, useEffect } from 'react';
-import DemoMode from './components/DemoMode';
+﻿import React, { useEffect, useState } from 'react';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import './App.css';
-import Sidebar from './components/Sidebar';
-import Chat from './components/Chat';
-import SchemaExplorer from './components/SchemaExplorer';
-import { GovernanceDashboard } from './screens/GovernanceDashboard';
 import { Login } from './screens/Login';
-import { QueryHistory } from './components/QueryHistory';
-import { GovernanceLogs } from './components/GovernanceLogs';
-import { PoliciesManager } from './components/PoliciesManager';
 import { UserDropdown } from './components/UserDropdown';
-import { Profile } from './screens/Profile';
-import { Queries } from './screens/Queries';
-import { ApiKeys } from './screens/ApiKeys';
-import { Admin } from './screens/Admin';
-import { AdminUsers } from './screens/AdminUsers';
-import { DevSpace } from './pages/DevSpace';
-import { DevWorkspace } from './components/DevWorkspace';
-import { QueryInspectorDashboard } from './screens/QueryInspectorDashboard';
-import { apiUrl } from './lib/api';
-
-type ViewType = 'dashboard' | 'query' | 'history' | 'logs' | 'policies' | 'schema' | 'profile' | 'queries' | 'api-keys' | 'admin' | 'admin-users' | 'devspace' | 'inspector';
-type AppMode = 'standard' | 'dev';
+import Dashboard from './pages/Dashboard';
+import Databases from './pages/Databases';
+import Policies from './pages/Policies';
+import QueryLogs from './pages/QueryLogs';
+import Sandbox from './pages/Sandbox';
+import SqlAssistant from './pages/SqlAssistant';
+import { VoxCloudSidebar } from './components/VoxCloudSidebar';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [isPreviewMode, setIsPreviewMode] = useState(false); // Preview mode disabled for authenticated users
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [userRole, setUserRole] = useState<string>('');
-  const [appMode, setAppMode] = useState<AppMode>('standard');
-  const chatRef = React.useRef<any>(null);
+  const [showLoginPage, setShowLoginPage] = useState(false);
+  const navigate = useNavigate();
 
-  // Check for demo mode from URL parameter - MUST BE AUTHENTICATED
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const demoParam = params.get('demo');
-    
-    // Auto-login if token exists (e.g., from login.html redirect)
     const token = localStorage.getItem('voxcore_token');
-    if (token && !isLoggedIn) {
-      const name = localStorage.getItem('voxcore_user_name') || '';
+    if (token) {
       setIsLoggedIn(true);
-      if (name) setUserName(name);
-      
-      // Fetch user role
-      fetchUserRole(token);
-      
-      // Only enable demo mode if authenticated
-      if (demoParam === 'true') {
-        setIsDemoMode(true);
-      }
     }
   }, []);
 
-  const fetchUserRole = async (token: string) => {
-    try {
-      const response = await fetch(apiUrl('/api/v1/auth/me'), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        const user = await response.json();
-        setUserRole(user.role);
-      }
-    } catch (error) {
-      console.error('Failed to fetch user role:', error);
-    }
-  };
-
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
-
-  const handleNavigate = (view: ViewType) => {
-    setCurrentView(view);
-    console.log('Navigating to:', view);
-  };
-
-  const [userName, setUserName] = useState<string>('');
-
-  const handleLogin = (name?: string) => {
+  const handleLogin = () => {
     setIsLoggedIn(true);
-    if (name) setUserName(name);
-  };
-
-  const handleQuestionSelect = (question: string) => {
-    // Navigate to query view and pass question to Chat
-    setCurrentView('query');
-    if (chatRef.current) {
-      chatRef.current.handleQuestionSelect(question);
-    }
+    navigate('/app/dashboard');
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    setUserName('');
     localStorage.removeItem('token');
     localStorage.removeItem('voxcore_token');
     localStorage.removeItem('voxcore_user_name');
     localStorage.removeItem('voxcore_user_email');
-    window.location.href = '/login';
+    navigate('/');
   };
 
-  // Show login screen if not logged in - ALWAYS CHECK AUTH FIRST
-  const [showLoginPage, setShowLoginPage] = useState(false);
   if (!isLoggedIn) {
     if (showLoginPage) {
       return <Login onLogin={handleLogin} />;
     }
-    // Show header navigation with Login button
     return (
       <div>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1f2937', padding: '16px' }}>
-          <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.5rem' }}>VoxCore</div>
+          <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.5rem' }}>VoxCloud</div>
           <nav>
-            <button style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setShowLoginPage(true)}>
+            <button
+              style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }}
+              onClick={() => setShowLoginPage(true)}
+            >
               Login
             </button>
           </nav>
         </header>
         <main style={{ color: '#fff', background: '#111827', minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Your Database Anything</h1>
-          <p style={{ fontSize: '1.2rem', maxWidth: '600px', textAlign: 'center' }}>VoxCore generates secure SQL automatically. No more query writing.</p>
+          <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>VoxCloud Platform</h1>
+          <p style={{ fontSize: '1.2rem', maxWidth: '700px', textAlign: 'center' }}>
+            Inspect, validate, and control every AI-generated database query. Powered by VoxCore Query Firewall.
+          </p>
         </main>
       </div>
     );
   }
 
-  // Show demo mode ONLY if authenticated AND demo param is set
-  if (isDemoMode) {
-    return <DemoMode />;
-  }
-
   return (
-    <div className="app" data-theme={theme}>
-      <div className={`sidebar ${!sidebarOpen ? 'closed' : ''}`}>
-        <Sidebar 
-          currentView={currentView as any}
-          onNavigate={handleNavigate}
-          onQuestionSelect={handleQuestionSelect}
-          isOpen={sidebarOpen}
-          onToggle={toggleSidebar}
-          userRole={userRole}
-        />
-      </div>
-
-      <div className="main-content">
-        <header className="app-header">
-          <button
-            className="sidebar-toggle"
-            onClick={toggleSidebar}
-            aria-label="Toggle sidebar"
-          >
-            ☰
-          </button>
-          <div className="header-right">
-            <div className="mode-toggle">
-              <button
-                onClick={() => setAppMode('standard')}
-                className={appMode === 'standard' ? 'active' : ''}
-                title="Standard Mode (AI Query Interface)"
-              >
-                💬 Standard
-              </button>
-              <button
-                onClick={() => setAppMode('dev')}
-                className={appMode === 'dev' ? 'active' : ''}
-                title="Dev Mode (SQL Editor)"
-              >
-                ⚙️ Dev
-              </button>
-            </div>
-            <button
-              className="theme-toggle"
-              onClick={toggleTheme}
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </button>
-            <UserDropdown 
-              token={localStorage.getItem('voxcore_token') || ''} 
-              onLogout={handleLogout}
-              onNavigate={handleNavigate}
-            />
-          </div>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#0f172a' }}>
+      <VoxCloudSidebar />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <header style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <UserDropdown token={localStorage.getItem('voxcore_token') || ''} onLogout={handleLogout} />
         </header>
-
-        <main className="chat-container">
-          {appMode === 'standard' ? (
-            <>
-              {/* Dashboard View */}
-              {currentView === 'dashboard' && (
-                <GovernanceDashboard onAskQuestion={() => handleNavigate('query')} />
-              )}
-
-              {/* Query View */}
-              {currentView === 'query' && (
-                <Chat
-                  ref={chatRef}
-                  onBackToDashboard={() => handleNavigate('dashboard')}
-                  isPreviewMode={isPreviewMode}
-                />
-              )}
-
-              {/* History View */}
-              {currentView === 'history' && (
-                <div className="view-content">
-                  <QueryHistory />
-                </div>
-              )}
-
-              {/* Logs View */}
-              {currentView === 'logs' && (
-                <div className="view-content">
-                  <GovernanceLogs />
-                </div>
-              )}
-
-              {/* Policies View */}
-              {currentView === 'policies' && (
-                <div className="view-content">
-                  <PoliciesManager />
-                </div>
-              )}
-
-              {/* Schema View */}
-              {currentView === 'schema' && (
-                <SchemaExplorer onClose={() => handleNavigate('query')} />
-              )}
-
-              {/* Profile View */}
-              {currentView === 'profile' && (
-                <Profile token={localStorage.getItem('voxcore_token') || ''} />
-              )}
-
-              {/* Queries View */}
-              {currentView === 'queries' && (
-                <Queries token={localStorage.getItem('voxcore_token') || ''} />
-              )}
-
-              {/* API Keys View */}
-              {currentView === 'api-keys' && (
-                <ApiKeys token={localStorage.getItem('voxcore_token') || ''} />
-              )}
-
-              {/* Admin View */}
-              {currentView === 'admin' && (
-                <Admin 
-                  token={localStorage.getItem('voxcore_token') || ''} 
-                  onNavigate={(page) => handleNavigate(page as ViewType)}
-                />
-              )}
-
-              {/* Admin Users View */}
-              {currentView === 'admin-users' && (
-                <AdminUsers token={localStorage.getItem('voxcore_token') || ''} />
-              )}
-
-              {/* Dev Space View */}
-              {currentView === 'devspace' && (
-                <DevSpace token={localStorage.getItem('voxcore_token') || ''} />
-              )}
-
-              {/* AI Query Inspector View */}
-              {currentView === 'inspector' && (
-                <QueryInspectorDashboard token={localStorage.getItem('voxcore_token') || ''} />
-              )}
-            </>
-          ) : (
-            <DevWorkspace />
-          )}
+        <main style={{ padding: 12 }}>
+          <Routes>
+            <Route path="/app/dashboard" element={<Dashboard />} />
+            <Route path="/app/databases" element={<Databases />} />
+            <Route path="/app/policies" element={<Policies />} />
+            <Route path="/app/query-logs" element={<QueryLogs />} />
+            <Route path="/app/sandbox" element={<Sandbox />} />
+            <Route path="/app" element={<SqlAssistant />} />
+            <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
+          </Routes>
         </main>
       </div>
     </div>
