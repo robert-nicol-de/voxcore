@@ -21,6 +21,11 @@ _DEFAULT_POLICY: Dict[str, Any] = {
         "enabled": False,
         "max_rows": 1000,
     },
+    "query_approval_mode": {
+        "enabled": False,
+        "require_for_query_types": ["select"],
+        "require_for_tables": [],
+    },
 }
 
 
@@ -90,9 +95,14 @@ def _append_limit(sql: str, max_rows: int) -> str:
     return f"{clean_sql} LIMIT {max_rows}"
 
 
-def apply_policies(company_id: str, sql: str) -> Dict[str, Any]:
+def apply_policies(company_id: str, sql: str, analysis: Dict[str, Any] | None = None) -> Dict[str, Any]:
     policies = get_company_policies(company_id)
     reasons: List[str] = []
+    analysis = analysis or {}
+
+    query_type = str(analysis.get("query_type", _statement_starts_with(sql).upper() or "UNKNOWN")).upper()
+    analyzed_columns = [str(c).lower() for c in analysis.get("columns", [])]
+    analyzed_tables = [str(t).lower() for t in analysis.get("tables", [])]
 
     destructive = policies.get("block_destructive_queries", {})
     if destructive.get("enabled", False):
@@ -104,11 +114,13 @@ def apply_policies(company_id: str, sql: str) -> Dict[str, Any]:
     if sensitive.get("enabled", False):
         blocked_cols = [str(x) for x in sensitive.get("blocked_columns", [])]
         found = _find_sensitive_columns(sql, blocked_cols)
+        if analyzed_columns:
+            found.extend([c for c in blocked_cols if c.lower() in analyzed_columns])
         for col in found:
             reasons.append(f"Sensitive field detected: {col}")
 
     read_only = policies.get("read_only_ai_mode", {})
-    statement = _statement_starts_with(sql)
+    statement = query_type.lower()
     if read_only.get("enabled", False):
         allowed = [str(x).lower() for x in read_only.get("allowed_statements", ["select", "with"])]
         if statement not in allowed:
@@ -123,11 +135,37 @@ def apply_policies(company_id: str, sql: str) -> Dict[str, Any]:
         if statement in {"select", "with"}:
             rewritten_query = _append_limit(sql, max_rows)
 
+    approval = policies.get("query_approval_mode", {})
+    requires_approval = False
+    approval_reasons: List[str] = []
+    if not blocked and approval.get("enabled", False):
+        required_types = [str(x).lower() for x in approval.get("require_for_query_types", [])]
+        required_tables = [str(x).lower() for x in approval.get("require_for_tables", [])]
+
+        if required_types and statement in required_types:
+            requires_approval = True
+            approval_reasons.append(f"Approval required for query type: {statement.upper()}")
+
+        if required_tables:
+            hit_tables = [t for t in analyzed_tables if t in required_tables]
+            if hit_tables:
+                requires_approval = True
+                approval_reasons.append(
+                    "Approval required for protected table(s): " + ", ".join(sorted(set(hit_tables)))
+                )
+
     return {
         "blocked": blocked,
         "reasons": reasons,
         "original_query": sql,
         "rewritten_query": rewritten_query,
+        "analysis": {
+            "query_type": query_type,
+            "tables": analyzed_tables,
+            "columns": analyzed_columns,
+        },
+        "requires_approval": requires_approval,
+        "approval_reasons": approval_reasons,
         "policies": policies,
     }
 
