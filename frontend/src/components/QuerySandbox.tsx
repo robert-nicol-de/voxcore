@@ -8,16 +8,57 @@ export default function QuerySandbox() {
   const [preview, setPreview] = useState<any[]>([])
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [executingProduction, setExecutingProduction] = useState(false)
+  const [riskLevel, setRiskLevel] = useState('LOW')
+  const [generatingSql, setGeneratingSql] = useState(false)
 
-  function generateSQL() {
-    const generatedSQL = `
-SELECT region,
+  async function generateSQL() {
+    setGeneratingSql(true)
+    setPreview([])
+    setResult('')
+
+    const normalizedQuestion = question.trim().toLowerCase()
+    let generatedSQL = `SELECT region,
        SUM(revenue) AS total_revenue
 FROM sales
 GROUP BY region
 ORDER BY total_revenue DESC`
 
+    if (normalizedQuestion.includes('product')) {
+      generatedSQL = `SELECT product,
+       SUM(revenue) AS total_revenue
+FROM sales
+GROUP BY product
+ORDER BY total_revenue DESC`
+    } else if (normalizedQuestion.includes('customer')) {
+      generatedSQL = `SELECT customer_name,
+       SUM(total) AS total_revenue
+FROM orders
+GROUP BY customer_name
+ORDER BY total_revenue DESC`
+    }
+
     setSql(generatedSQL)
+
+    try {
+      const riskResponse = await fetch(apiUrl('/api/v1/query/risk'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: generatedSQL }),
+      })
+
+      if (riskResponse.ok) {
+        const riskData = await riskResponse.json()
+        setRiskLevel((riskData.risk_level || 'low').toUpperCase())
+      } else {
+        setRiskLevel('LOW')
+      }
+    } catch {
+      setRiskLevel('LOW')
+    } finally {
+      setGeneratingSql(false)
+    }
   }
 
   async function runQuery() {
@@ -137,56 +178,78 @@ ORDER BY total_revenue DESC`
   }
 
   return (
-    <div className="query-sandbox">
-      <h2>🧪 AI Query Sandbox</h2>
+    <div className="sandbox-container sandbox-watermark">
+      <h1>AI Query Sandbox</h1>
 
-      <div className="sandbox-section">
-        <label>Ask AI a Question</label>
-        <input
-          type="text"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Example: Show revenue by region"
-        />
-        <button onClick={generateSQL}>
-          Generate SQL
-        </button>
-      </div>
+      <div className="card">
+        <h3>Ask a question about your data</h3>
 
-      <div className="sandbox-section">
-        <label>Generated SQL</label>
-        <textarea
-          value={sql}
-          onChange={(e) => setSql(e.target.value)}
-        />
-        <button onClick={runQuery}>
-          {loadingPreview ? 'Running Sandbox...' : 'Run Query'}
-        </button>
-      </div>
+        <div className="sandbox-input-row">
+          <input
+            type="text"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Show revenue by product last month"
+            className="sandbox-input"
+          />
 
-      <div className="sandbox-section">
-        <label>Sandbox Preview</label>
-        <div className="sandbox-results">
-          {result || "Results will appear here after running a query"}
+          <button className="primary-btn" onClick={generateSQL} disabled={generatingSql}>
+            {generatingSql ? 'Generating...' : 'Generate SQL'}
+          </button>
         </div>
+      </div>
 
-        {preview.length > 0 && (
-          <div style={{ marginTop: 12, background: 'rgba(15,23,42,0.6)', borderRadius: 8, padding: 12 }}>
-            {preview.map((row, rowIndex) => (
-              <div key={rowIndex} style={{ marginBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 8 }}>
-                {Object.entries(row).map(([key, value]) => (
-                  <div key={key} style={{ fontSize: 13, fontFamily: 'monospace' }}>
-                    {key}: {String(value)}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="card">
+        <h3>Generated SQL</h3>
 
-        <button onClick={executeOnProduction} disabled={executingProduction}>
+        <pre className="sql-preview">{sql || 'SELECT product, SUM(revenue)\nFROM sales\nGROUP BY product'}</pre>
+
+        <div className="sandbox-risk-row">
+          <span>Risk Analysis</span>
+          <span className={`risk-badge ${riskLevel.toLowerCase()}`}>{riskLevel} RISK</span>
+        </div>
+      </div>
+
+      <div className="sandbox-actions">
+        <button className="secondary-btn" onClick={runQuery} disabled={loadingPreview}>
+          {loadingPreview ? 'Previewing...' : 'Preview in Sandbox'}
+        </button>
+
+        <button className="primary-btn" onClick={executeOnProduction} disabled={executingProduction}>
           {executingProduction ? 'Executing...' : 'Execute on Production'}
         </button>
+      </div>
+
+      <div className="card">
+        <h3>Query Results</h3>
+
+        {preview.length === 0 ? (
+          <div className="results-placeholder">
+            {result || 'Results will appear here after running the query.'}
+          </div>
+        ) : (
+          <div className="sandbox-table-wrap">
+            {result && <div className="results-placeholder" style={{ marginBottom: 12 }}>{result}</div>}
+            <table className="sandbox-table">
+              <thead>
+                <tr>
+                  {Object.keys(preview[0] || {}).map((key) => (
+                    <th key={key}>{key}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {preview.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {Object.keys(preview[0] || {}).map((key) => (
+                      <td key={`${rowIndex}-${key}`}>{String(row[key] ?? '')}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )

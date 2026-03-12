@@ -1,12 +1,23 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiUrl } from '../lib/api';
 import EmptyState from '../components/EmptyState';
 
 type QueryLogItem = {
+  id?: string | number;
   time: string;
+  prompt?: string;
   query: string;
+  generated_sql?: string;
+  effective_query?: string;
   risk?: 'high' | 'medium' | 'low' | string;
   status?: 'allowed' | 'blocked' | 'blocked_sensitive' | 'sensitive' | string;
+  reasons?: string[];
+  execution_status?: string;
+  sandbox_status?: string;
+  agent?: string;
+  user?: string;
+  touched_data?: string[];
 };
 
 function riskBadgeColor(risk?: string) {
@@ -24,7 +35,14 @@ function statusLabel(status?: string) {
 }
 
 export default function QueryLogs() {
+  const navigate = useNavigate();
   const [logs, setLogs] = useState<QueryLogItem[]>([]);
+
+  const withForensicIds = (items: QueryLogItem[]) =>
+    items.map((item, index) => ({
+      ...item,
+      id: buildForensicId(item, index),
+    }));
 
   useEffect(() => {
     const loadLogs = async () => {
@@ -33,7 +51,9 @@ export default function QueryLogs() {
         const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
         const response = await fetch(apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`));
         const data = await response.json();
-        setLogs(data.logs || []);
+        const nextLogs = withForensicIds(data.logs || []);
+        setLogs(nextLogs);
+        localStorage.setItem('voxcloud_query_logs_cache', JSON.stringify(nextLogs));
       } catch {
         setLogs([]);
       }
@@ -93,6 +113,16 @@ export default function QueryLogs() {
           return (
             <div
               key={`${item.time}-${index}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/app/query-logs/${item.id || buildForensicId(item, index)}`)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  navigate(`/app/query-logs/${item.id || buildForensicId(item, index)}`);
+                }
+              }}
+              className="query-log-row"
               style={{
                 display: 'grid',
                 gridTemplateColumns: '110px minmax(0, 1fr) 110px 160px',
@@ -100,6 +130,7 @@ export default function QueryLogs() {
                 padding: '14px 20px',
                 borderBottom: '1px solid rgba(79,140,255,0.12)',
                 alignItems: 'center',
+                cursor: 'pointer',
               }}
             >
               <div style={{ opacity: 0.9, color: 'var(--platform-muted)' }}>{item.time}</div>
@@ -127,4 +158,10 @@ export default function QueryLogs() {
       </div>
     </div>
   );
+}
+
+function buildForensicId(item: QueryLogItem, index: number) {
+  const time = String(item.time || '').replace(/[^0-9]/g, '');
+  const seed = `${time}-${index}`;
+  return seed || String(index);
 }

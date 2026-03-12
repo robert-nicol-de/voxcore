@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { apiUrl } from '../lib/api';
 import EmptyState from '../components/EmptyState';
+import SchemaExplorer from '../components/SchemaExplorer';
 
 type SchemaColumn = {
   name: string;
@@ -48,6 +49,11 @@ export default function Databases() {
         },
         body: JSON.stringify({
           database: dbType,
+          host,
+          warehouse_host: host,
+          username,
+          password,
+          database_name: database,
           credentials: {
             host,
             database,
@@ -202,6 +208,10 @@ export default function Databases() {
             ))}
           </div>
         )}
+
+        <div style={{ marginTop: 24 }}>
+          <SchemaExplorer connectionName={connectionName || undefined} />
+        </div>
       </section>
 
       {showModal && (

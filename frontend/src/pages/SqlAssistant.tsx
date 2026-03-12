@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import LiveQueryFlow, { type QueryFlowStage } from '../components/LiveQueryFlow';
 import { apiUrl } from '../lib/api';
 
 type ExecuteResult = {
@@ -18,16 +19,28 @@ export default function SqlAssistant() {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loadingExecute, setLoadingExecute] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [flowStages, setFlowStages] = useState<QueryFlowStage[]>(defaultFlowStages());
 
   const companyId = localStorage.getItem('voxcore_company_id') || 'default';
   const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
 
   async function generateAndAnalyze() {
     if (!question.trim()) return;
+
     setError(null);
     setLoadingPreview(true);
     setPreviewRows([]);
     setExecutionResult(null);
+    setGeneratedSql(question);
+
+    setFlowStages([
+      createStage('User Prompt', 'safe', previewPrompt(question)),
+      createStage('AI Generated SQL', 'active', 'Generating SQL'),
+      createStage('Risk Engine', 'idle', 'Waiting'),
+      createStage('Policy Engine', 'idle', 'Waiting'),
+      createStage('Sandbox', 'idle', 'Waiting'),
+      createStage('Database', 'idle', 'Waiting'),
+    ]);
 
     try {
       const riskRes = await fetch(apiUrl('/api/v1/query/risk'), {
@@ -36,7 +49,17 @@ export default function SqlAssistant() {
         body: JSON.stringify({ query: question }),
       });
       const riskData = await riskRes.json();
-      setRiskLevel((riskData.risk_level || 'low').toUpperCase());
+      const nextRiskLevel = (riskData.risk_level || 'low').toUpperCase();
+      setRiskLevel(nextRiskLevel);
+
+      setFlowStages([
+        createStage('User Prompt', 'safe', previewPrompt(question)),
+        createStage('AI Generated SQL', 'safe', 'SQL prepared'),
+        createStage('Risk Engine', flowStatusFromRisk(nextRiskLevel), `${nextRiskLevel} RISK`),
+        createStage('Policy Engine', 'active', 'Evaluating policy'),
+        createStage('Sandbox', 'idle', 'Waiting'),
+        createStage('Database', 'idle', 'Waiting'),
+      ]);
 
       const sandboxRes = await fetch(apiUrl('/api/v1/query/sandbox'), {
         method: 'POST',
@@ -46,15 +69,44 @@ export default function SqlAssistant() {
 
       const sandboxData = await sandboxRes.json();
       if (!sandboxRes.ok) {
-        setGeneratedSql(question);
         setError(sandboxData.detail || 'Preview failed. Check query syntax.');
+        const failedPreviewFlow = [
+          createStage('User Prompt', 'safe', previewPrompt(question)),
+          createStage('AI Generated SQL', 'safe', 'SQL prepared'),
+          createStage('Risk Engine', flowStatusFromRisk(nextRiskLevel), `${nextRiskLevel} RISK`),
+          createStage('Policy Engine', 'warning', 'Review required'),
+          createStage('Sandbox', 'blocked', 'Preview failed'),
+          createStage('Database', 'idle', 'Not reached'),
+        ];
+        setFlowStages(failedPreviewFlow);
+        persistFlow(failedPreviewFlow);
         return;
       }
 
-      setGeneratedSql(question);
+      const previewCount = (sandboxData.preview || []).length;
       setPreviewRows(sandboxData.preview || []);
+      const previewFlow = [
+        createStage('User Prompt', 'safe', previewPrompt(question)),
+        createStage('AI Generated SQL', 'safe', 'SQL prepared'),
+        createStage('Risk Engine', flowStatusFromRisk(nextRiskLevel), `${nextRiskLevel} RISK`),
+        createStage('Policy Engine', 'safe', 'Passed policy checks'),
+        createStage('Sandbox', 'safe', `Previewed ${previewCount} rows`),
+        createStage('Database', 'idle', 'Awaiting execution'),
+      ];
+      setFlowStages(previewFlow);
+      persistFlow(previewFlow);
     } catch {
       setError('Could not reach SQL assistant services.');
+      const unavailableFlow = [
+        createStage('User Prompt', 'safe', previewPrompt(question)),
+        createStage('AI Generated SQL', 'warning', 'Service unavailable'),
+        createStage('Risk Engine', 'idle', 'Waiting'),
+        createStage('Policy Engine', 'idle', 'Waiting'),
+        createStage('Sandbox', 'idle', 'Waiting'),
+        createStage('Database', 'idle', 'Waiting'),
+      ];
+      setFlowStages(unavailableFlow);
+      persistFlow(unavailableFlow);
     } finally {
       setLoadingPreview(false);
     }
@@ -62,9 +114,21 @@ export default function SqlAssistant() {
 
   async function executeQuery() {
     if (!question.trim()) return;
+
     setError(null);
     setLoadingExecute(true);
     setExecutionResult(null);
+
+    const executionStartFlow = [
+      createStage('User Prompt', 'safe', previewPrompt(question)),
+      createStage('AI Generated SQL', generatedSql ? 'safe' : 'active', generatedSql ? 'SQL prepared' : 'Generating SQL'),
+      createStage('Risk Engine', flowStatusFromRisk(riskLevel), `${riskLevel} RISK`),
+      createStage('Policy Engine', 'active', 'Inspecting query'),
+      createStage('Sandbox', previewRows.length > 0 ? 'safe' : 'idle', previewRows.length > 0 ? `Previewed ${previewRows.length} rows` : 'Waiting'),
+      createStage('Database', 'idle', 'Waiting'),
+    ];
+    setFlowStages(executionStartFlow);
+    persistFlow(executionStartFlow);
 
     try {
       const res = await fetch(apiUrl('/api/v1/query'), {
@@ -81,6 +145,16 @@ export default function SqlAssistant() {
 
       if (!res.ok || data.status !== 'queued' || !data.job_id) {
         setError(data.detail || data.message || 'Execution request failed.');
+        const blockedFlow = [
+          createStage('User Prompt', 'safe', previewPrompt(question)),
+          createStage('AI Generated SQL', generatedSql ? 'safe' : 'warning', generatedSql ? 'SQL prepared' : 'Missing SQL'),
+          createStage('Risk Engine', flowStatusFromRisk(riskLevel), `${riskLevel} RISK`),
+          createStage('Policy Engine', 'blocked', 'Execution rejected'),
+          createStage('Sandbox', previewRows.length > 0 ? 'safe' : 'idle', previewRows.length > 0 ? `Previewed ${previewRows.length} rows` : 'Waiting'),
+          createStage('Database', 'idle', 'Not reached'),
+        ];
+        setFlowStages(blockedFlow);
+        persistFlow(blockedFlow);
         return;
       }
 
@@ -98,11 +172,31 @@ export default function SqlAssistant() {
 
       if (!finalResult) {
         setError('Execution is still running. Check Query Logs for status.');
+        const runningFlow = [
+          createStage('User Prompt', 'safe', previewPrompt(question)),
+          createStage('AI Generated SQL', 'safe', 'SQL prepared'),
+          createStage('Risk Engine', flowStatusFromRisk(riskLevel), `${riskLevel} RISK`),
+          createStage('Policy Engine', 'active', 'Queued for execution'),
+          createStage('Sandbox', previewRows.length > 0 ? 'safe' : 'idle', previewRows.length > 0 ? `Previewed ${previewRows.length} rows` : 'Waiting'),
+          createStage('Database', 'active', 'Executing'),
+        ];
+        setFlowStages(runningFlow);
+        persistFlow(runningFlow);
         return;
       }
 
       if (finalResult.status === 'failed') {
         setError(finalResult.error || 'Execution failed.');
+        const failedFlow = [
+          createStage('User Prompt', 'safe', previewPrompt(question)),
+          createStage('AI Generated SQL', 'safe', 'SQL prepared'),
+          createStage('Risk Engine', flowStatusFromRisk(riskLevel), `${riskLevel} RISK`),
+          createStage('Policy Engine', 'warning', 'Execution failed'),
+          createStage('Sandbox', previewRows.length > 0 ? 'safe' : 'idle', previewRows.length > 0 ? `Previewed ${previewRows.length} rows` : 'Waiting'),
+          createStage('Database', 'blocked', 'Execution failed'),
+        ];
+        setFlowStages(failedFlow);
+        persistFlow(failedFlow);
         return;
       }
 
@@ -116,18 +210,49 @@ export default function SqlAssistant() {
       if (resultData.effective_query) {
         setGeneratedSql(resultData.effective_query);
       }
-      if (resultData.risk_level) {
-        setRiskLevel(String(resultData.risk_level).toUpperCase());
-      }
+
+      const nextRisk = resultData.risk_level ? String(resultData.risk_level).toUpperCase() : riskLevel;
+      setRiskLevel(nextRisk);
+
+      const finalFlow = finalResult.status === 'blocked'
+        ? [
+            createStage('User Prompt', 'safe', previewPrompt(question)),
+            createStage('AI Generated SQL', 'safe', 'SQL prepared'),
+            createStage('Risk Engine', flowStatusFromRisk(nextRisk), `${nextRisk} RISK`),
+            createStage('Policy Engine', 'blocked', 'Blocked by policy'),
+            createStage('Sandbox', previewRows.length > 0 ? 'safe' : 'warning', previewRows.length > 0 ? `Previewed ${previewRows.length} rows` : 'Preview recommended'),
+            createStage('Database', 'blocked', 'Write prevented'),
+          ]
+        : [
+            createStage('User Prompt', 'safe', previewPrompt(question)),
+            createStage('AI Generated SQL', 'safe', 'SQL prepared'),
+            createStage('Risk Engine', flowStatusFromRisk(nextRisk), `${nextRisk} RISK`),
+            createStage('Policy Engine', 'safe', 'Allowed to proceed'),
+            createStage('Sandbox', previewRows.length > 0 ? 'safe' : 'warning', previewRows.length > 0 ? `Previewed ${previewRows.length} rows` : 'Executed directly'),
+            createStage('Database', 'safe', 'Query completed'),
+          ];
+
+      setFlowStages(finalFlow);
+      persistFlow(finalFlow);
     } catch {
       setError('Could not execute query.');
+      const unavailableFlow = [
+        createStage('User Prompt', 'safe', previewPrompt(question)),
+        createStage('AI Generated SQL', generatedSql ? 'safe' : 'warning', generatedSql ? 'SQL prepared' : 'Missing SQL'),
+        createStage('Risk Engine', flowStatusFromRisk(riskLevel), `${riskLevel} RISK`),
+        createStage('Policy Engine', 'warning', 'Execution unavailable'),
+        createStage('Sandbox', previewRows.length > 0 ? 'safe' : 'idle', previewRows.length > 0 ? `Previewed ${previewRows.length} rows` : 'Waiting'),
+        createStage('Database', 'idle', 'Not reached'),
+      ];
+      setFlowStages(unavailableFlow);
+      persistFlow(unavailableFlow);
     } finally {
       setLoadingExecute(false);
     }
   }
 
   return (
-    <div style={{ color: '#e8f0ff' }}>
+    <div className="assistant-control-panel" style={{ color: '#e8f0ff' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
         <img src="/assets/vc_logo.png" alt="VoxCloud" style={{ width: 40, height: 40, objectFit: 'contain' }} />
         <div>
@@ -136,41 +261,46 @@ export default function SqlAssistant() {
         </div>
       </div>
 
-      <section style={panelStyle}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-          <label style={{ color: 'var(--platform-muted)', fontSize: 13 }}>Database:</label>
-          <select
-            value={databaseName}
-            onChange={(e) => setDatabaseName(e.target.value)}
-            style={inputStyle}
-          >
-            <option value="AdventureWorks2022">AdventureWorks2022</option>
-            <option value="FinancialDW">FinancialDW</option>
-            <option value="SalesAnalytics">SalesAnalytics</option>
-          </select>
-        </div>
+      <section className="assistant-grid" style={{ marginBottom: 24 }}>
+        <div style={panelStyle}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+            <label style={{ color: 'var(--platform-muted)', fontSize: 13 }}>Database:</label>
+            <select value={databaseName} onChange={(e) => setDatabaseName(e.target.value)} style={inputStyle}>
+              <option value="AdventureWorks2022">AdventureWorks2022</option>
+              <option value="FinancialDW">FinancialDW</option>
+              <option value="SalesAnalytics">SalesAnalytics</option>
+            </select>
+          </div>
 
-        <div style={{ marginTop: 22 }}>
-          <div style={{ marginBottom: 8, color: 'var(--platform-muted)' }}>Ask a question about your data:</div>
-          <textarea
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            rows={3}
-            style={{ ...inputStyle, width: '100%', resize: 'vertical', borderRadius: 12 }}
-            placeholder="Show top 10 customers by revenue"
-          />
-          <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
-            <button onClick={generateAndAnalyze} disabled={loadingPreview} style={primaryButton}>
-              {loadingPreview ? 'Generating...' : 'Preview in Sandbox'}
-            </button>
-            <button onClick={executeQuery} disabled={loadingExecute} style={secondaryButton}>
-              {loadingExecute ? 'Executing...' : 'Execute'}
-            </button>
+          <div style={{ marginTop: 22 }}>
+            <div style={{ marginBottom: 8, color: 'var(--platform-muted)' }}>Prompt</div>
+            <textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              rows={3}
+              style={{ ...inputStyle, width: '100%', resize: 'vertical', borderRadius: 12 }}
+              placeholder="Show top 10 customers by revenue"
+            />
+            <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+              <button onClick={generateAndAnalyze} disabled={loadingPreview} style={primaryButton}>
+                {loadingPreview ? 'Generating...' : 'Preview in Sandbox'}
+              </button>
+              <button onClick={executeQuery} disabled={loadingExecute} style={secondaryButton}>
+                {loadingExecute ? 'Executing...' : 'Execute'}
+              </button>
+            </div>
           </div>
         </div>
+
+        <LiveQueryFlow
+          title="AI Security Pipeline"
+          subtitle="Each stage lights up as the query moves through VoxCore security."
+          stages={flowStages}
+          compact
+        />
       </section>
 
-      <section style={{ ...panelStyle, marginTop: 24 }}>
+      <section style={panelStyle}>
         <h2 style={sectionTitle}>AI Generated SQL</h2>
         <pre
           style={{
@@ -190,6 +320,12 @@ export default function SqlAssistant() {
           Risk Level: <span style={{ color: riskLevelColor(riskLevel) }}>{riskLevel}</span>
         </div>
       </section>
+
+      <LiveQueryFlow
+        title="Live AI Query Flow"
+        subtitle="Visual proof of how VoxCore protects databases from AI-generated queries."
+        stages={flowStages}
+      />
 
       <section style={{ ...panelStyle, marginTop: 24 }}>
         <h2 style={sectionTitle}>Sandbox Preview</h2>
@@ -242,6 +378,42 @@ function riskLevelColor(level: string) {
   if (value.includes('high') || value.includes('critical')) return '#ff6b6b';
   if (value.includes('med')) return '#ffd166';
   return '#35d07f';
+}
+
+function createStage(label: string, status: QueryFlowStage['status'], detail: string) {
+  return { label, status, detail };
+}
+
+function defaultFlowStages(): QueryFlowStage[] {
+  return [
+    createStage('User Prompt', 'idle', 'Waiting for prompt'),
+    createStage('AI Generated SQL', 'idle', 'Waiting for generation'),
+    createStage('Risk Engine', 'idle', 'Waiting for analysis'),
+    createStage('Policy Engine', 'idle', 'Waiting for policy check'),
+    createStage('Sandbox', 'idle', 'Waiting for preview'),
+    createStage('Database', 'idle', 'Waiting for execution'),
+  ];
+}
+
+function previewPrompt(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return 'Waiting for prompt';
+  return trimmed.length > 38 ? `${trimmed.slice(0, 35)}...` : trimmed;
+}
+
+function flowStatusFromRisk(level: string): QueryFlowStage['status'] {
+  const value = level.toLowerCase();
+  if (value.includes('high') || value.includes('critical')) return 'warning';
+  if (value.includes('med')) return 'warning';
+  return 'safe';
+}
+
+function persistFlow(stages: QueryFlowStage[]) {
+  try {
+    localStorage.setItem('voxcloud_latest_query_flow', JSON.stringify(stages));
+  } catch {
+    // Ignore storage errors.
+  }
 }
 
 const panelStyle: React.CSSProperties = {

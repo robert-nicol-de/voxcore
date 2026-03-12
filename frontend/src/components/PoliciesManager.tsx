@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './PoliciesManager.css';
-import { apiUrl } from '../lib/api';
+import { apiUrl, isApiNotFound } from '../lib/api';
 
 interface CompanyPolicies {
   block_destructive_queries: {
@@ -116,6 +116,10 @@ export const PoliciesManager: React.FC = () => {
 
       try {
         const response = await fetch(apiUrl(`/api/v1/policies/${resolvedCompanyId}`));
+        if (isApiNotFound(response)) {
+          setPolicies(DEFAULT_POLICIES);
+          return;
+        }
         if (!response.ok) {
           throw new Error('Failed to load policy configuration');
         }
@@ -152,6 +156,10 @@ export const PoliciesManager: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ policies }),
       });
+      if (isApiNotFound(response)) {
+        setMessage('Policy service is unavailable in this deployment.');
+        return;
+      }
       if (!response.ok) {
         throw new Error('Failed to save policies');
       }
@@ -174,6 +182,10 @@ export const PoliciesManager: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: testQuery }),
       });
+      if (isApiNotFound(response)) {
+        setMessage('Policy test is unavailable in this deployment.');
+        return;
+      }
       if (!response.ok) {
         throw new Error('Policy test request failed');
       }

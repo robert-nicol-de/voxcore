@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './UserDropdown.css';
 import { RoleBadge } from './RoleBadge';
 import { isAdmin, isDeveloper } from '../utils/permissions';
-import { apiUrl } from '../lib/api';
+import { apiUrl, isApiNotFound } from '../lib/api';
 
 interface UserInfo {
   email: string;
@@ -25,19 +25,40 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout, onN
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const setFallbackUser = () => {
+    setUser({
+      email: localStorage.getItem('voxcore_user_email') || 'User',
+      name: localStorage.getItem('voxcore_user_name') || 'User',
+      role: 'analyst',
+      role_label: 'Analyst',
+      company: localStorage.getItem('voxcore_org_name') || 'VoxCloud',
+      company_id: Number(localStorage.getItem('voxcore_company_id') || '1'),
+    });
+  };
+
   useEffect(() => {
     if (!token) return;
     setLoading(true);
     fetch(apiUrl('/api/v1/auth/me'), {
       headers: { 'Authorization': `Bearer ${token}` },
     })
-      .then(res => res.ok ? res.json() : Promise.reject(res))
+      .then(res => {
+        if (res.ok) return res.json();
+        if (isApiNotFound(res)) {
+          setFallbackUser();
+          setLoading(false);
+          return null;
+        }
+        return Promise.reject(res);
+      })
       .then(data => {
+        if (!data) return;
         setUser(data);
         setLoading(false);
       })
       .catch(() => {
-        setError('Failed to load user info');
+        setFallbackUser();
+        setError('');
         setLoading(false);
       });
   }, [token]);

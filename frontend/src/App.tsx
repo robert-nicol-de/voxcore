@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import './App.css';
 import { Login } from './screens/Login';
 import { UserDropdown } from './components/UserDropdown';
@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Databases from './pages/Databases';
 import Policies from './pages/Policies';
 import QueryLogs from './pages/QueryLogs';
+import QueryInvestigation from './pages/QueryInvestigation';
 import Sandbox from './pages/Sandbox';
 import SqlAssistant from './pages/SqlAssistant';
 import { Sidebar } from './components/Sidebar';
@@ -375,13 +376,13 @@ function App() {
           zIndex: 30,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/assets/vc_logo.png" alt="VoxCloud" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+        <Link to="/app/dashboard" className="header-brand-link">
+          <img src="/assets/vc_logo.png" alt="VoxCloud" className="header-logo" />
           <div>
             <div style={{ color: '#ffffff', fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em' }}>VoxCloud</div>
             <div style={{ color: 'var(--platform-muted)', fontSize: 12, marginTop: 2 }}>AI Data Governance Platform</div>
           </div>
-        </div>
+        </Link>
 
         <div
           style={{
@@ -412,6 +413,7 @@ function App() {
             <Route path="/app/databases" element={<Databases />} />
             <Route path="/app/policies" element={<Policies />} />
             <Route path="/app/query-logs" element={<QueryLogs />} />
+            <Route path="/app/query-logs/:id" element={<QueryInvestigation />} />
             <Route path="/app/sandbox" element={<Sandbox />} />
             <Route path="/app/settings" element={<SettingsPage />} />
             <Route path="/app" element={<SqlAssistant />} />
