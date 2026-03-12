@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import FirewallStats from '../components/FirewallStats';
 import LiveActivity from '../components/LiveActivity';
 import LiveQueryFlow, { type QueryFlowStage } from '../components/LiveQueryFlow';
+import PageHeader from '../components/PageHeader';
 import { apiUrl } from '../lib/api';
 
 type QueryActivity = {
@@ -95,10 +96,7 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
-      <div>
-        <h1>AI Security Dashboard</h1>
-        <p className="dashboard-subtitle">AI data security control center</p>
-      </div>
+      <PageHeader title="Dashboard" subtitle="AI Database Activity & Risk Monitoring" />
 
       <div className="dashboard-cards">
         <Metric title="Connected Databases" value={stats.databases} />

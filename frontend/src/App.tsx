@@ -407,18 +407,20 @@ function App() {
 
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 72px)' }}>
         <Sidebar />
-        <main style={{ flex: 1, minWidth: 0, padding: 24 }}>
-          <Routes>
-            <Route path="/app/dashboard" element={<Dashboard />} />
-            <Route path="/app/databases" element={<Databases />} />
-            <Route path="/app/policies" element={<Policies />} />
-            <Route path="/app/query-logs" element={<QueryLogs />} />
-            <Route path="/app/query-logs/:id" element={<QueryInvestigation />} />
-            <Route path="/app/sandbox" element={<Sandbox />} />
-            <Route path="/app/settings" element={<SettingsPage />} />
-            <Route path="/app" element={<SqlAssistant />} />
-            <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
-          </Routes>
+        <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
+          <div className="page-container">
+            <Routes>
+              <Route path="/app/dashboard" element={<Dashboard />} />
+              <Route path="/app/databases" element={<Databases />} />
+              <Route path="/app/policies" element={<Policies />} />
+              <Route path="/app/query-logs" element={<QueryLogs />} />
+              <Route path="/app/query-logs/:id" element={<QueryInvestigation />} />
+              <Route path="/app/sandbox" element={<Sandbox />} />
+              <Route path="/app/settings" element={<SettingsPage />} />
+              <Route path="/app" element={<SqlAssistant />} />
+              <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
+            </Routes>
+          </div>
         </main>
       </div>
     </div>

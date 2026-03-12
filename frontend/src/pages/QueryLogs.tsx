@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiUrl } from '../lib/api';
 import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
 
 type QueryLogItem = {
   id?: string | number;
@@ -69,7 +70,7 @@ export default function QueryLogs() {
 
   return (
     <div style={{ color: '#e8f0ff' }}>
-      <h1 style={{ marginTop: 0, fontSize: '2rem', letterSpacing: '-0.03em' }}>Query Activity</h1>
+      <PageHeader title="Query Logs" subtitle="AI Query Monitoring, Decisions, and Security Forensics" />
 
       <div
         style={{

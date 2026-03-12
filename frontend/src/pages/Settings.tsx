@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiUrl } from '../lib/api';
+import PageHeader from '../components/PageHeader';
 import { useWorkspace } from '../context/WorkspaceContext';
 
 type OrgUser = {
@@ -40,8 +41,8 @@ export default function SettingsPage() {
   }, [org?.id]);
 
   return (
-    <div style={{ padding: 24, color: '#e2e8f0' }}>
-      <h1 style={{ marginTop: 0 }}>Organization Settings</h1>
+    <div style={{ color: '#e2e8f0' }}>
+      <PageHeader title="Settings" subtitle="Organization, Workspace, and Access Management" />
 
       <section style={{ marginTop: 12, background: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: 14 }}>
         <h3 style={{ marginTop: 0 }}>Tenant Context</h3>

@@ -1,4 +1,5 @@
 import { useState } from "react"
+import PageHeader from '../components/PageHeader'
 import { apiUrl } from '../lib/api'
 
 export default function QuerySandbox() {
@@ -179,7 +180,7 @@ ORDER BY total_revenue DESC`
 
   return (
     <div className="sandbox-container sandbox-watermark">
-      <h1>AI Query Sandbox</h1>
+      <PageHeader title="Sandbox" subtitle="Preview AI-generated SQL safely before production execution" />
 
       <div className="card">
         <h3>Ask a question about your data</h3>

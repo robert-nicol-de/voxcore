@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PoliciesManager } from '../components/PoliciesManager';
 import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
 import { apiUrl, isApiNotFound } from '../lib/api';
 
 export default function Policies() {
@@ -36,19 +37,32 @@ export default function Policies() {
   }, []);
 
   if (isLoading) {
-    return <div style={{ color: 'var(--platform-muted)' }}>Loading policies...</div>;
+    return (
+      <div>
+        <PageHeader title="Policies" subtitle="AI Security Rules and Enforcement Controls" />
+        <div style={{ color: 'var(--platform-muted)' }}>Loading policies...</div>
+      </div>
+    );
   }
 
   if (isEmpty && !showManager) {
     return (
-      <EmptyState
-        title="No policies configured"
-        message="Create rules to block destructive queries, protect sensitive columns, and enforce limits."
-        variant="fullPage"
-        action={<button className="primary-btn" onClick={() => setShowManager(true)}>Create Policy</button>}
-      />
+      <div>
+        <PageHeader title="Policies" subtitle="AI Security Rules and Enforcement Controls" />
+        <EmptyState
+          title="No policies configured"
+          message="Create rules to block destructive queries, protect sensitive columns, and enforce limits."
+          variant="fullPage"
+          action={<button className="primary-btn" onClick={() => setShowManager(true)}>Create Policy</button>}
+        />
+      </div>
     );
   }
 
-  return <PoliciesManager />;
+  return (
+    <div>
+      <PageHeader title="Policies" subtitle="AI Security Rules and Enforcement Controls" />
+      <PoliciesManager />
+    </div>
+  );
 }

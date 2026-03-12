@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { apiUrl } from '../lib/api';
 import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
 import SchemaExplorer from '../components/SchemaExplorer';
 
 type SchemaColumn = {
@@ -26,6 +27,7 @@ export default function Databases() {
   const [schema, setSchema] = useState<SchemaTable[]>([]);
   const [connectionName, setConnectionName] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [rememberConnection, setRememberConnection] = useState(true);
   const [connectedDatabases, setConnectedDatabases] = useState<Array<{ name: string; type: string; host: string; status: string }>>(() => {
     try {
       const stored = localStorage.getItem('voxcloud_connected_databases');
@@ -66,47 +68,51 @@ export default function Databases() {
       const data = await response.json();
 
       if (data.ok) {
-        const savedConnectionName = `${dbType}-default`;
-
-        const saveResponse = await fetch(apiUrl('/api/v1/auth/connections/save'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            company_id: companyId,
-            workspace_id: workspaceId,
-            connection_name: savedConnectionName,
-            database: dbType,
-            credentials: {
-              type: dbType,
-              host,
-              database,
-              username,
-              password,
-            },
-          }),
-        });
-
-        const saveData = await saveResponse.json().catch(() => ({}));
-        if (!saveResponse.ok || !saveData.ok) {
-          setConnected(false);
-          setResult(saveData.detail || saveData.message || 'Connected, but failed to save connection');
-          return;
-        }
-
-        setConnectionName(savedConnectionName);
         setConnected(true);
         setResult(`Connected (${data.database})`);
-        const dbRecord = {
-          name: database || `${dbType}-database`,
-          type: dbType,
-          host,
-          status: 'Connected',
-        };
-        const next = [dbRecord, ...connectedDatabases.filter((item) => item.name !== dbRecord.name)];
-        setConnectedDatabases(next);
-        localStorage.setItem('voxcloud_connected_databases', JSON.stringify(next));
+
+        // Only save if user checked "Remember connection"
+        if (rememberConnection) {
+          const savedConnectionName = `${dbType}-default`;
+
+          const saveResponse = await fetch(apiUrl('/api/v1/auth/connections/save'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              company_id: companyId,
+              workspace_id: workspaceId,
+              connection_name: savedConnectionName,
+              database: dbType,
+              credentials: {
+                type: dbType,
+                host,
+                database,
+                username,
+                password,
+              },
+            }),
+          });
+
+          const saveData = await saveResponse.json().catch(() => ({}));
+          if (!saveResponse.ok || !saveData.ok) {
+            setResult(saveData.detail || saveData.message || 'Connected, but failed to save connection');
+            return;
+          }
+
+          setConnectionName(savedConnectionName);
+          const dbRecord = {
+            name: database || `${dbType}-database`,
+            type: dbType,
+            host,
+            status: 'Connected',
+          };
+          const next = [dbRecord, ...connectedDatabases.filter((item) => item.name !== dbRecord.name)];
+          setConnectedDatabases(next);
+          localStorage.setItem('voxcloud_connected_databases', JSON.stringify(next));
+        }
+
         setShowModal(false);
       } else {
         setConnected(false);
@@ -146,6 +152,24 @@ export default function Databases() {
     }
   }
 
+  function closeModal() {
+    setShowModal(false);
+    setDbType('sqlserver');
+    setHost('');
+    setDatabase('');
+    setUsername('');
+    setPassword('');
+    setRememberConnection(true);
+    setResult(null);
+  }
+
+  function disconnectDatabase(dbName: string) {
+    const updated = connectedDatabases.filter((db) => db.name !== dbName);
+    setConnectedDatabases(updated);
+    localStorage.setItem('voxcloud_connected_databases', JSON.stringify(updated));
+    setResult(`Disconnected from ${dbName}`);
+  }
+
   const inputStyle: React.CSSProperties = {
     width: '100%',
     marginBottom: 12,
@@ -177,7 +201,31 @@ export default function Databases() {
                   <div style={{ fontWeight: 700, color: '#ffffff' }}>{db.name}</div>
                   <div style={{ color: 'var(--platform-muted)', fontSize: 13, marginTop: 4 }}>{db.type.toUpperCase()} • {db.host || 'host not provided'}</div>
                 </div>
-                <div style={{ color: '#35d07f', fontWeight: 700 }}>Status: {db.status}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ color: '#35d07f', fontWeight: 700 }}>Status: {db.status}</div>
+                  <button
+                    onClick={() => disconnectDatabase(db.name)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 6,
+                      border: '1px solid #ff6b6b',
+                      background: 'transparent',
+                      color: '#ff6b6b',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.target as HTMLButtonElement).style.background = 'rgba(255, 107, 107, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.target as HTMLButtonElement).style.background = 'transparent';
+                    }}
+                  >
+                    Disconnect
+                  </button>
+                </div>
               </div>
             ))
           )}
@@ -227,11 +275,22 @@ export default function Databases() {
             <input placeholder="Database" value={database} onChange={(e) => setDatabase(e.target.value)} style={inputStyle} />
             <input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} style={inputStyle} />
             <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
+            
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 16, fontSize: 13, color: '#9fb3c8', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={rememberConnection} 
+                onChange={(e) => setRememberConnection(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              Remember this connection
+            </label>
+
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={testConnection} disabled={testing} style={primaryButton}>
-                {testing ? 'Testing...' : 'Test & Save'}
+                {testing ? 'Testing...' : 'Test & Connect'}
               </button>
-              <button onClick={() => setShowModal(false)} style={secondaryButton}>Cancel</button>
+              <button onClick={closeModal} style={secondaryButton}>Cancel</button>
             </div>
           </div>
         </div>

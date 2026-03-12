@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import LiveQueryFlow, { type QueryFlowStage } from '../components/LiveQueryFlow';
+import PageHeader from '../components/PageHeader';
 import { apiUrl } from '../lib/api';
 
 type ExecuteResult = {
@@ -255,10 +256,7 @@ export default function SqlAssistant() {
     <div className="assistant-control-panel" style={{ color: '#e8f0ff' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
         <img src="/assets/vc_logo.png" alt="VoxCloud" style={{ width: 40, height: 40, objectFit: 'contain' }} />
-        <div>
-          <h1 style={{ marginTop: 0, marginBottom: 2, fontSize: '2rem', letterSpacing: '-0.03em' }}>VoxQuery</h1>
-          <p style={{ margin: 0, color: 'var(--platform-muted)' }}>Natural Language SQL Assistant</p>
-        </div>
+        <PageHeader title="SQL Assistant" subtitle="Natural language SQL with live security pipeline and policy enforcement" />
       </div>
 
       <section className="assistant-grid" style={{ marginBottom: 24 }}>

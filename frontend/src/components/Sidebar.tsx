@@ -66,15 +66,14 @@ export const Sidebar: React.FC = () => {
             <Link
               key={item.to}
               to={item.to}
+              className={`sidebar-item${active ? ' active' : ''}`}
               style={{
-                color: active ? '#ffffff' : '#dbe7ff',
                 textDecoration: 'none',
-                background: active ? 'var(--platform-accent)' : 'transparent',
-                border: active ? '1px solid var(--platform-accent)' : '1px solid var(--platform-border)',
                 borderRadius: 10,
                 padding: '10px 12px',
                 fontSize: 14,
                 fontWeight: 600,
+                display: 'block',
               }}
             >
               {item.label}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import PageHeader from '../components/PageHeader';
 import { apiUrl } from '../lib/api';
 
 type QueryLogItem = {
@@ -103,7 +104,7 @@ export default function QueryInvestigation() {
     return (
       <div className="investigation">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <h1>AI Query Investigation</h1>
+          <PageHeader title="Query Investigation" subtitle="Replay and analyze an AI query decision trail" />
           <Link to="/app/query-logs" className="secondary-btn" style={{ textDecoration: 'none' }}>
             Back to Query Logs
           </Link>
@@ -122,8 +123,8 @@ export default function QueryInvestigation() {
     <div className="investigation">
       <div className="investigation-header">
         <div>
-          <h1>AI Query Investigation</h1>
-          <p>
+          <PageHeader title="Query Investigation" subtitle="AI Query Replay & Forensics" />
+          <p style={{ marginTop: 0 }}>
             Forensic ID: <strong>{String(item.id)}</strong> • Time: <strong>{item.time || '--:--'}</strong>
           </p>
         </div>
