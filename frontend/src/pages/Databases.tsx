@@ -3,6 +3,7 @@ import { apiUrl } from '../lib/api';
 import EmptyState from '../components/EmptyState';
 import PageHeader from '../components/PageHeader';
 import SchemaExplorer from '../components/SchemaExplorer';
+import DataSourceSelector, { type PlatformOption } from '../components/DataSourceSelector';
 
 type SchemaColumn = {
   name: string;
@@ -16,6 +17,8 @@ type SchemaTable = {
 
 export default function Databases() {
   const [dbType, setDbType] = useState('sqlserver');
+  const [showSelector, setShowSelector] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<PlatformOption | null>(null);
   const [host, setHost] = useState('');
   const [database, setDatabase] = useState('');
   const [username, setUsername] = useState('');
@@ -158,6 +161,7 @@ export default function Databases() {
 
   function closeModal() {
     setShowModal(false);
+    setSelectedSource(null);
     setDbType('sqlserver');
     setHost('');
     setDatabase('');
@@ -188,6 +192,24 @@ export default function Databases() {
     <div style={{ color: '#e2e8f0' }}>
       <h1 style={{ marginTop: 0, fontSize: '2rem', letterSpacing: '-0.03em' }}>Databases</h1>
 
+      {showSelector && (
+        <section style={panelStyle}>
+          <DataSourceSelector
+            onSelect={(source) => {
+              setSelectedSource(source);
+              setDbType(source.code);
+              setShowSelector(false);
+              if (source.code === 'semantic') {
+                setResult('Use Semantic Models from the Semantic Models page.');
+                return;
+              }
+              setShowModal(true);
+            }}
+            onCancel={() => setShowSelector(false)}
+          />
+        </section>
+      )}
+
       <section style={panelStyle}>
         <h2 style={sectionTitle}>Connected Databases</h2>
         <div style={{ display: 'grid', gap: 12 }}>
@@ -196,7 +218,7 @@ export default function Databases() {
               title="No databases connected"
               message="Connect your first database to begin analyzing queries and protecting your data."
               variant="compact"
-              action={<button className="primary-btn" onClick={() => setShowModal(true)}>Add Database</button>}
+              action={<button className="primary-btn" onClick={() => setShowSelector(true)}>Add Data Source</button>}
             />
           ) : (
             connectedDatabases.map((db) => (
@@ -236,7 +258,7 @@ export default function Databases() {
         </div>
 
         <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
-          <button onClick={() => setShowModal(true)} style={primaryButton}>Add Database</button>
+          <button onClick={() => setShowSelector(true)} style={primaryButton}>Add Data Source</button>
           {connected && (
             <button onClick={loadSchema} disabled={schemaLoading} style={secondaryButton}>
               {schemaLoading ? 'Discovering...' : 'Discover Schema'}
@@ -269,12 +291,9 @@ export default function Databases() {
       {showModal && (
         <div style={overlayStyle}>
           <div style={modalStyle}>
-            <h2 style={{ marginTop: 0, marginBottom: 14 }}>Add Database Connection</h2>
-            <select value={dbType} onChange={(e) => setDbType(e.target.value)} style={inputStyle}>
-              <option value="sqlserver">SQL Server</option>
-              <option value="postgres">PostgreSQL</option>
-              <option value="mysql">MySQL</option>
-            </select>
+            <h2 style={{ marginTop: 0, marginBottom: 14 }}>
+              Add {selectedSource?.name || 'Database'} Connection
+            </h2>
             <input placeholder="Host" value={host} onChange={(e) => setHost(e.target.value)} style={inputStyle} />
             <input placeholder="Database" value={database} onChange={(e) => setDatabase(e.target.value)} style={inputStyle} />
             <input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} style={inputStyle} />
