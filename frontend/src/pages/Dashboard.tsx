@@ -1,21 +1,23 @@
 import { useEffect, useState } from "react";
+import { apiUrl } from "../lib/api";
 
 type QueryActivity = {
   time: string;
   query: string;
   risk?: "high" | "medium" | "low" | string;
-  status?: "allowed" | "blocked" | "sensitive" | string;
+  status?: "allowed" | "blocked" | "blocked_sensitive" | "sensitive" | string;
 };
 
 type DashboardStats = {
   databases: number;
   queriesToday: number;
-  blocked_queries: number;
+  sensitiveQueriesBlocked: number;
   protectedColumns: number;
 };
 
 const statusLabel = (status?: string) => {
   if (status === "blocked") return " (blocked)";
+  if (status === "blocked_sensitive") return " (sensitive column blocked)";
   if (status === "sensitive") return " (sensitive)";
   return "";
 };
@@ -26,14 +28,16 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     databases: 0,
     queriesToday: 0,
-    blocked_queries: 0,
+    sensitiveQueriesBlocked: 0,
     protectedColumns: 0,
   });
 
   useEffect(() => {
     const refreshDashboard = async () => {
+      const companyId = localStorage.getItem('voxcore_company_id') || 'default';
+      const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
       try {
-        const logsResponse = await fetch("/api/v1/query/logs");
+        const logsResponse = await fetch(apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`));
         const logsData = await logsResponse.json();
         const fetchedLogs: QueryActivity[] = logsData.logs || [];
         setLogs(fetchedLogs);
@@ -43,23 +47,25 @@ export default function Dashboard() {
         const low = fetchedLogs.filter((q) => (q.risk || "").toLowerCase() === "low").length;
         setRiskActivity({ high, medium, low });
 
-        let blockedQueries = fetchedLogs.filter((q) => q.status === "blocked").length;
+        let sensitiveQueriesBlocked = fetchedLogs.filter((q) => q.status === "blocked_sensitive").length;
+        let protectedColumns = 14;
 
         try {
-          const workerResponse = await fetch("/api/v1/query/worker-stats");
+          const workerResponse = await fetch(apiUrl(`/api/v1/query/worker-stats?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`));
           if (workerResponse.ok) {
             const workerData = await workerResponse.json();
-            blockedQueries = workerData.blocked_queries ?? blockedQueries;
+            sensitiveQueriesBlocked = workerData.sensitive_queries_blocked ?? sensitiveQueriesBlocked;
+            protectedColumns = workerData.protected_columns ?? protectedColumns;
           }
         } catch {
-          // If worker stats are unavailable, keep blocked count derived from logs.
+          // If worker stats are unavailable, keep metrics derived from logs.
         }
 
         setStats({
           databases: 3,
           queriesToday: fetchedLogs.length,
-          blocked_queries: blockedQueries,
-          protectedColumns: 12,
+          sensitiveQueriesBlocked,
+          protectedColumns,
         });
       } catch {
         setLogs([]);
@@ -88,7 +94,7 @@ export default function Dashboard() {
       >
         <Metric title="Connected Databases" value={stats.databases} />
         <Metric title="AI Queries Today" value={stats.queriesToday} />
-        <Metric title="Blocked Queries" value={stats.blocked_queries} />
+        <Metric title="Sensitive Queries Blocked" value={stats.sensitiveQueriesBlocked} />
         <Metric title="Protected Columns" value={stats.protectedColumns} />
       </div>
 
@@ -106,6 +112,19 @@ export default function Dashboard() {
         <div>High Risk Queries Today: {riskActivity.high}</div>
         <div>Medium Risk Queries: {riskActivity.medium}</div>
         <div>Low Risk Queries: {riskActivity.low}</div>
+      </div>
+
+      <div
+        style={{
+          marginTop: 14,
+          background: "#1c2330",
+          padding: 16,
+          borderRadius: 8,
+        }}
+      >
+        <h3 style={{ marginTop: 0 }}>Sensitive Data Protection</h3>
+        <div>Protected Columns: {stats.protectedColumns}</div>
+        <div>Sensitive Queries Blocked: {stats.sensitiveQueriesBlocked}</div>
       </div>
 
       <div style={{ marginTop: 20 }}>

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import { apiUrl } from '../lib/api';
 
 type QueryLogItem = {
   time: string;
   query: string;
   risk?: 'high' | 'medium' | 'low' | string;
-  status?: 'allowed' | 'blocked' | 'sensitive' | string;
+  status?: 'allowed' | 'blocked' | 'blocked_sensitive' | 'sensitive' | string;
 };
 
 function riskBadgeColor(risk?: string) {
@@ -16,6 +17,7 @@ function riskBadgeColor(risk?: string) {
 
 function statusLabel(status?: string) {
   if (status === 'blocked') return 'Blocked';
+  if (status === 'blocked_sensitive') return 'Sensitive Block';
   if (status === 'sensitive') return 'Sensitive';
   return 'Allowed';
 }
@@ -26,7 +28,9 @@ export default function QueryLogs() {
   useEffect(() => {
     const loadLogs = async () => {
       try {
-        const response = await fetch('/api/v1/query/logs');
+        const companyId = localStorage.getItem('voxcore_company_id') || 'default';
+        const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
+        const response = await fetch(apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`));
         const data = await response.json();
         setLogs(data.logs || []);
       } catch {

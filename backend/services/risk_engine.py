@@ -2,6 +2,8 @@ import os
 import json
 from groq import Groq
 
+from backend.services.data_policy_engine import find_sensitive_columns_in_query
+
 
 # Initialize Groq client only if API key is available
 groq_api_key = os.environ.get("GROQ_API_KEY")
@@ -67,6 +69,7 @@ SQL Query:
 def calculate_risk(query: str):
 
     query_lower = query.lower()
+    matched_sensitive_columns = find_sensitive_columns_in_query(query)
 
     if "drop table" in query_lower:
         return {
@@ -80,6 +83,13 @@ def calculate_risk(query: str):
             "risk_score": 85,
             "status": "WARNING",
             "reason": "Delete operation detected"
+        }
+
+    if matched_sensitive_columns:
+        return {
+            "risk_score": 90,
+            "status": "BLOCKED",
+            "reason": "Sensitive column access detected: " + ", ".join(matched_sensitive_columns),
         }
 
     return ai_risk_classification(query)

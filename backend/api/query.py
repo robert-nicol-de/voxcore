@@ -2,7 +2,7 @@ import time
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from backend.services.risk_engine import calculate_risk
 from backend.services.query_inspector import block_if_dangerous
@@ -13,6 +13,7 @@ from backend.services.policy_engine import apply_policies
 from backend.services.sql_analysis import analyze_sql
 from backend.services.safety_validator import validate_query_safety
 from backend.services.audit_logger import log_audit_event
+from backend.services.data_policy_engine import find_sensitive_columns_in_query, get_sensitive_columns
 from backend.services.query_job_queue import enqueue_query_job, get_job, get_worker_stats
 
 
@@ -28,15 +29,15 @@ _QUERY_ACTIVITY_LOGS: list[dict[str, Any]] = [
     },
     {
         "time": "14:31",
-        "query": "DROP TABLE users",
+        "query": "SELECT name, email, salary FROM employees",
         "risk": "high",
-        "status": "blocked",
+        "status": "blocked_sensitive",
     },
     {
         "time": "14:29",
-        "query": "SELECT email FROM customers",
+        "query": "DROP TABLE users",
         "risk": "medium",
-        "status": "sensitive",
+        "status": "blocked",
     },
 ]
 
@@ -67,6 +68,7 @@ def _analyze_query_risk(query: str) -> dict[str, Any]:
     risk_score = 0
     reasons: list[str] = []
     q = (query or "").upper()
+    matched_sensitive_columns = find_sensitive_columns_in_query(query)
 
     if "DROP" in q:
         risk_score += 80
@@ -84,9 +86,17 @@ def _analyze_query_risk(query: str) -> dict[str, Any]:
         risk_score += 10
         reasons.append("SELECT * detected")
 
+    if matched_sensitive_columns:
+        risk_score += 60
+        if risk_score < 70:
+            risk_score = 70
+        reasons.append(
+            "Sensitive column access detected: " + ", ".join(matched_sensitive_columns)
+        )
+
     if risk_score == 0:
         level = "low"
-    elif risk_score < 50:
+    elif risk_score < 70:
         level = "medium"
     else:
         level = "high"
@@ -99,8 +109,13 @@ def _analyze_query_risk(query: str) -> dict[str, Any]:
 
 
 @router.get("/api/v1/query/logs")
-def get_query_logs():
+def get_query_logs(
+    company_id: str = Query("default"),
+    workspace_id: str = Query("default"),
+):
     return {
+        "company_id": company_id,
+        "workspace_id": workspace_id,
         "logs": _QUERY_ACTIVITY_LOGS
     }
 
@@ -168,7 +183,6 @@ def inspect_query(payload: InspectRequest):
     risk_details = _analyze_query_risk(query_text)
 
     blocked_keywords = ["DROP", "DELETE", "TRUNCATE"]
-    sensitive_columns = ["EMAIL", "SSN", "SOCIAL_SECURITY_NUMBER", "CREDIT_CARD", "PASSWORD"]
     upper_query = query_text.upper()
 
     for word in blocked_keywords:
@@ -188,21 +202,21 @@ def inspect_query(payload: InspectRequest):
                 "reasons": [f"{word} statements are blocked"],
             }
 
-    matched_sensitive = [col for col in sensitive_columns if col in upper_query]
+    matched_sensitive = find_sensitive_columns_in_query(query_text)
     if matched_sensitive:
-        _append_activity(query_text, "sensitive", risk_details["risk_level"])
+        _append_activity(query_text, "blocked_sensitive", risk_details["risk_level"])
         return {
-            "allowed": True,
-            "reason": "Sensitive columns detected",
-            "approved": True,
-            "safe": True,
+            "allowed": False,
+            "reason": f"Sensitive column detected: {matched_sensitive[0]}",
+            "approved": False,
+            "safe": False,
             "read_only": upper_query.startswith("SELECT"),
             "dangerous_keywords": [],
             "table_checks": [],
             "column_checks": [],
             "missing_tables": [],
             "missing_columns": [],
-            "reasons": ["Sensitive columns detected"],
+            "reasons": [f"Sensitive column detected: {column}" for column in matched_sensitive],
             "sensitive_columns": matched_sensitive,
         }
 
@@ -234,6 +248,7 @@ class QueryRequest(BaseModel):
     query: str
     agent: str = "anonymous"  # identifies the AI agent or user submitting the query
     company_id: str = "default"
+    workspace_id: str = "default"
 
 
 def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
@@ -242,6 +257,43 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
 
     # 1) Query Inspector: Parse SQL first.
     analysis = analyze_sql(query)
+    matched_sensitive_columns = find_sensitive_columns_in_query(query)
+
+    if matched_sensitive_columns:
+        _append_activity(query, "blocked_sensitive", "high")
+        execution_time = time.perf_counter() - start
+        log_query(
+            company_id=1,
+            user_id=1,
+            query=query,
+            execution_time=execution_time,
+            risk_level="SENSITIVE_COLUMN_BLOCK",
+            blocked=True,
+        )
+        log_audit_event(
+            {
+                "company_id": payload.company_id,
+                "workspace_id": payload.workspace_id,
+                "agent": payload.agent,
+                "status": "blocked",
+                "stage": "data_policy_engine",
+                "query_type": analysis.get("query_type"),
+                "tables": analysis.get("tables"),
+                "columns": analysis.get("columns"),
+                "query": query,
+                "reasons": [f"Sensitive column detected: {column}" for column in matched_sensitive_columns],
+            }
+        )
+        return {
+            "status": "blocked",
+            "blocked_by": "data_policy_engine",
+            "message": "Query blocked by VoxCore data policy",
+            "reasons": [f"Sensitive column detected: {column}" for column in matched_sensitive_columns],
+            "sensitive_columns": matched_sensitive_columns,
+            "analysis": analysis,
+            "original_query": payload.query,
+            "effective_query": query,
+        }
 
     # 2) Policy Engine enforcement.
     policy_result = apply_policies(payload.company_id, query, analysis=analysis)
@@ -259,6 +311,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
         log_audit_event(
             {
                 "company_id": payload.company_id,
+                "workspace_id": payload.workspace_id,
                 "agent": payload.agent,
                 "status": "blocked",
                 "stage": "policy_engine",
@@ -297,6 +350,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
         log_audit_event(
             {
                 "company_id": payload.company_id,
+                "workspace_id": payload.workspace_id,
                 "agent": payload.agent,
                 "status": "blocked",
                 "stage": "safety_validation",
@@ -346,6 +400,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
         log_audit_event(
             {
                 "company_id": payload.company_id,
+                "workspace_id": payload.workspace_id,
                 "agent": payload.agent,
                 "status": "approval_required",
                 "stage": "policy_engine",
@@ -385,6 +440,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
         log_audit_event(
             {
                 "company_id": payload.company_id,
+                "workspace_id": payload.workspace_id,
                 "agent": payload.agent,
                 "status": "blocked",
                 "stage": "query_inspector",
@@ -429,6 +485,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
         log_audit_event(
             {
                 "company_id": payload.company_id,
+                "workspace_id": payload.workspace_id,
                 "agent": payload.agent,
                 "status": "approval_required",
                 "stage": "risk_engine",
@@ -470,6 +527,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
         log_audit_event(
             {
                 "company_id": payload.company_id,
+                "workspace_id": payload.workspace_id,
                 "agent": payload.agent,
                 "status": "blocked",
                 "stage": "execution_guard",
@@ -489,6 +547,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
     log_audit_event(
         {
             "company_id": payload.company_id,
+            "workspace_id": payload.workspace_id,
             "agent": payload.agent,
             "status": "allowed",
             "stage": "execution",
@@ -503,6 +562,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
     return {
         "status": "allowed",
         "company_id": payload.company_id,
+        "workspace_id": payload.workspace_id,
         "analysis": analysis,
         "risk_score": risk_score,
         "risk_level": risk_level,
@@ -540,5 +600,20 @@ def get_query_job_status(job_id: str):
 
 
 @router.get("/api/v1/query/worker-stats")
-def worker_stats():
-    return get_worker_stats()
+def worker_stats(
+    company_id: str = Query("default"),
+    workspace_id: str = Query("default"),
+):
+    stats = get_worker_stats()
+    sensitive_queries_blocked = sum(
+        1 for item in _QUERY_ACTIVITY_LOGS if item.get("status") == "blocked_sensitive"
+    )
+    blocked_queries_total = sum(
+        1 for item in _QUERY_ACTIVITY_LOGS if item.get("status") in {"blocked", "blocked_sensitive"}
+    )
+    stats["blocked_queries"] = max(int(stats.get("blocked_queries", 0)), blocked_queries_total)
+    stats["protected_columns"] = len(get_sensitive_columns())
+    stats["sensitive_queries_blocked"] = sensitive_queries_blocked
+    stats["company_id"] = company_id
+    stats["workspace_id"] = workspace_id
+    return stats

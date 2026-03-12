@@ -36,8 +36,8 @@ const DEFAULT_POLICIES: CompanyPolicies = {
     blocked_keywords: ['drop', 'truncate', 'alter', 'delete'],
   },
   protect_sensitive_columns: {
-    enabled: false,
-    blocked_columns: ['ssn', 'credit_card', 'password', 'email'],
+    enabled: true,
+    blocked_columns: ['password', 'ssn', 'social_security_number', 'credit_card', 'credit_card_number', 'salary', 'private_key', 'api_key', 'secret_key', 'access_token', 'refresh_token', 'bank_account', 'routing_number', 'email'],
   },
   read_only_ai_mode: {
     enabled: false,

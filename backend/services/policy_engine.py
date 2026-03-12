@@ -3,6 +3,8 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List
 
+from backend.services.data_policy_engine import get_sensitive_columns
+
 
 _DEFAULT_POLICY: Dict[str, Any] = {
     "block_destructive_queries": {
@@ -10,8 +12,8 @@ _DEFAULT_POLICY: Dict[str, Any] = {
         "blocked_keywords": ["drop", "truncate", "alter", "delete"],
     },
     "protect_sensitive_columns": {
-        "enabled": False,
-        "blocked_columns": ["ssn", "credit_card", "password", "email"],
+        "enabled": True,
+        "blocked_columns": get_sensitive_columns(),
     },
     "read_only_ai_mode": {
         "enabled": False,
