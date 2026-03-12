@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../lib/api';
 import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from '../lib/polling';
+import DrilldownModal from './results/DrilldownModal';
 
 type ActivityLog = {
   timestamp?: string;
@@ -46,6 +47,7 @@ function formatRisk(log: ActivityLog) {
 
 export default function LiveActivity() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [selectedPoint, setSelectedPoint] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,10 +64,12 @@ export default function LiveActivity() {
     const load = async () => {
       const companyId = localStorage.getItem('voxcore_company_id') || 'default';
       const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
+      const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
 
       try {
         const response = await fetch(
           apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`),
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         if (!response.ok) {
           if (isRetryableHttpFailure(response.status)) {
@@ -107,12 +111,25 @@ export default function LiveActivity() {
         <div className="activity-row">No activity yet.</div>
       ) : (
         logs.map((log, i) => (
-          <div key={`${log.time || 'time'}-${i}`} className="activity-row">
+          <div
+            key={`${log.time || 'time'}-${i}`}
+            className="activity-row"
+            style={{ cursor: 'pointer' }}
+            onClick={() => setSelectedPoint(log.query || log.sql || 'query')}
+          >
             <span>{formatTime(log)}</span>
             <span>{formatQuery(log)}</span>
             <span className={`risk ${formatRisk(log)}`}>{formatRisk(log).toUpperCase()}</span>
           </div>
         ))
+      )}
+
+      {selectedPoint && (
+        <DrilldownModal
+          category={selectedPoint}
+          dimension="query"
+          onClose={() => setSelectedPoint(null)}
+        />
       )}
     </section>
   );

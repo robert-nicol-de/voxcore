@@ -12,11 +12,12 @@ to the correct metadata driver and never touches user table rows.
 """
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.db.connection_manager import ConnectionManager
 from backend.schema.schema_service import discover_full_schema
 from backend.services.security_redaction import sanitize_exception_message
+from backend.services.rbac import get_current_user
 
 router = APIRouter()
 _connection_manager = ConnectionManager()
@@ -71,6 +72,7 @@ def _run_discover(company_id: str, workspace_id: str, conn_name: str) -> dict:
 def list_databases(
     company_id:   str = Query("default"),
     workspace_id: str = Query("default"),
+    user=Depends(get_current_user),
 ):
     """Return the list of saved connection names for the given workspace."""
     connections = _list_connections(company_id, workspace_id)
@@ -87,6 +89,7 @@ def list_tables(
     workspace_id:    str           = Query("default"),
     connection_name: Optional[str] = Query(None),
     limit:           int           = Query(MAX_TABLES, ge=1, le=MAX_TABLES),
+    user=Depends(get_current_user),
 ):
     """
     Return table names (and schema names) for the selected connection.
@@ -114,6 +117,7 @@ def get_table_columns(
     company_id:      str           = Query("default"),
     workspace_id:    str           = Query("default"),
     connection_name: Optional[str] = Query(None),
+    user=Depends(get_current_user),
 ):
     """
     Return columns (with type, nullability, PK flag, and sensitive label)
@@ -150,6 +154,7 @@ def discover_schema(
     company_id:      str           = Query("default"),
     workspace_id:    str           = Query("default"),
     connection_name: Optional[str] = Query(None),
+    user=Depends(get_current_user),
 ):
     """Full schema dump kept for backward compatibility with existing callers."""
     conn_name = _resolve_connection(company_id, workspace_id, connection_name)
@@ -158,6 +163,40 @@ def discover_schema(
         "schema":   result.get("tables", []),
         "database": result.get("database", ""),
     }
+
+
+@router.get("/api/v1/schema/table-summary")
+def table_summary(
+    table_name: str,
+    company_id:      str           = Query("default"),
+    workspace_id:    str           = Query("default"),
+    connection_name: Optional[str] = Query(None),
+    user=Depends(get_current_user),
+):
+    """AI-ready table summary with keys, relationships, and metric hints."""
+    conn_name = _resolve_connection(company_id, workspace_id, connection_name)
+    result = _run_discover(company_id, workspace_id, conn_name)
+
+    matched = next(
+        (t for t in result.get("tables", []) if t["name"].lower() == table_name.lower()),
+        None,
+    )
+    if matched is None:
+        raise HTTPException(status_code=404, detail=f"Table '{table_name}' not found in schema.")
+
+    columns = matched.get("columns", [])
+    pk = next((c["name"] for c in columns if c.get("primary_key")), "id")
+    fk_like = [c["name"] for c in columns if c.get("name", "").lower().endswith("_id") and c["name"] != pk]
+    metric_like = [c["name"] for c in columns if any(k in c.get("name", "").lower() for k in ["total", "amount", "revenue", "price", "count"]) ]
+
+    summary = {
+        "table": matched["name"],
+        "description": f"Contains {matched['name']} records used in operational and analytics workflows.",
+        "primary_key": pk,
+        "relationships": fk_like[:10],
+        "metrics": metric_like[:10],
+    }
+    return summary
 
 
 # ---------------------------------------------------------------------------

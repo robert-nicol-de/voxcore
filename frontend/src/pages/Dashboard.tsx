@@ -44,6 +44,7 @@ export default function Dashboard() {
     const refreshDashboard = async () => {
       const companyId = localStorage.getItem('voxcore_company_id') || 'default';
       const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
+      const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
 
       let databases = 0;
       try {
@@ -61,6 +62,7 @@ export default function Dashboard() {
 
         const logsResponse = await fetch(
           apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`),
+          { headers: { Authorization: `Bearer ${token}` } },
         );
 
         if (!logsResponse.ok) {

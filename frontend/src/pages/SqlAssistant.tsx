@@ -47,7 +47,7 @@ export default function SqlAssistant() {
       const riskRes = await fetch(apiUrl('/api/v1/query/risk'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: question }),
+        body: JSON.stringify({ query: question, workspace_id: workspaceId }),
       });
       const riskData = await riskRes.json();
       const nextRiskLevel = (riskData.risk_level || 'low').toUpperCase();
@@ -65,7 +65,7 @@ export default function SqlAssistant() {
       const sandboxRes = await fetch(apiUrl('/api/v1/query/sandbox'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: question }),
+        body: JSON.stringify({ query: question, workspace_id: workspaceId }),
       });
 
       const sandboxData = await sandboxRes.json();

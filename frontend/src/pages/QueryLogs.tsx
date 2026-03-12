@@ -62,7 +62,11 @@ export default function QueryLogs() {
       try {
         const companyId = localStorage.getItem('voxcore_company_id') || 'default';
         const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
-        const response = await fetch(apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`));
+        const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
+        const response = await fetch(
+          apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`),
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
 
         if (!response.ok) {
           if (isRetryableHttpFailure(response.status)) {

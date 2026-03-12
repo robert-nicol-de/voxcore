@@ -1,10 +1,13 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+﻿import React, { useEffect, useState } from 'react';
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 import { Login } from './screens/Login';
 import { UserDropdown } from './components/UserDropdown';
 import Dashboard from './pages/Dashboard';
 import Databases from './pages/Databases';
+import DataSourcesPage from './pages/DataSources';
+import DataSourceNewPage from './pages/DataSourceNew';
+import SemanticModelsPage from './pages/SemanticModels';
 import Policies from './pages/Policies';
 import QueryLogs from './pages/QueryLogs';
 import QueryInvestigation from './pages/QueryInvestigation';
@@ -13,8 +16,8 @@ import SqlAssistant from './pages/SqlAssistant';
 import { Sidebar } from './components/Sidebar';
 import SettingsPage from './pages/Settings';
 import SchemaExplorerPage from './pages/SchemaExplorerPage';
-import { useWorkspace } from './context/WorkspaceContext';
-import { apiUrl } from './lib/api';
+import RequireAuth from './components/auth/RequireAuth';
+import WorkspaceSwitcher from './components/WorkspaceSwitcher';
 
 const platformFeatures = [
   {
@@ -74,58 +77,10 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoginPage, setShowLoginPage] = useState(false);
   const navigate = useNavigate();
-  const { currentWorkspace, workspaces, setCurrentWorkspaceId, org } = useWorkspace();
-
-  // Workspace dropdown state
-  const [wsMenuOpen, setWsMenuOpen] = useState(false);
-  const [creatingWs, setCreatingWs] = useState(false);
-  const [newWsName, setNewWsName] = useState('');
-  const [wsCreateError, setWsCreateError] = useState('');
-  const wsMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (wsMenuRef.current && !wsMenuRef.current.contains(e.target as Node)) {
-        setWsMenuOpen(false);
-        setCreatingWs(false);
-        setNewWsName('');
-        setWsCreateError('');
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const handleCreateWorkspace = async () => {
-    const trimmed = newWsName.trim();
-    if (!trimmed) { setWsCreateError('Name is required'); return; }
-    const token = localStorage.getItem('voxcore_token') || '';
-    const orgId = org?.id || Number(localStorage.getItem('voxcore_org_id') || '1');
-    try {
-      const res = await fetch(apiUrl(`/api/v1/orgs/${orgId}/workspaces`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: trimmed }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setWsCreateError((body as { detail?: string }).detail || 'Failed to create workspace');
-        return;
-      }
-      const created = await res.json() as { id: number; name: string };
-      await setCurrentWorkspaceId(created.id);
-      setCreatingWs(false);
-      setNewWsName('');
-      setWsCreateError('');
-      setWsMenuOpen(false);
-    } catch {
-      setWsCreateError('Network error');
-    }
-  };
+  const location = useLocation();
 
   useEffect(() => {
-    const token = localStorage.getItem('voxcore_token');
+    const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token');
     if (token) {
       setIsLoggedIn(true);
     }
@@ -154,7 +109,26 @@ function App() {
     document.getElementById('voxcore-demo')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  if (!isLoggedIn) {
+  const protectedPaths = ['/dashboard', '/datasources', '/sql', '/schema', '/governance', '/workspaces'];
+  const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token');
+  const isProtectedPath =
+    location.pathname.startsWith('/app') ||
+    location.pathname.startsWith('/datasources/new') ||
+    protectedPaths.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
+
+  if (!token && location.pathname === '/login') {
+    return <Login onLogin={handleLogin} />;
+  }
+
+  if (token && location.pathname === '/login') {
+    return <Navigate to="/app/dashboard" replace />;
+  }
+
+  if (!token && isProtectedPath) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!token) {
     if (showLoginPage) {
       return <Login onLogin={handleLogin} />;
     }
@@ -426,132 +400,14 @@ function App() {
           zIndex: 30,
         }}
       >
-        <Link to="/app/dashboard" className="header-brand-link">
-          <img src="/assets/vc_logo.png" alt="VoxCloud" className="header-logo" />
-          <div>
-            <div style={{ color: '#ffffff', fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em' }}>VoxCloud</div>
-            <div style={{ color: 'var(--platform-muted)', fontSize: 12, marginTop: 2 }}>AI Data Governance Platform</div>
-          </div>
-        </Link>
-
-        {/* ── Workspace dropdown ── */}
-        <div ref={wsMenuRef} style={{ position: 'relative' }}>
-          <button
-            onClick={() => { setWsMenuOpen(o => !o); setCreatingWs(false); setNewWsName(''); setWsCreateError(''); }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 14px',
-              borderRadius: 999,
-              border: '1px solid var(--platform-border)',
-              background: wsMenuOpen ? 'rgba(79,140,255,0.18)' : 'rgba(79,140,255,0.08)',
-              color: 'var(--platform-muted)',
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
-            <span style={{ color: 'var(--platform-muted)' }}>Workspace</span>
-            <span style={{ color: '#ffffff', fontWeight: 700 }}>{currentWorkspace?.name || 'Default'}</span>
-            <span style={{ color: 'var(--platform-muted)', fontSize: 10, marginLeft: 2 }}>{wsMenuOpen ? '▲' : '▼'}</span>
-          </button>
-
-          {wsMenuOpen && (
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 8px)',
-              right: 0,
-              minWidth: 220,
-              background: 'var(--platform-card-bg)',
-              border: '1px solid var(--platform-border)',
-              borderRadius: 10,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              zIndex: 50,
-              overflow: 'hidden',
-            }}>
-              {/* Existing workspace list */}
-              {workspaces.map(ws => (
-                <button
-                  key={ws.id}
-                  onClick={() => { void setCurrentWorkspaceId(ws.id); setWsMenuOpen(false); }}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '10px 16px',
-                    background: currentWorkspace?.id === ws.id ? 'rgba(79,140,255,0.12)' : 'transparent',
-                    color:      currentWorkspace?.id === ws.id ? '#4f8cff' : '#e2e8f0',
-                    border: 'none',
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    borderBottom: '1px solid var(--platform-border)',
-                  }}
-                >
-                  {currentWorkspace?.id === ws.id && <span style={{ marginRight: 8, fontSize: 10 }}>✓</span>}
-                  {ws.name}
-                </button>
-              ))}
-
-              {/* Create new workspace */}
-              {!creatingWs ? (
-                <button
-                  onClick={() => setCreatingWs(true)}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '10px 16px',
-                    background: 'transparent',
-                    color: '#4f8cff',
-                    border: 'none',
-                    fontSize: 13,
-                    cursor: 'pointer',
-                  }}
-                >
-                  + Create Workspace
-                </button>
-              ) : (
-                <div style={{ padding: '10px 14px' }}>
-                  <input
-                    autoFocus
-                    type="text"
-                    placeholder="Workspace name"
-                    value={newWsName}
-                    onChange={e => setNewWsName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') void handleCreateWorkspace(); if (e.key === 'Escape') { setCreatingWs(false); setNewWsName(''); setWsCreateError(''); } }}
-                    style={{
-                      width: '100%',
-                      background: 'rgba(255,255,255,0.07)',
-                      border: '1px solid var(--platform-border)',
-                      borderRadius: 6,
-                      color: '#fff',
-                      padding: '6px 10px',
-                      fontSize: 12,
-                      marginBottom: 6,
-                      boxSizing: 'border-box',
-                      outline: 'none',
-                    }}
-                  />
-                  {wsCreateError && <div style={{ color: '#ff5050', fontSize: 11, marginBottom: 6 }}>{wsCreateError}</div>}
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      onClick={() => void handleCreateWorkspace()}
-                      style={{ flex: 1, padding: '5px 0', background: '#4f8cff', color: '#fff', border: 'none', borderRadius: 5, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
-                    >
-                      Create
-                    </button>
-                    <button
-                      onClick={() => { setCreatingWs(false); setNewWsName(''); setWsCreateError(''); }}
-                      style={{ flex: 1, padding: '5px 0', background: 'transparent', color: 'var(--platform-muted)', border: '1px solid var(--platform-border)', borderRadius: 5, fontSize: 12, cursor: 'pointer' }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <Link to="/app/dashboard" className="header-brand-link">
+            <img src="/assets/vc_logo.png" alt="VoxCloud" className="header-logo" />
+            <div>
+              <div style={{ color: '#ffffff', fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em' }}>VoxCore</div>
             </div>
-          )}
+          </Link>
+          <WorkspaceSwitcher />
         </div>
 
         <UserDropdown token={localStorage.getItem('voxcore_token') || ''} onLogout={handleLogout} />
@@ -562,15 +418,27 @@ function App() {
         <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
           <div className="page-container">
             <Routes>
-              <Route path="/app/dashboard" element={<Dashboard />} />
-              <Route path="/app/databases" element={<Databases />} />
-              <Route path="/app/policies" element={<Policies />} />
-              <Route path="/app/query-logs" element={<QueryLogs />} />
-              <Route path="/app/query-logs/:id" element={<QueryInvestigation />} />
-              <Route path="/app/sandbox" element={<Sandbox />} />
-              <Route path="/app/schema" element={<SchemaExplorerPage />} />
-              <Route path="/app/settings" element={<SettingsPage />} />
-              <Route path="/app" element={<SqlAssistant />} />
+              <Route path="/app/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+              <Route path="/app/databases" element={<RequireAuth><Databases /></RequireAuth>} />
+              <Route path="/app/datasources" element={<RequireAuth><DataSourcesPage /></RequireAuth>} />
+              <Route path="/app/datasources/new/:platform" element={<RequireAuth><DataSourceNewPage /></RequireAuth>} />
+              <Route path="/app/semantic-models" element={<RequireAuth><SemanticModelsPage /></RequireAuth>} />
+              <Route path="/app/semantic-models/new" element={<RequireAuth><SemanticModelsPage /></RequireAuth>} />
+              <Route path="/datasources/new/:platform" element={<RequireAuth><DataSourceNewPage /></RequireAuth>} />
+              <Route path="/app/policies" element={<RequireAuth><Policies /></RequireAuth>} />
+              <Route path="/app/query-logs" element={<RequireAuth><QueryLogs /></RequireAuth>} />
+              <Route path="/app/query-logs/:id" element={<RequireAuth><QueryInvestigation /></RequireAuth>} />
+              <Route path="/app/sandbox" element={<RequireAuth><Sandbox /></RequireAuth>} />
+              <Route path="/app/schema" element={<RequireAuth><SchemaExplorerPage /></RequireAuth>} />
+              <Route path="/app/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+              <Route path="/app" element={<RequireAuth><SqlAssistant /></RequireAuth>} />
+              <Route path="/dashboard" element={<RequireAuth><Navigate to="/app/dashboard" replace /></RequireAuth>} />
+              <Route path="/datasources" element={<RequireAuth><Navigate to="/app/datasources" replace /></RequireAuth>} />
+              <Route path="/sql" element={<RequireAuth><Navigate to="/app" replace /></RequireAuth>} />
+              <Route path="/schema" element={<RequireAuth><Navigate to="/app/schema" replace /></RequireAuth>} />
+              <Route path="/governance" element={<RequireAuth><Navigate to="/app/policies" replace /></RequireAuth>} />
+              <Route path="/workspaces" element={<RequireAuth><Navigate to="/app/settings" replace /></RequireAuth>} />
+              <Route path="/login" element={<Login onLogin={handleLogin} />} />
               <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
             </Routes>
           </div>

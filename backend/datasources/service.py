@@ -62,11 +62,11 @@ class DatasourceService:
     SUPPORTED_PLATFORMS = {
         "sql_server": {"tier": 1, "name": "SQL Server", "available": True},
         "snowflake": {"tier": 1, "name": "Snowflake", "available": True},
-        "postgres": {"tier": 1, "name": "PostgreSQL", "available": True},
-        "bigquery": {"tier": 2, "name": "BigQuery", "available": True},
-        "redshift": {"tier": 2, "name": "Amazon Redshift", "available": True},
-        "mysql": {"tier": 3, "name": "MySQL", "available": True},
-        "sqlite": {"tier": 3, "name": "SQLite", "available": True},
+        "postgres": {"tier": 1, "name": "PostgreSQL", "available": False},
+        "bigquery": {"tier": 2, "name": "BigQuery", "available": False},
+        "redshift": {"tier": 2, "name": "Amazon Redshift", "available": False},
+        "mysql": {"tier": 3, "name": "MySQL", "available": False},
+        "sqlite": {"tier": 3, "name": "SQLite", "available": False},
     }
 
     @staticmethod
@@ -93,14 +93,9 @@ class DatasourceService:
 
             return SnowflakeDriver(connection_params)
         elif platform == "sql_server":
-            # TODO: Enhance SQL Server driver for datasource context
-            from backend.schema.drivers.sqlserver_driver import SQLServerDriver
-
-            return SQLServerDriver(connection_params)
+            raise NotImplementedError("SQL Server datasource driver is being migrated to the new datasource flow")
         elif platform == "postgres":
-            from backend.schema.drivers.postgres_driver import PostgreSQLDriver
-
-            return PostgreSQLDriver(connection_params)
+            raise NotImplementedError("PostgreSQL datasource driver is coming soon")
         elif platform == "bigquery":
             # TODO: Implement BigQuery driver
             raise NotImplementedError("BigQuery driver coming soon")

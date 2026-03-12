@@ -44,7 +44,7 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
     setError(null);
 
     try {
-      const credentials = { user, password, account, warehouse };
+      const credentials: Record<string, string> = { user, password, account, warehouse };
       if (database) credentials.database = database;
       if (schema) credentials.schema = schema;
       if (role) credentials.role = role;

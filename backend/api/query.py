@@ -15,6 +15,7 @@ from backend.services.safety_validator import validate_query_safety
 from backend.services.audit_logger import log_audit_event
 from backend.services.data_policy_engine import find_sensitive_columns_in_query, get_sensitive_columns
 from backend.services.query_job_queue import enqueue_query_job, get_job, get_worker_stats
+from backend.services.ai_context_builder import build_ai_query_context_with_runtime
 
 
 router = APIRouter()
@@ -120,6 +121,56 @@ def get_query_logs(
     }
 
 
+@router.get("/api/v1/query/drilldown")
+def query_drilldown(
+    value: str,
+    dimension: str = Query("status"),
+):
+    """Return detail rows for clicked chart category/data point."""
+    normalized_value = (value or "").strip().lower()
+    normalized_dimension = (dimension or "status").strip().lower()
+
+    matched_logs: list[dict[str, Any]] = []
+    for entry in _QUERY_ACTIVITY_LOGS:
+      status = str(entry.get("status", "")).lower()
+      risk = str(entry.get("risk", "")).lower()
+      query = str(entry.get("query", ""))
+
+      if normalized_dimension == "status" and status == normalized_value:
+          matched_logs.append(entry)
+      elif normalized_dimension == "risk" and risk == normalized_value:
+          matched_logs.append(entry)
+      elif normalized_dimension == "query" and normalized_value in query.lower():
+          matched_logs.append(entry)
+
+    if not matched_logs:
+        matched_logs = _QUERY_ACTIVITY_LOGS[:8]
+
+    rows: list[dict[str, Any]] = []
+    total_revenue = 0
+    for idx, log in enumerate(matched_logs, start=1):
+        # Synthetic order-style records for analytics drill-down UX
+        amount = 120 + (idx * 95)
+        total_revenue += amount
+        rows.append(
+            {
+                "order_id": f"{10000 + idx}",
+                "order_total": amount,
+                "order_date": f"2025-05-{(10 + idx):02d}",
+                "query": log.get("query"),
+                "status": log.get("status"),
+                "risk": log.get("risk"),
+            }
+        )
+
+    return {
+        "category": value,
+        "dimension": dimension,
+        "rows": rows,
+        "total_revenue": total_revenue,
+    }
+
+
 @router.get("/api/v1/query/risk-timeline")
 def get_risk_timeline(limit: int = Query(25, ge=1, le=200)):
     timeline: list[dict[str, Any]] = []
@@ -152,14 +203,17 @@ def get_risk_timeline(limit: int = Query(25, ge=1, le=200)):
 class InspectRequest(BaseModel):
     query: str | None = None
     sql: str | None = None
+    workspace_id: str = "default"
 
 
 class RiskRequest(BaseModel):
     query: str
+    workspace_id: str = "default"
 
 
 class SandboxQueryRequest(BaseModel):
     query: str
+    workspace_id: str = "default"
 
 
 def sandbox_execute(query_text: str) -> list[dict[str, Any]]:
@@ -190,26 +244,39 @@ def sandbox_execute(query_text: str) -> list[dict[str, Any]]:
 
 
 @router.post("/api/v1/query/sandbox")
-def sandbox_query(payload: SandboxQueryRequest):
+def sandbox_query(request: Request, payload: SandboxQueryRequest):
     query_text = (payload.query or "").strip()
     if not query_text:
         raise HTTPException(status_code=400, detail="query is required")
 
     result = sandbox_execute(query_text)
+    workspace = payload.workspace_id or str(getattr(request.state, "workspace_id", "default"))
+    ai_context = build_ai_query_context_with_runtime(
+        workspace,
+        getattr(request.state, "datasource_id", None),
+        request.headers.get("X-Schema-Name"),
+    )
     return {
         "status": "sandboxed",
         "rows": len(result),
         "preview": result[:5],
+        "ai_context": ai_context,
     }
 
 
 @router.post("/api/v1/query/inspect")
-def inspect_query(payload: InspectRequest):
+def inspect_query(request: Request, payload: InspectRequest):
     query_text = (payload.query or payload.sql or "").strip()
     if not query_text:
         raise HTTPException(status_code=400, detail="query is required")
 
     risk_details = _analyze_query_risk(query_text)
+    workspace = payload.workspace_id or str(getattr(request.state, "workspace_id", "default"))
+    ai_context = build_ai_query_context_with_runtime(
+        workspace,
+        getattr(request.state, "datasource_id", None),
+        request.headers.get("X-Schema-Name"),
+    )
 
     blocked_keywords = ["DROP", "DELETE", "TRUNCATE"]
     upper_query = query_text.upper()
@@ -229,6 +296,7 @@ def inspect_query(payload: InspectRequest):
                 "missing_tables": [],
                 "missing_columns": [],
                 "reasons": [f"{word} statements are blocked"],
+                "ai_context": ai_context,
             }
 
     matched_sensitive = find_sensitive_columns_in_query(query_text)
@@ -247,6 +315,7 @@ def inspect_query(payload: InspectRequest):
             "missing_columns": [],
             "reasons": [f"Sensitive column detected: {column}" for column in matched_sensitive],
             "sensitive_columns": matched_sensitive,
+            "ai_context": ai_context,
         }
 
     _append_activity(query_text, "allowed", risk_details["risk_level"])
@@ -262,15 +331,23 @@ def inspect_query(payload: InspectRequest):
         "missing_tables": [],
         "missing_columns": [],
         "reasons": ["Query approved"],
+        "ai_context": ai_context,
     }
 
 
 @router.post("/api/v1/query/risk")
-def analyze_query_risk(payload: RiskRequest):
+def analyze_query_risk(request: Request, payload: RiskRequest):
     query_text = (payload.query or "").strip()
     if not query_text:
         raise HTTPException(status_code=400, detail="query is required")
-    return _analyze_query_risk(query_text)
+    risk = _analyze_query_risk(query_text)
+    workspace = payload.workspace_id or str(getattr(request.state, "workspace_id", "default"))
+    risk["ai_context"] = build_ai_query_context_with_runtime(
+        workspace,
+        getattr(request.state, "datasource_id", None),
+        request.headers.get("X-Schema-Name"),
+    )
+    return risk
 
 
 class QueryRequest(BaseModel):
@@ -280,10 +357,20 @@ class QueryRequest(BaseModel):
     workspace_id: str = "default"
 
 
-def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
+def _add_ai_context(request: Request, payload: QueryRequest, body: dict[str, Any]) -> dict[str, Any]:
+    workspace = payload.workspace_id or str(getattr(request.state, "workspace_id", "default"))
+    body["ai_context"] = build_ai_query_context_with_runtime(
+        workspace,
+        getattr(request.state, "datasource_id", None),
+        request.headers.get("X-Schema-Name"),
+    )
+    return body
+
+
+def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, Any]:
     start = time.perf_counter()
     query = payload.query
-
+    
     # 1) Query Inspector: Parse SQL first.
     analysis = analyze_sql(query)
     matched_sensitive_columns = find_sensitive_columns_in_query(query)
@@ -322,7 +409,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
             "analysis": analysis,
             "original_query": payload.query,
             "effective_query": query,
-        }
+        } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     # 2) Policy Engine enforcement.
     policy_result = apply_policies(payload.company_id, query, analysis=analysis)
@@ -359,7 +446,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
             "analysis": analysis,
             "original_query": policy_result["original_query"],
             "effective_query": policy_result["rewritten_query"],
-        }
+        } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     query = policy_result["rewritten_query"]
 
@@ -398,7 +485,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
             "analysis": analysis,
             "original_query": payload.query,
             "effective_query": query,
-        }
+        } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     # 4) Policy-based approval mode.
     if policy_result.get("requires_approval"):
@@ -450,7 +537,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
             "analysis": analysis,
             "original_query": payload.query,
             "effective_query": query,
-        }
+        } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     # 5) Additional risk scoring + optional approval queue.
     try:
@@ -537,7 +624,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
             "original_query": payload.query,
             "effective_query": query,
             "message": "Query held for admin review. Check /api/approval/pending.",
-        }
+        } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     # 6) Database execution simulation/risk stage.
     risk = calculate_risk(query)
@@ -571,7 +658,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
             "status": "blocked",
             "analysis": analysis,
             "risk": risk
-        }
+        } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     log_audit_event(
         {
@@ -588,7 +675,7 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
         }
     )
 
-    return {
+    return _add_ai_context(request, payload, {
         "status": "allowed",
         "company_id": payload.company_id,
         "workspace_id": payload.workspace_id,
@@ -600,13 +687,13 @@ def process_query_payload(payload: QueryRequest) -> dict[str, Any]:
         "ai_risk": risk,
         "original_query": payload.query,
         "effective_query": query,
-    }
+    })
 
 
 @router.post("/query")
 @limiter.limit("100/minute")
 def run_query(request: Request, payload: QueryRequest):
-    return process_query_payload(payload)
+    return process_query_payload(request, payload)
 
 
 @router.post("/api/v1/query")

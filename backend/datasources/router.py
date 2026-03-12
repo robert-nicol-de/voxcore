@@ -1,275 +1,305 @@
-"""
-API router for datasources and semantic models.
-Provides endpoints for discovering, connecting to, and managing data sources.
-"""
+"""Datasource and semantic-model API endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from typing import List, Dict, Any, Optional
+import socket
+from typing import Any, Dict, Optional
 
-from backend.datasources.models import (
-    PlatformInfo,
-    DataSourceCreate,
-    SemanticModelCreate,
-    SemanticModelUpdate,
-)
-from backend.datasources.service import DatasourceService, SemanticModelService
-from backend.db import get_db
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
+
+import backend.db.org_store as store
+from backend.datasources.service import DatasourceService
+from backend.services.rbac import get_current_user, get_org_context
 
 router = APIRouter(prefix="/api/v1/datasources", tags=["datasources"])
 
 
-# ═══════════════════════════════════════════════════════════════
-# Platforms & Discovery
-# ═══════════════════════════════════════════════════════════════
+def _resolve_workspace_id(request: Request, workspace_id: Optional[int] = None) -> int:
+    if workspace_id is not None:
+        return int(workspace_id)
+    from_state = getattr(request.state, "workspace_id", None)
+    if from_state is not None:
+        return int(from_state)
+    from_header = request.headers.get("X-Workspace-ID")
+    if from_header:
+        try:
+            return int(from_header)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid X-Workspace-ID header")
+    raise HTTPException(status_code=400, detail="Workspace context is required")
 
 
-@router.get("/platforms", response_model=List[Dict[str, Any]])
-async def get_available_platforms():
-    """
-    Get list of supported data platforms.
-    
-    Returns platforms ordered by tier (1=must-have, 2=important, 3=nice-to-have).
-    
-    Example:
-    [
-      {
-        "code": "snowflake",
-        "name": "Snowflake",
-        "tier": 1,
-        "available": true,
-        "description": "Connect to Snowflake data warehouse"
-      },
-      ...
-    ]
-    """
+class TestConnectionRequest(BaseModel):
+    platform: str
+    credentials: Dict[str, Any]
+
+
+class SqlServerTestRequest(BaseModel):
+    server: str
+    port: int = 1433
+    database: str
+    username: str
+    password: str
+    encrypt: bool = True
+    trust_server_certificate: bool = False
+    timeout_seconds: int = 5
+
+
+class CreateDatasourceRequest(BaseModel):
+    org_id: int = 1
+    workspace_id: Optional[int] = None
+    name: str
+    type: Optional[str] = None
+    platform: Optional[str] = None
+    status: str = "active"
+    config: Dict[str, Any] = Field(default_factory=dict)
+    credentials: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CreateSemanticModelRequest(BaseModel):
+    datasource_id: int
+    name: str
+    description: Optional[str] = ""
+    definition: Dict[str, Any] = Field(default_factory=dict)
+
+
+class UpdateSemanticModelRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    definition: Optional[Dict[str, Any]] = None
+
+
+@router.get("/platforms")
+def get_available_platforms(user=Depends(get_current_user)):
     return DatasourceService.get_available_platforms()
 
 
 @router.post("/test-connection")
-async def test_connection(
-    platform: str = Query(..., description="Platform code (snowflake, sql_server, etc.)"),
-    credentials: Dict[str, Any] = Query(..., description="Platform-specific credentials"),
-):
-    """
-    Test if connection parameters are valid.
-    
-    Does not save anything; just validates the connection.
-    
-    Returns: {"valid": true/false}
-    """
+def test_connection(req: TestConnectionRequest, user=Depends(get_current_user)):
     try:
-        valid = DatasourceService.test_connection(platform, credentials)
+        valid = DatasourceService.test_connection(req.platform, req.credentials)
         return {"valid": valid}
     except Exception as e:
         return {"valid": False, "error": str(e)}
 
 
-# ═══════════════════════════════════════════════════════════════
-# Datasources (CRUD)
-# ═══════════════════════════════════════════════════════════════
+@router.post("/sqlserver/test")
+def test_sqlserver_connection(req: SqlServerTestRequest, user=Depends(get_current_user)):
+    try:
+        with socket.create_connection((req.server, req.port), timeout=max(req.timeout_seconds, 1)):
+            pass
+    except Exception as e:
+        return {"valid": False, "detail": f"Unable to reach SQL Server host: {e}"}
+
+    try:
+        import pyodbc  # type: ignore
+    except Exception:
+        return {
+            "valid": True,
+            "detail": "Host is reachable. pyodbc is not installed, so driver-level validation was skipped.",
+            "driver_check": "skipped",
+        }
+
+    encrypt_value = "yes" if req.encrypt else "no"
+    trust_value = "yes" if req.trust_server_certificate else "no"
+    conn_str = (
+        "DRIVER={ODBC Driver 18 for SQL Server};"
+        f"SERVER={req.server},{req.port};"
+        f"DATABASE={req.database};"
+        f"UID={req.username};"
+        f"PWD={req.password};"
+        f"Encrypt={encrypt_value};"
+        f"TrustServerCertificate={trust_value};"
+        "Connection Timeout=5;"
+    )
+
+    conn = None
+    try:
+        conn = pyodbc.connect(conn_str)
+        return {"valid": True, "detail": "Connection successful.", "driver_check": "passed"}
+    except Exception as e:
+        return {"valid": False, "detail": str(e), "driver_check": "failed"}
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
-@router.get("/", response_model=List[Dict[str, Any]])
-async def list_datasources(
-    workspace_id: int = Query(...),
-    db: Session = Depends(get_db),
+@router.get("/")
+def list_datasources(
+    request: Request,
+    workspace_id: Optional[int] = Query(default=None),
+    user=Depends(get_current_user),
+    ctx=Depends(get_org_context),
 ):
-    """List all datasources in a workspace."""
-    # TODO: Query database
-    return []
+    effective_workspace_id = _resolve_workspace_id(request, workspace_id)
+    return store.list_data_sources_scoped(ctx["org_id"], effective_workspace_id)
 
 
-@router.post("/", response_model=Dict[str, Any])
-async def create_datasource(
-    workspace_id: int = Query(...),
-    req: DataSourceCreate = None,
-    db: Session = Depends(get_db),
+@router.post("/")
+def create_datasource(
+    request: Request,
+    req: CreateDatasourceRequest,
+    workspace_id: Optional[int] = Query(default=None),
+    user=Depends(get_current_user),
+    ctx=Depends(get_org_context),
 ):
-    """
-    Create new datasource connection.
-    
-    Does NOT test connection; user should call test-connection first.
-    """
-    if not req:
-        raise HTTPException(status_code=400, detail="Missing request body")
-    # TODO: Save to database
-    return {"id": 1, "platform": req.platform, "name": req.name}
+    platform = req.platform or req.type or "unknown"
+    effective_workspace_id = req.workspace_id or _resolve_workspace_id(request, workspace_id)
+
+    if ctx.get("role") != "god":
+        workspace = store.get_workspace(effective_workspace_id)
+        if not workspace or int(workspace.get("org_id", -1)) != int(ctx["org_id"]):
+            raise HTTPException(status_code=403, detail="Workspace is outside your organization")
+
+    ds = store.create_data_source(
+        org_id=int(ctx["org_id"]),
+        workspace_id=effective_workspace_id,
+        name=req.name,
+        platform=platform,
+        status=req.status,
+        config=req.config or req.credentials,
+        credentials=req.credentials or req.config,
+    )
+    return ds
 
 
-@router.get("/{datasource_id}", response_model=Dict[str, Any])
-async def get_datasource(
-    datasource_id: int,
-    db: Session = Depends(get_db),
-):
-    """Get datasource details."""
-    # TODO: Query database
-    return {}
+@router.get("/{datasource_id}")
+def get_datasource(datasource_id: int, request: Request, user=Depends(get_current_user), ctx=Depends(get_org_context)):
+    effective_workspace_id = _resolve_workspace_id(request, None)
+    ds = store.get_data_source_scoped(datasource_id, int(ctx["org_id"]), effective_workspace_id)
+    if not ds:
+        raise HTTPException(status_code=404, detail="Datasource not found")
+    return ds
 
 
 @router.delete("/{datasource_id}")
-async def delete_datasource(
-    datasource_id: int,
-    db: Session = Depends(get_db),
-):
-    """Delete datasource and associated semantic models."""
-    # TODO: Delete from database with cascade
+def delete_datasource(datasource_id: int, request: Request, user=Depends(get_current_user), ctx=Depends(get_org_context)):
+    effective_workspace_id = _resolve_workspace_id(request, None)
+    deleted = store.delete_data_source_scoped(datasource_id, int(ctx["org_id"]), effective_workspace_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Datasource not found")
     return {"deleted": True}
 
 
-# ═══════════════════════════════════════════════════════════════
-# Schema Discovery
-# ═══════════════════════════════════════════════════════════════
-
-
-@router.get("/{datasource_id}/databases", response_model=List[str])
-async def list_databases(
+@router.get("/{datasource_id}/schema")
+def get_schema(
     datasource_id: int,
-    db: Session = Depends(get_db),
+    request: Request,
+    database: Optional[str] = Query(default=None),
+    schema: Optional[str] = Query(default="public"),
+    force_refresh: bool = Query(default=False),
+    user=Depends(get_current_user),
+    ctx=Depends(get_org_context),
 ):
-    """
-    List all databases in datasource.
-    
-    Usage:
-    GET /api/v1/datasources/1/databases
-    
-    Returns: ["database1", "database2", ...]
-    """
-    # TODO: Use cached schema or connect and discover
-    return []
+    effective_workspace_id = _resolve_workspace_id(request, None)
+    ds = store.get_data_source_scoped(datasource_id, int(ctx["org_id"]), effective_workspace_id)
+    if not ds:
+        raise HTTPException(status_code=404, detail="Datasource not found")
+
+    if not force_refresh and ds.get("schema_cache"):
+        return {
+            "datasource_id": datasource_id,
+            "cached": True,
+            "schema": ds.get("schema_cache"),
+        }
+
+    platform = ds.get("platform") or ds.get("type")
+    if platform != "snowflake":
+        return {
+            "datasource_id": datasource_id,
+            "cached": False,
+            "schema": {},
+            "detail": f"Schema discovery for {platform} is coming soon",
+        }
+
+    from backend.datasources.drivers.snowflake_driver import SnowflakeDriver
+
+    config = ds.get("config") or {}
+    credentials = ds.get("credentials") or {}
+
+    driver = SnowflakeDriver(
+        {
+            "user": credentials.get("user") or config.get("username"),
+            "password": credentials.get("password"),
+            "account": credentials.get("account") or config.get("account"),
+            "warehouse": credentials.get("warehouse") or config.get("warehouse"),
+            "database": database or credentials.get("database") or config.get("database"),
+            "schema": schema or credentials.get("schema") or config.get("schema") or "public",
+            "role": credentials.get("role") or config.get("role"),
+        }
+    )
+
+    if not driver.connect():
+        raise HTTPException(status_code=400, detail="Snowflake connection failed")
+
+    try:
+        target_db = database or credentials.get("database") or config.get("database")
+        target_schema = schema or credentials.get("schema") or config.get("schema") or "public"
+        if not target_db:
+            dbs = driver.discover_databases()
+            target_db = dbs[0] if dbs else ""
+        discovered = driver.discover_schema(target_db, target_schema)
+        store.update_data_source_schema_cache(datasource_id, discovered)
+        store.cache_schema_snapshot(datasource_id, discovered)
+        return {"datasource_id": datasource_id, "cached": False, "schema": discovered}
+    finally:
+        driver.disconnect()
 
 
-@router.get("/{datasource_id}/schema", response_model=Dict[str, Any])
-async def get_schema(
-    datasource_id: int,
-    database: str = Query(None, description="Database name (required for some platforms)"),
-    schema: str = Query(None, description="Schema name (optional)"),
-    force_refresh: bool = Query(False, description="Skip cache and re-discover"),
-    db: Session = Depends(get_db),
+@router.get("/models")
+def list_semantic_models(
+    request: Request,
+    workspace_id: Optional[int] = Query(default=None),
+    datasource_id: Optional[int] = Query(default=None),
+    user=Depends(get_current_user),
 ):
-    """
-    Get full schema for datasource.
-    
-    Returns tables and columns with metadata.
-    
-    Caches result for 15 minutes (unless force_refresh=true).
-    """
-    # TODO: Call DatasourceService.discover_schema_cached()
-    return {}
+    effective_workspace_id = _resolve_workspace_id(request, workspace_id)
+    return store.list_semantic_models(effective_workspace_id, datasource_id)
 
 
-# ═══════════════════════════════════════════════════════════════
-# Semantic Models (CRUD)
-# ═══════════════════════════════════════════════════════════════
-
-
-@router.get("/models", response_model=List[Dict[str, Any]])
-async def list_semantic_models(
-    workspace_id: int = Query(...),
-    datasource_id: Optional[int] = Query(None, description="Filter by datasource"),
-    db: Session = Depends(get_db),
+@router.post("/models")
+def create_semantic_model(
+    request: Request,
+    req: CreateSemanticModelRequest,
+    workspace_id: Optional[int] = Query(default=None),
+    user=Depends(get_current_user),
 ):
-    """List all semantic models in workspace."""
-    # TODO: Query database
-    return []
+    effective_workspace_id = _resolve_workspace_id(request, workspace_id)
+    return store.create_semantic_model(
+        workspace_id=effective_workspace_id,
+        datasource_id=req.datasource_id,
+        name=req.name,
+        description=req.description or "",
+        definition=req.definition,
+    )
 
 
-@router.post("/models", response_model=Dict[str, Any])
-async def create_semantic_model(
-    workspace_id: int = Query(...),
-    req: SemanticModelCreate = None,
-    db: Session = Depends(get_db),
-):
-    """
-    Create new semantic model.
-    
-    Semantic models are business abstractions that map business concepts
-    (entities, metrics) to SQL tables and columns.
-    """
-    if not req:
-        raise HTTPException(status_code=400, detail="Missing request body")
-    # TODO: Create model
-    return {"id": 1, "name": req.name}
+@router.get("/models/{model_id}")
+def get_semantic_model(model_id: int, user=Depends(get_current_user)):
+    model = store.get_semantic_model(model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail="Semantic model not found")
+    return model
 
 
-@router.get("/models/{model_id}", response_model=Dict[str, Any])
-async def get_semantic_model(
-    model_id: int,
-    db: Session = Depends(get_db),
-):
-    """Get semantic model definition."""
-    # TODO: Query database
-    return {}
-
-
-@router.patch("/models/{model_id}", response_model=Dict[str, Any])
-async def update_semantic_model(
-    model_id: int,
-    req: SemanticModelUpdate = None,
-    db: Session = Depends(get_db),
-):
-    """Update semantic model."""
-    if not req:
-        raise HTTPException(status_code=400, detail="Missing request body")
-    # TODO: Update model
-    return {"id": model_id}
+@router.patch("/models/{model_id}")
+def update_semantic_model(model_id: int, req: UpdateSemanticModelRequest, user=Depends(get_current_user)):
+    model = store.update_semantic_model(
+        model_id=model_id,
+        name=req.name,
+        description=req.description,
+        definition=req.definition,
+    )
+    if not model:
+        raise HTTPException(status_code=404, detail="Semantic model not found")
+    return model
 
 
 @router.delete("/models/{model_id}")
-async def delete_semantic_model(
-    model_id: int,
-    db: Session = Depends(get_db),
-):
-    """Delete semantic model."""
-    # TODO: Delete from database
+def delete_semantic_model(model_id: int, user=Depends(get_current_user)):
+    deleted = store.delete_semantic_model(model_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Semantic model not found")
     return {"deleted": True}
-
-
-# ═══════════════════════════════════════════════════════════════
-# Semantic Model Entities (nested CRUD)
-# ═══════════════════════════════════════════════════════════════
-
-
-@router.post("/models/{model_id}/entities", response_model=Dict[str, Any])
-async def add_entity(
-    model_id: int,
-    entity_name: str = Query(...),
-    entity_def: Dict[str, Any] = None,
-    db: Session = Depends(get_db),
-):
-    """
-    Add entity to semantic model.
-    
-    Entity example:
-    {
-      "name": "customers",
-      "display_name": "Customer",
-      "sql_table": "customers",
-      "primary_key": "customer_id",
-      "fields": {
-        "id": {
-          "sql_column": "customer_id",
-          "display_name": "Customer ID"
-        }
-      },
-      "metrics": {
-        "total_revenue": {
-          "sql_expression": "SUM(order_total)",
-          "display_name": "Total Revenue"
-        }
-      }
-    }
-    """
-    # TODO: Add entity to model
-    return {"added": True}
-
-
-@router.delete("/models/{model_id}/entities/{entity_name}")
-async def remove_entity(
-    model_id: int,
-    entity_name: str,
-    db: Session = Depends(get_db),
-):
-    """Remove entity from semantic model."""
-    # TODO: Remove entity
-    return {"removed": True}

@@ -39,6 +39,7 @@ export default function Databases() {
 
   const companyId = localStorage.getItem('voxcore_company_id') || 'default';
   const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
+  const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
 
   async function testConnection() {
     setTesting(true);
@@ -48,6 +49,7 @@ export default function Databases() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           database: dbType,
@@ -79,6 +81,7 @@ export default function Databases() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
               company_id: companyId,
@@ -135,7 +138,8 @@ export default function Databases() {
     setSchemaLoading(true);
     try {
       const response = await fetch(
-        apiUrl(`/api/v1/schema/discover?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}&connection_name=${encodeURIComponent(connectionName)}`)
+        apiUrl(`/api/v1/schema/discover?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}&connection_name=${encodeURIComponent(connectionName)}`),
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await response.json();
 

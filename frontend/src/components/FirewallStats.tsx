@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../lib/api';
 import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from '../lib/polling';
+import DrilldownModal from './results/DrilldownModal';
 
 type QueryLog = {
   status?: string;
@@ -26,6 +27,7 @@ export default function FirewallStats() {
     blocked: 0,
     sandboxed: 0,
   });
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,10 +44,12 @@ export default function FirewallStats() {
     const loadStats = async () => {
       const companyId = localStorage.getItem('voxcore_company_id') || 'default';
       const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
+      const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
 
       try {
         const response = await fetch(
           apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`),
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         if (!response.ok) {
           if (isRetryableHttpFailure(response.status)) {
@@ -103,7 +107,7 @@ export default function FirewallStats() {
           <span>Allowed Queries</span>
           <span>{stats.allowed}</span>
         </div>
-        <div className="firewall-track">
+        <div className="firewall-track" onClick={() => setSelectedCategory('allowed')} style={{ cursor: 'pointer' }}>
           <div className="bar green" style={{ width: widthFor(stats.allowed, total) }} />
         </div>
       </div>
@@ -113,7 +117,7 @@ export default function FirewallStats() {
           <span>Blocked Queries</span>
           <span>{stats.blocked}</span>
         </div>
-        <div className="firewall-track">
+        <div className="firewall-track" onClick={() => setSelectedCategory('blocked')} style={{ cursor: 'pointer' }}>
           <div className="bar red" style={{ width: widthFor(stats.blocked, total) }} />
         </div>
       </div>
@@ -123,10 +127,18 @@ export default function FirewallStats() {
           <span>Sandboxed Queries</span>
           <span>{stats.sandboxed}</span>
         </div>
-        <div className="firewall-track">
+        <div className="firewall-track" onClick={() => setSelectedCategory('sandboxed')} style={{ cursor: 'pointer' }}>
           <div className="bar yellow" style={{ width: widthFor(stats.sandboxed, total) }} />
         </div>
       </div>
+
+      {selectedCategory && (
+        <DrilldownModal
+          category={selectedCategory}
+          dimension="status"
+          onClose={() => setSelectedCategory(null)}
+        />
+      )}
     </section>
   );
 }

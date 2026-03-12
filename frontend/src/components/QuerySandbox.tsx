@@ -39,6 +39,7 @@ ORDER BY total_revenue DESC`
     }
 
     setSql(generatedSQL)
+    const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default'
 
     try {
       const riskResponse = await fetch(apiUrl('/api/v1/query/risk'), {
@@ -46,7 +47,7 @@ ORDER BY total_revenue DESC`
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query: generatedSQL }),
+        body: JSON.stringify({ query: generatedSQL, workspace_id: workspaceId }),
       })
 
       if (riskResponse.ok) {
@@ -69,13 +70,14 @@ ORDER BY total_revenue DESC`
     }
 
     setLoadingPreview(true)
+    const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default'
     try {
       const sandboxResponse = await fetch(apiUrl('/api/v1/query/sandbox'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query: sql }),
+        body: JSON.stringify({ query: sql, workspace_id: workspaceId }),
       })
       const sandboxData = await sandboxResponse.json()
 
@@ -111,7 +113,7 @@ ORDER BY total_revenue DESC`
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query: sql }),
+        body: JSON.stringify({ query: sql, workspace_id: workspaceId }),
       })
       const inspectData = await inspectResponse.json()
       if (!inspectResponse.ok) {

@@ -2,15 +2,19 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useWorkspace } from '../context/WorkspaceContext';
 
-const links = [
+const primaryLinks = [
   { to: '/app/dashboard',  label: 'Dashboard' },
-  { to: '/app/databases',  label: 'Databases' },
-  { to: '/app/schema',     label: 'Schema Explorer' },
   { to: '/app',            label: 'SQL Assistant' },
   { to: '/app/policies',   label: 'Policies' },
   { to: '/app/query-logs', label: 'Query Logs' },
   { to: '/app/sandbox',    label: 'Sandbox' },
   { to: '/app/settings',   label: 'Settings' },
+];
+
+const dataLinks = [
+  { to: '/app/datasources', label: 'Data Sources' },
+  { to: '/app/semantic-models', label: 'Semantic Models' },
+  { to: '/app/schema', label: 'Schema Explorer' },
 ];
 
 export const Sidebar: React.FC = () => {
@@ -60,9 +64,37 @@ export const Sidebar: React.FC = () => {
           </option>
         ))}
       </select>
+      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--platform-muted)', marginBottom: 8 }}>
+        Data
+      </div>
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+        {dataLinks.map((item) => {
+          const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`sidebar-item${active ? ' active' : ''}`}
+              style={{
+                textDecoration: 'none',
+                borderRadius: 10,
+                padding: '10px 12px',
+                fontSize: 14,
+                fontWeight: 600,
+                display: 'block',
+              }}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--platform-muted)', marginBottom: 8 }}>
+        Platform
+      </div>
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {links.map((item) => {
-          const active = location.pathname === item.to;
+        {primaryLinks.map((item) => {
+          const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
           return (
             <Link
               key={item.to}

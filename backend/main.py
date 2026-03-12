@@ -12,8 +12,11 @@ else:
 
 # NOW import backend modules that depend on environment variables
 from fastapi import FastAPI
+from fastapi import Request
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from jose import jwt
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from backend.api.query import router as query_router
@@ -28,8 +31,10 @@ from backend.api.policies import router as policies_router
 from backend.api.schema import router as schema_router
 from backend.api.organizations import router as organizations_router
 from backend.datasources.router import router as datasources_router
+from backend.services.auth import SECRET_KEY, ALGORITHM
 from backend.services.rate_limiter import limiter
 from backend.db.org_store import init_db as init_org_db
+import backend.db.org_store as org_store
 
 
 app = FastAPI(
@@ -57,6 +62,56 @@ app.add_middleware(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.middleware("http")
+async def enforce_jwt_for_api(request: Request, call_next):
+    """Require Bearer JWT on all /api/v1/* routes except /api/v1/auth/* and preflight."""
+    path = request.url.path
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
+    if path.startswith("/api/v1/") and not path.startswith("/api/v1/auth/"):
+        header = request.headers.get("Authorization", "")
+        if not header.startswith("Bearer "):
+            return JSONResponse(status_code=401, content={"detail": "Missing bearer token"})
+        token = header.split(" ", 1)[1].strip()
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        except Exception:
+            return JSONResponse(status_code=401, content={"detail": "Invalid token"})
+
+        user_id = int(payload.get("user_id", 0) or 0)
+        org_id = int(payload.get("org_id", payload.get("company_id", 1)) or 1)
+        role = str(payload.get("role", "viewer"))
+        token_workspace_id = payload.get("workspace_id")
+        requested_workspace = request.headers.get("X-Workspace-ID")
+
+        if requested_workspace:
+            try:
+                workspace_id = int(requested_workspace)
+            except ValueError:
+                return JSONResponse(status_code=400, content={"detail": "Invalid X-Workspace-ID header"})
+        elif token_workspace_id is not None:
+            workspace_id = int(token_workspace_id)
+        else:
+            fallback = org_store.get_default_workspace(org_id)
+            workspace_id = int((fallback or {}).get("id", 1))
+
+        if role != "god":
+            workspace = org_store.get_workspace(workspace_id)
+            if not workspace or int(workspace.get("org_id", -1)) != org_id:
+                return JSONResponse(status_code=403, content={"detail": "Workspace is outside your organization"})
+            if user_id and not org_store.user_has_workspace_access(user_id, workspace_id):
+                return JSONResponse(status_code=403, content={"detail": "Workspace access denied"})
+
+        request.state.user_id = user_id
+        request.state.org_id = org_id
+        request.state.role = role
+        request.state.workspace_id = workspace_id
+        request.state.datasource_id = request.headers.get("X-Datasource-ID")
+
+    return await call_next(request)
 
 
 # Root endpoint
