@@ -21,7 +21,7 @@ from backend.services.ai_context_builder import build_ai_query_context_with_runt
 router = APIRouter()
 
 
-_QUERY_ACTIVITY_LOGS: list[dict[str, Any]] = [
+_SEED_ACTIVITY_LOGS: list[dict[str, Any]] = [
     {
         "time": "14:32",
         "query": "SELECT * FROM customers LIMIT 10",
@@ -42,9 +42,48 @@ _QUERY_ACTIVITY_LOGS: list[dict[str, Any]] = [
     },
 ]
 
+_QUERY_ACTIVITY_LOGS_BY_TENANT: dict[str, list[dict[str, Any]]] = {}
 
-def _append_activity(query: str, status: str, risk: str = "low") -> None:
-    _QUERY_ACTIVITY_LOGS.insert(
+
+def _tenant_key(company_id: str, workspace_id: str) -> str:
+    return f"{company_id}:{workspace_id}"
+
+
+def _resolve_tenant_context(
+    request: Request,
+    company_id: str = "default",
+    workspace_id: str = "default",
+) -> tuple[str, str]:
+    from_state_org = getattr(request.state, "org_id", None)
+    from_state_workspace = getattr(request.state, "workspace_id", None)
+
+    effective_company_id = str(from_state_org if from_state_org is not None else company_id)
+    effective_workspace_id = str(
+        from_state_workspace if from_state_workspace is not None else workspace_id
+    )
+    return effective_company_id, effective_workspace_id
+
+
+def _tenant_logs(company_id: str, workspace_id: str) -> list[dict[str, Any]]:
+    key = _tenant_key(company_id, workspace_id)
+    if key not in _QUERY_ACTIVITY_LOGS_BY_TENANT:
+        _QUERY_ACTIVITY_LOGS_BY_TENANT[key] = [dict(item) for item in _SEED_ACTIVITY_LOGS]
+    return _QUERY_ACTIVITY_LOGS_BY_TENANT[key]
+
+
+def _append_activity(
+    request: Request,
+    query: str,
+    status: str,
+    risk: str = "low",
+    company_id: str = "default",
+    workspace_id: str = "default",
+) -> None:
+    effective_company_id, effective_workspace_id = _resolve_tenant_context(
+        request, company_id, workspace_id
+    )
+    logs = _tenant_logs(effective_company_id, effective_workspace_id)
+    logs.insert(
         0,
         {
             "time": datetime.now().strftime("%H:%M"),
@@ -53,7 +92,7 @@ def _append_activity(query: str, status: str, risk: str = "low") -> None:
             "status": status,
         },
     )
-    del _QUERY_ACTIVITY_LOGS[100:]
+    del logs[100:]
 
 
 def _normalize_risk_level(level: str) -> str:
@@ -111,27 +150,39 @@ def _analyze_query_risk(query: str) -> dict[str, Any]:
 
 @router.get("/api/v1/query/logs")
 def get_query_logs(
+    request: Request,
     company_id: str = Query("default"),
     workspace_id: str = Query("default"),
 ):
+    effective_company_id, effective_workspace_id = _resolve_tenant_context(
+        request, company_id, workspace_id
+    )
     return {
-        "company_id": company_id,
-        "workspace_id": workspace_id,
-        "logs": _QUERY_ACTIVITY_LOGS
+        "company_id": effective_company_id,
+        "workspace_id": effective_workspace_id,
+        "logs": _tenant_logs(effective_company_id, effective_workspace_id),
     }
 
 
 @router.get("/api/v1/query/drilldown")
 def query_drilldown(
+    request: Request,
     value: str,
     dimension: str = Query("status"),
+    company_id: str = Query("default"),
+    workspace_id: str = Query("default"),
 ):
     """Return detail rows for clicked chart category/data point."""
     normalized_value = (value or "").strip().lower()
     normalized_dimension = (dimension or "status").strip().lower()
 
+    effective_company_id, effective_workspace_id = _resolve_tenant_context(
+        request, company_id, workspace_id
+    )
+    tenant_activity_logs = _tenant_logs(effective_company_id, effective_workspace_id)
+
     matched_logs: list[dict[str, Any]] = []
-    for entry in _QUERY_ACTIVITY_LOGS:
+    for entry in tenant_activity_logs:
       status = str(entry.get("status", "")).lower()
       risk = str(entry.get("risk", "")).lower()
       query = str(entry.get("query", ""))
@@ -144,7 +195,7 @@ def query_drilldown(
           matched_logs.append(entry)
 
     if not matched_logs:
-        matched_logs = _QUERY_ACTIVITY_LOGS[:8]
+        matched_logs = tenant_activity_logs[:8]
 
     rows: list[dict[str, Any]] = []
     total_revenue = 0
@@ -195,7 +246,15 @@ def get_risk_timeline(limit: int = Query(25, ge=1, le=200)):
                 }
             )
     except Exception:
-        timeline = _QUERY_ACTIVITY_LOGS[:limit]
+        timeline = [
+            {
+                "time": item.get("time", datetime.now().strftime("%H:%M")),
+                "risk": _normalize_risk_level(str(item.get("risk", "low"))),
+                "status": item.get("status", "allowed"),
+                "query": item.get("query", ""),
+            }
+            for item in _SEED_ACTIVITY_LOGS[:limit]
+        ]
 
     return {"timeline": timeline, "count": len(timeline)}
 
@@ -266,14 +325,15 @@ def sandbox_query(request: Request, payload: SandboxQueryRequest):
 
 @router.post("/api/v1/query/inspect")
 def inspect_query(request: Request, payload: InspectRequest):
+    company_id, workspace_id = _resolve_tenant_context(request, "default", payload.workspace_id)
+
     query_text = (payload.query or payload.sql or "").strip()
     if not query_text:
         raise HTTPException(status_code=400, detail="query is required")
 
     risk_details = _analyze_query_risk(query_text)
-    workspace = payload.workspace_id or str(getattr(request.state, "workspace_id", "default"))
     ai_context = build_ai_query_context_with_runtime(
-        workspace,
+        workspace_id,
         getattr(request.state, "datasource_id", None),
         request.headers.get("X-Schema-Name"),
     )
@@ -283,7 +343,7 @@ def inspect_query(request: Request, payload: InspectRequest):
 
     for word in blocked_keywords:
         if word in upper_query:
-            _append_activity(query_text, "blocked", risk_details["risk_level"])
+            _append_activity(request, query_text, "blocked", risk_details["risk_level"], company_id, workspace_id)
             return {
                 "allowed": False,
                 "reason": f"{word} statements are blocked",
@@ -301,7 +361,7 @@ def inspect_query(request: Request, payload: InspectRequest):
 
     matched_sensitive = find_sensitive_columns_in_query(query_text)
     if matched_sensitive:
-        _append_activity(query_text, "blocked_sensitive", risk_details["risk_level"])
+        _append_activity(request, query_text, "blocked_sensitive", risk_details["risk_level"], company_id, workspace_id)
         return {
             "allowed": False,
             "reason": f"Sensitive column detected: {matched_sensitive[0]}",
@@ -318,7 +378,7 @@ def inspect_query(request: Request, payload: InspectRequest):
             "ai_context": ai_context,
         }
 
-    _append_activity(query_text, "allowed", risk_details["risk_level"])
+    _append_activity(request, query_text, "allowed", risk_details["risk_level"], company_id, workspace_id)
     return {
         "allowed": True,
         "reason": "Query approved",
@@ -370,13 +430,16 @@ def _add_ai_context(request: Request, payload: QueryRequest, body: dict[str, Any
 def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, Any]:
     start = time.perf_counter()
     query = payload.query
+    company_id, workspace_id = _resolve_tenant_context(
+        request, payload.company_id, payload.workspace_id
+    )
     
     # 1) Query Inspector: Parse SQL first.
     analysis = analyze_sql(query)
     matched_sensitive_columns = find_sensitive_columns_in_query(query)
 
     if matched_sensitive_columns:
-        _append_activity(query, "blocked_sensitive", "high")
+        _append_activity(request, query, "blocked_sensitive", "high", company_id, workspace_id)
         execution_time = time.perf_counter() - start
         log_query(
             company_id=1,
@@ -388,8 +451,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
         )
         log_audit_event(
             {
-                "company_id": payload.company_id,
-                "workspace_id": payload.workspace_id,
+                "company_id": company_id,
+                "workspace_id": workspace_id,
                 "agent": payload.agent,
                 "status": "blocked",
                 "stage": "data_policy_engine",
@@ -409,12 +472,12 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             "analysis": analysis,
             "original_query": payload.query,
             "effective_query": query,
-        } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
+        } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     # 2) Policy Engine enforcement.
-    policy_result = apply_policies(payload.company_id, query, analysis=analysis)
+    policy_result = apply_policies(company_id, query, analysis=analysis)
     if policy_result["blocked"]:
-        _append_activity(query, "blocked", "high")
+        _append_activity(request, query, "blocked", "high", company_id, workspace_id)
         execution_time = time.perf_counter() - start
         log_query(
             company_id=1,
@@ -426,8 +489,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
         )
         log_audit_event(
             {
-                "company_id": payload.company_id,
-                "workspace_id": payload.workspace_id,
+                "company_id": company_id,
+                "workspace_id": workspace_id,
                 "agent": payload.agent,
                 "status": "blocked",
                 "stage": "policy_engine",
@@ -446,14 +509,14 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             "analysis": analysis,
             "original_query": policy_result["original_query"],
             "effective_query": policy_result["rewritten_query"],
-        } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
+        } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     query = policy_result["rewritten_query"]
 
     # 3) Safety Validation.
     safety = validate_query_safety(query, analysis)
     if not safety["safe"]:
-        _append_activity(query, "blocked", "high")
+        _append_activity(request, query, "blocked", "high", company_id, workspace_id)
         execution_time = time.perf_counter() - start
         log_query(
             company_id=1,
@@ -465,8 +528,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
         )
         log_audit_event(
             {
-                "company_id": payload.company_id,
-                "workspace_id": payload.workspace_id,
+                "company_id": company_id,
+                "workspace_id": workspace_id,
                 "agent": payload.agent,
                 "status": "blocked",
                 "stage": "safety_validation",
@@ -485,11 +548,11 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             "analysis": analysis,
             "original_query": payload.query,
             "effective_query": query,
-        } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
+        } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     # 4) Policy-based approval mode.
     if policy_result.get("requires_approval"):
-        _append_activity(query, "blocked", "high")
+        _append_activity(request, query, "blocked", "high", company_id, workspace_id)
         execution_time = time.perf_counter() - start
         log_query(
             company_id=1,
@@ -515,8 +578,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
 
         log_audit_event(
             {
-                "company_id": payload.company_id,
-                "workspace_id": payload.workspace_id,
+                "company_id": company_id,
+                "workspace_id": workspace_id,
                 "agent": payload.agent,
                 "status": "approval_required",
                 "stage": "policy_engine",
@@ -537,7 +600,7 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             "analysis": analysis,
             "original_query": payload.query,
             "effective_query": query,
-        } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
+        } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     # 5) Additional risk scoring + optional approval queue.
     try:
@@ -575,7 +638,7 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
 
     # HIGH → enqueue for human approval, do not execute
     if requires_approval:
-        _append_activity(query, "blocked", _normalize_risk_level(risk_level))
+        _append_activity(request, query, "blocked", _normalize_risk_level(risk_level), company_id, workspace_id)
         execution_time = time.perf_counter() - start
         log_query(
             company_id=1,
@@ -600,8 +663,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             print(f"[!] Approval queue insert failed: {_queue_err}")
         log_audit_event(
             {
-                "company_id": payload.company_id,
-                "workspace_id": payload.workspace_id,
+                "company_id": company_id,
+                "workspace_id": workspace_id,
                 "agent": payload.agent,
                 "status": "approval_required",
                 "stage": "risk_engine",
@@ -624,7 +687,7 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             "original_query": payload.query,
             "effective_query": query,
             "message": "Query held for admin review. Check /api/approval/pending.",
-        } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
+        } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     # 6) Database execution simulation/risk stage.
     risk = calculate_risk(query)
@@ -639,11 +702,11 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     )
 
     if risk.get("status") == "BLOCKED":
-        _append_activity(query, "blocked", _normalize_risk_level(risk_level))
+        _append_activity(request, query, "blocked", _normalize_risk_level(risk_level), company_id, workspace_id)
         log_audit_event(
             {
-                "company_id": payload.company_id,
-                "workspace_id": payload.workspace_id,
+                "company_id": company_id,
+                "workspace_id": workspace_id,
                 "agent": payload.agent,
                 "status": "blocked",
                 "stage": "execution_guard",
@@ -662,8 +725,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
 
     log_audit_event(
         {
-            "company_id": payload.company_id,
-            "workspace_id": payload.workspace_id,
+            "company_id": company_id,
+            "workspace_id": workspace_id,
             "agent": payload.agent,
             "status": "allowed",
             "stage": "execution",
@@ -677,8 +740,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
 
     return _add_ai_context(request, payload, {
         "status": "allowed",
-        "company_id": payload.company_id,
-        "workspace_id": payload.workspace_id,
+        "company_id": company_id,
+        "workspace_id": workspace_id,
         "analysis": analysis,
         "risk_score": risk_score,
         "risk_level": risk_level,
@@ -699,7 +762,13 @@ def run_query(request: Request, payload: QueryRequest):
 @router.post("/api/v1/query")
 @limiter.limit("100/minute")
 def run_query_v1(request: Request, payload: QueryRequest):
-    job_id = enqueue_query_job(payload.model_dump())
+    company_id, workspace_id = _resolve_tenant_context(
+        request, payload.company_id, payload.workspace_id
+    )
+    queued_payload = payload.model_dump()
+    queued_payload["company_id"] = company_id
+    queued_payload["workspace_id"] = workspace_id
+    job_id = enqueue_query_job(queued_payload)
     return {
         "status": "queued",
         "job_id": job_id,
@@ -717,19 +786,24 @@ def get_query_job_status(job_id: str):
 
 @router.get("/api/v1/query/worker-stats")
 def worker_stats(
+    request: Request,
     company_id: str = Query("default"),
     workspace_id: str = Query("default"),
 ):
+    effective_company_id, effective_workspace_id = _resolve_tenant_context(
+        request, company_id, workspace_id
+    )
+    tenant_logs = _tenant_logs(effective_company_id, effective_workspace_id)
     stats = get_worker_stats()
     sensitive_queries_blocked = sum(
-        1 for item in _QUERY_ACTIVITY_LOGS if item.get("status") == "blocked_sensitive"
+        1 for item in tenant_logs if item.get("status") == "blocked_sensitive"
     )
     blocked_queries_total = sum(
-        1 for item in _QUERY_ACTIVITY_LOGS if item.get("status") in {"blocked", "blocked_sensitive"}
+        1 for item in tenant_logs if item.get("status") in {"blocked", "blocked_sensitive"}
     )
     stats["blocked_queries"] = max(int(stats.get("blocked_queries", 0)), blocked_queries_total)
     stats["protected_columns"] = len(get_sensitive_columns())
     stats["sensitive_queries_blocked"] = sensitive_queries_blocked
-    stats["company_id"] = company_id
-    stats["workspace_id"] = workspace_id
+    stats["company_id"] = effective_company_id
+    stats["workspace_id"] = effective_workspace_id
     return stats

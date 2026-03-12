@@ -4,6 +4,8 @@ import EmptyState from '../components/EmptyState';
 import PageHeader from '../components/PageHeader';
 import SchemaExplorer from '../components/SchemaExplorer';
 import DataSourceSelector, { type PlatformOption } from '../components/DataSourceSelector';
+import SQLServerConnectionForm from '../components/datasources/SQLServerConnectionForm';
+import SnowflakeConnectionForm from '../components/datasources/SnowflakeConnectionForm';
 
 type SchemaColumn = {
   name: string;
@@ -291,30 +293,25 @@ export default function Databases() {
       {showModal && (
         <div style={overlayStyle}>
           <div style={modalStyle}>
-            <h2 style={{ marginTop: 0, marginBottom: 14 }}>
-              Add {selectedSource?.name || 'Database'} Connection
-            </h2>
-            <input placeholder="Host" value={host} onChange={(e) => setHost(e.target.value)} style={inputStyle} />
-            <input placeholder="Database" value={database} onChange={(e) => setDatabase(e.target.value)} style={inputStyle} />
-            <input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} style={inputStyle} />
-            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
-            
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 16, fontSize: 13, color: '#9fb3c8', cursor: 'pointer' }}>
-              <input 
-                type="checkbox" 
-                checked={rememberConnection} 
-                onChange={(e) => setRememberConnection(e.target.checked)}
-                style={{ cursor: 'pointer' }}
-              />
-              Remember this connection
-            </label>
+            {(selectedSource?.code || dbType) === 'sqlserver' && (
+              <SQLServerConnectionForm onSaved={closeModal} />
+            )}
 
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={testConnection} disabled={testing} style={primaryButton}>
-                {testing ? 'Testing...' : 'Test & Connect'}
-              </button>
-              <button onClick={closeModal} style={secondaryButton}>Cancel</button>
-            </div>
+            {(selectedSource?.code || dbType) === 'snowflake' && (
+              <SnowflakeConnectionForm onSaved={closeModal} />
+            )}
+
+            {(selectedSource?.code || dbType) !== 'sqlserver' && (selectedSource?.code || dbType) !== 'snowflake' && (
+              <div>
+                <h2 style={{ marginTop: 0, marginBottom: 14 }}>
+                  {selectedSource?.name || 'Platform'} is coming soon
+                </h2>
+                <p style={{ color: 'var(--platform-muted)', marginTop: 0 }}>
+                  This connector is not enabled yet. Please select SQL Server or Snowflake for now.
+                </p>
+                <button onClick={closeModal} style={secondaryButton}>Close</button>
+              </div>
+            )}
           </div>
         </div>
       )}
