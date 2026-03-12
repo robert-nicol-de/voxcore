@@ -10,6 +10,7 @@ from backend.services.query_job_queue import (
     mark_job_running,
     pop_query_job,
 )
+from backend.services.security_redaction import sanitize_exception_message
 
 
 def run_worker() -> None:
@@ -37,7 +38,7 @@ def run_worker() -> None:
         except Exception as exc:
             if "job_id" in locals() and job_id:
                 mark_job_failed(job_id, str(exc))
-            print(f"[query-worker] error: {exc}")
+            print(f"[query-worker] error: {sanitize_exception_message(exc)}")
             time.sleep(1)
 
 

@@ -4,6 +4,7 @@ import LiveActivity from '../components/LiveActivity';
 import LiveQueryFlow, { type QueryFlowStage } from '../components/LiveQueryFlow';
 import PageHeader from '../components/PageHeader';
 import { apiUrl } from '../lib/api';
+import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from '../lib/polling';
 
 type QueryActivity = {
   time: string;
@@ -29,6 +30,17 @@ export default function Dashboard() {
   const [latestFlow, setLatestFlow] = useState<QueryFlowStage[]>(defaultDashboardFlow());
 
   useEffect(() => {
+    let cancelled = false;
+    let timerId: number | undefined;
+    let failureStreak = 0;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      timerId = window.setTimeout(() => {
+        void refreshDashboard();
+      }, nextPollDelayMs(failureStreak, BASE_POLL_MS));
+    };
+
     const refreshDashboard = async () => {
       const companyId = localStorage.getItem('voxcore_company_id') || 'default';
       const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
@@ -50,13 +62,20 @@ export default function Dashboard() {
         const logsResponse = await fetch(
           apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`),
         );
+
         if (!logsResponse.ok) {
+          if (isRetryableHttpFailure(logsResponse.status)) {
+            failureStreak += 1;
+          } else {
+            failureStreak = 0;
+          }
           setStats({
             databases,
             queriesToday: 0,
             blockedQueries: 0,
             riskAlerts: 0,
           });
+          scheduleNext();
           return;
         }
 
@@ -76,21 +95,28 @@ export default function Dashboard() {
           blockedQueries,
           riskAlerts,
         });
+
+        failureStreak = 0;
+        scheduleNext();
       } catch {
+        failureStreak += 1;
         setStats({
           databases,
           queriesToday: 0,
           blockedQueries: 0,
           riskAlerts: 0,
         });
+        scheduleNext();
       }
     };
 
-    refreshDashboard();
-    const intervalId = window.setInterval(refreshDashboard, 5000);
+    void refreshDashboard();
 
     return () => {
-      window.clearInterval(intervalId);
+      cancelled = true;
+      if (timerId) {
+        window.clearTimeout(timerId);
+      }
     };
   }, []);
 

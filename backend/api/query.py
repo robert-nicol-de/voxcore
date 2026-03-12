@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from backend.services.risk_engine import calculate_risk
 from backend.services.query_inspector import block_if_dangerous
-from backend.services.query_metrics import log_query
+from backend.services.query_metrics import get_recent_queries, log_query
 from backend.services.rate_limiter import limiter
 from backend.services import approval_queue as queue
 from backend.services.policy_engine import apply_policies
@@ -118,6 +118,35 @@ def get_query_logs(
         "workspace_id": workspace_id,
         "logs": _QUERY_ACTIVITY_LOGS
     }
+
+
+@router.get("/api/v1/query/risk-timeline")
+def get_risk_timeline(limit: int = Query(25, ge=1, le=200)):
+    timeline: list[dict[str, Any]] = []
+    try:
+        rows = get_recent_queries(limit=limit)
+        for row in rows:
+            created_at = row.get("created_at")
+            if hasattr(created_at, "strftime"):
+                time_label = created_at.strftime("%H:%M")
+            else:
+                time_label = datetime.now().strftime("%H:%M")
+
+            risk_level = _normalize_risk_level(str(row.get("risk_level") or "low"))
+            status = "blocked" if row.get("blocked") else "allowed"
+
+            timeline.append(
+                {
+                    "time": time_label,
+                    "risk": risk_level,
+                    "status": status,
+                    "query": row.get("query", ""),
+                }
+            )
+    except Exception:
+        timeline = _QUERY_ACTIVITY_LOGS[:limit]
+
+    return {"timeline": timeline, "count": len(timeline)}
 
 
 class InspectRequest(BaseModel):

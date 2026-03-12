@@ -10,36 +10,41 @@ from pydantic import BaseModel
 from backend.db.connection_manager import ConnectionManager
 import backend.db.org_store as org_store
 from backend.services.auth import ALGORITHM, SECRET_KEY, create_token
+from backend.services.security_redaction import sanitize_exception_message
 
 PRIMARY_GOD_EMAIL = "robert.nicol@voxcore.org"
-PRIMARY_GOD_PASSWORD = "IH#1ZOppQ)}mFVLt"
+PRIMARY_GOD_PASSWORD = os.getenv("VOXCORE_PRIMARY_GOD_PASSWORD", "change-me-in-prod")
+
+_ADMIN_FALLBACK_PASSWORD = os.getenv("VOXCORE_ADMIN_PASSWORD", PRIMARY_GOD_PASSWORD)
+_ANALYST_FALLBACK_PASSWORD = os.getenv("VOXCORE_ANALYST_PASSWORD", "change-me-in-prod")
+_DEV_FALLBACK_PASSWORD = os.getenv("VOXCORE_DEV_PASSWORD", "change-me-in-prod")
 
 DUMMY_USERS = [
     {
         "id": 1,
         "email": "robert.nicol@voxcore.org",
-        "password": "IH#1ZOppQ)}mFVLt",
+        "password": PRIMARY_GOD_PASSWORD,
         "role": "god",
         "company_id": 1,
     },
     {
         "id": 4,
         "email": "admin@voxcore.com",
-        "password": "IH#1ZOppQ)}mFVLt",
+        "password": _ADMIN_FALLBACK_PASSWORD,
         "role": "god",
         "company_id": 1,
     },
     {
         "id": 2,
         "email": "ico@astutetech.co.za",
-        "password": "analyst123",
+        "password": _ANALYST_FALLBACK_PASSWORD,
         "role": "admin",
         "company_id": 1,
     },
     {
         "id": 3,
         "email": "drikus.dewet@astutetech.co.za",
-        "password": "dev123",
+        "password": _DEV_FALLBACK_PASSWORD,
         "role": "admin",
         "company_id": 1,
     },
@@ -365,7 +370,7 @@ def test_connection(request: ConnectRequest):
         return {
             "ok": False,
             "database": config.get("type"),
-            "message": f"Connection failed: {str(e)}",
+            "message": f"Connection failed: {sanitize_exception_message(e)}",
         }
 
     return {
@@ -383,7 +388,10 @@ def connect(request: ConnectRequest):
     try:
         connection_manager.test_connection(config)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Connection failed: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Connection failed: {sanitize_exception_message(e)}",
+        )
 
     should_save = bool(request.remember_me) or bool(request.save_connection)
     company_id = (request.company_id or "default").strip()

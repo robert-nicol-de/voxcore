@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../lib/api';
+import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from '../lib/polling';
 
 type ActivityLog = {
   timestamp?: string;
@@ -47,6 +48,17 @@ export default function LiveActivity() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
+    let timerId: number | undefined;
+    let failureStreak = 0;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      timerId = window.setTimeout(() => {
+        void load();
+      }, nextPollDelayMs(failureStreak, BASE_POLL_MS));
+    };
+
     const load = async () => {
       const companyId = localStorage.getItem('voxcore_company_id') || 'default';
       const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
@@ -56,19 +68,35 @@ export default function LiveActivity() {
           apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`),
         );
         if (!response.ok) {
+          if (isRetryableHttpFailure(response.status)) {
+            failureStreak += 1;
+          } else {
+            failureStreak = 0;
+          }
           setLogs([]);
+          scheduleNext();
           return;
         }
+
         const data = await response.json();
         setLogs((data.logs || []).slice(0, 10));
+        failureStreak = 0;
+        scheduleNext();
       } catch {
+        failureStreak += 1;
         setLogs([]);
+        scheduleNext();
       }
     };
 
-    load();
-    const intervalId = setInterval(load, 5000);
-    return () => clearInterval(intervalId);
+    void load();
+
+    return () => {
+      cancelled = true;
+      if (timerId) {
+        window.clearTimeout(timerId);
+      }
+    };
   }, []);
 
   return (

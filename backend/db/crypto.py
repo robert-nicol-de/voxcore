@@ -21,7 +21,7 @@ def _load_or_create_file_key() -> str:
 
 
 def _get_fernet() -> Fernet:
-    key = os.getenv("FERNET_KEY")
+    key = os.getenv("VOXCORE_ENCRYPTION_KEY") or os.getenv("FERNET_KEY")
     if not key:
         # Fallback persists to disk so encrypted connection files survive restarts.
         key = _load_or_create_file_key()

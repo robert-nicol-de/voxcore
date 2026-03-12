@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../lib/api';
+import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from '../lib/polling';
 
 type QueryLog = {
   status?: string;
@@ -13,6 +14,17 @@ export default function QueryFirewall() {
   });
 
   useEffect(() => {
+    let cancelled = false;
+    let timerId: number | undefined;
+    let failureStreak = 0;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      timerId = window.setTimeout(() => {
+        void loadStats();
+      }, nextPollDelayMs(failureStreak, BASE_POLL_MS));
+    };
+
     const loadStats = async () => {
       const companyId = localStorage.getItem('voxcore_company_id') || 'default';
       const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
@@ -22,6 +34,12 @@ export default function QueryFirewall() {
           apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`),
         );
         if (!response.ok) {
+          if (isRetryableHttpFailure(response.status)) {
+            failureStreak += 1;
+          } else {
+            failureStreak = 0;
+          }
+          scheduleNext();
           return;
         }
 
@@ -40,14 +58,22 @@ export default function QueryFirewall() {
         });
 
         setStats({ allowed, blocked, sandboxed });
+        failureStreak = 0;
+        scheduleNext();
       } catch {
-        // Keep previous values if request fails.
+        failureStreak += 1;
+        scheduleNext();
       }
     };
 
-    loadStats();
-    const intervalId = window.setInterval(loadStats, 5000);
-    return () => window.clearInterval(intervalId);
+    void loadStats();
+
+    return () => {
+      cancelled = true;
+      if (timerId) {
+        window.clearTimeout(timerId);
+      }
+    };
   }, []);
 
   return (

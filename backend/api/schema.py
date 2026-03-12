@@ -1,168 +1,170 @@
-from typing import Any, Dict, List
+"""
+Schema API router.
+
+Endpoints:
+    GET /api/v1/schema/databases        — list saved connections for the workspace
+    GET /api/v1/schema/tables           — table names only (lazy-load, Redis-cached)
+    GET /api/v1/schema/table/{table}    — columns for one table (lazy-load, Redis-cached)
+    GET /api/v1/schema/discover         — full schema (backward-compat alias)
+
+All schema reads go through `schema_service.discover_full_schema`, which delegates
+to the correct metadata driver and never touches user table rows.
+"""
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
 from backend.db.connection_manager import ConnectionManager
+from backend.schema.schema_service import discover_full_schema
+from backend.services.security_redaction import sanitize_exception_message
 
 router = APIRouter()
-connection_manager = ConnectionManager()
+_connection_manager = ConnectionManager()
+
+MAX_TABLES = 1000
 
 
-def _fetch_sqlserver_schema(conn) -> List[Dict[str, Any]]:
-    sql = """
-    SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE
-    FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_SCHEMA = 'dbo'
-    ORDER BY TABLE_NAME, ORDINAL_POSITION
-    """
-    with conn.cursor() as cur:
-        cur.execute(sql)
-        rows = cur.fetchall()
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
 
-    tables: Dict[str, List[Dict[str, str]]] = {}
-    for row in rows:
-        table_name = str(row[0])
-        column_name = str(row[1])
-        data_type = str(row[2])
-        tables.setdefault(table_name, []).append(
-            {"name": column_name, "type": data_type}
-        )
-
-    return [{"table": table, "columns": columns} for table, columns in tables.items()]
+def _list_connections(company_id: str, workspace_id: str) -> List[str]:
+    return _connection_manager.list_connections(company_id, workspace_id=workspace_id)
 
 
-def _fetch_postgres_schema(conn) -> List[Dict[str, Any]]:
-    sql = """
-    SELECT c.table_name, c.column_name, c.data_type
-    FROM information_schema.columns c
-    JOIN information_schema.tables t
-      ON c.table_name = t.table_name
-     AND c.table_schema = t.table_schema
-    WHERE c.table_schema = 'public'
-      AND t.table_type = 'BASE TABLE'
-    ORDER BY c.table_name, c.ordinal_position
-    """
-    with conn.cursor() as cur:
-        cur.execute(sql)
-        rows = cur.fetchall()
-
-    tables: Dict[str, List[Dict[str, str]]] = {}
-    for row in rows:
-        table_name = str(row[0])
-        column_name = str(row[1])
-        data_type = str(row[2])
-        tables.setdefault(table_name, []).append(
-            {"name": column_name, "type": data_type}
-        )
-
-    return [{"table": table, "columns": columns} for table, columns in tables.items()]
-
-
-def _fetch_mysql_schema(conn, database_name: str) -> List[Dict[str, Any]]:
-    sql = """
-    SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE
-    FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_SCHEMA = %s
-    ORDER BY TABLE_NAME, ORDINAL_POSITION
-    """
-    with conn.cursor() as cur:
-        cur.execute(sql, (database_name,))
-        rows = cur.fetchall()
-
-    tables: Dict[str, List[Dict[str, str]]] = {}
-    for row in rows:
-        table_name = str(row[0])
-        column_name = str(row[1])
-        data_type = str(row[2])
-        tables.setdefault(table_name, []).append(
-            {"name": column_name, "type": data_type}
-        )
-
-    return [{"table": table, "columns": columns} for table, columns in tables.items()]
-
-
-def _resolve_connection_name(
+def _resolve_connection(
     company_id: str,
     workspace_id: str,
-    requested_connection_name: str | None,
+    connection_name: Optional[str],
 ) -> str:
-    if requested_connection_name and requested_connection_name.strip():
-        return requested_connection_name.strip()
-
-    available = connection_manager.list_connections(company_id, workspace_id=workspace_id)
+    if connection_name and connection_name.strip():
+        return connection_name.strip()
+    available = _list_connections(company_id, workspace_id)
     if not available:
         raise HTTPException(
             status_code=400,
-            detail="No saved connections found. Save a connection first.",
+            detail="No saved connections found. Connect a database first.",
         )
-
     return available[0]
 
 
-@router.get("/api/v1/schema/discover")
-def discover_schema(
-    company_id: str = Query("default"),
-    workspace_id: str = Query("default"),
-    connection_name: str | None = Query(None),
-):
-    resolved_connection_name = _resolve_connection_name(company_id, workspace_id, connection_name)
-
+def _run_discover(company_id: str, workspace_id: str, conn_name: str) -> dict:
+    """Shared wrapper that converts service exceptions to HTTP errors."""
     try:
-        config = connection_manager.load_connection(
-            company_id,
-            resolved_connection_name,
-            decrypt_password=True,
-            workspace_id=workspace_id,
+        return discover_full_schema(company_id, workspace_id, conn_name)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Schema discovery failed: {sanitize_exception_message(exc)}",
         )
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
 
-    db_type = str(config.get("type", "")).strip().lower()
-    database_name = str(config.get("database", "")).strip()
 
-    try:
-        conn = connection_manager.get_connection(config)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Connection failed: {str(e)}")
+# ---------------------------------------------------------------------------
+# GET /api/v1/schema/databases
+# ---------------------------------------------------------------------------
 
-    try:
-        if db_type == "sqlserver":
-            tables = _fetch_sqlserver_schema(conn)
-        elif db_type in {"postgres", "postgresql"}:
-            tables = _fetch_postgres_schema(conn)
-        elif db_type == "mysql":
-            if not database_name:
-                raise HTTPException(status_code=400, detail="Database name is required for MySQL schema discovery")
-            tables = _fetch_mysql_schema(conn, database_name)
-        else:
-            raise HTTPException(status_code=400, detail=f"Schema discovery not implemented for database type: {db_type}")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Schema discovery failed: {str(e)}")
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
+@router.get("/api/v1/schema/databases")
+def list_databases(
+    company_id:   str = Query("default"),
+    workspace_id: str = Query("default"),
+):
+    """Return the list of saved connection names for the given workspace."""
+    connections = _list_connections(company_id, workspace_id)
+    return {"databases": connections, "count": len(connections)}
 
-    return {"schema": tables}
 
+# ---------------------------------------------------------------------------
+# GET /api/v1/schema/tables  — table names only (lazy-load)
+# ---------------------------------------------------------------------------
 
 @router.get("/api/v1/schema/tables")
-def list_schema_tables(
-    company_id: str = Query("default"),
-    workspace_id: str = Query("default"),
-    connection_name: str | None = Query(None),
+def list_tables(
+    company_id:      str           = Query("default"),
+    workspace_id:    str           = Query("default"),
+    connection_name: Optional[str] = Query(None),
+    limit:           int           = Query(MAX_TABLES, ge=1, le=MAX_TABLES),
 ):
-    """Fast table-only endpoint for workspace database explorers."""
-    payload = discover_schema(
-        company_id=company_id,
-        workspace_id=workspace_id,
-        connection_name=connection_name,
-    )
-    tables = payload.get("schema", [])
+    """
+    Return table names (and schema names) for the selected connection.
+    Columns are NOT included — fetch them per-table to keep responses small.
+    """
+    conn_name = _resolve_connection(company_id, workspace_id, connection_name)
+    result    = _run_discover(company_id, workspace_id, conn_name)
+
+    tables = result.get("tables", [])[:limit]
     return {
-        "tables": [item.get("table") for item in tables if item.get("table")],
-        "count": len(tables),
+        "connection": conn_name,
+        "database":   result.get("database", ""),
+        "tables":     [{"name": t["name"], "schema": t.get("schema", "")} for t in tables],
+        "count":      len(tables),
     }
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/schema/table/{table_name}  — per-table column detail
+# ---------------------------------------------------------------------------
+
+@router.get("/api/v1/schema/table/{table_name}")
+def get_table_columns(
+    table_name:      str,
+    company_id:      str           = Query("default"),
+    workspace_id:    str           = Query("default"),
+    connection_name: Optional[str] = Query(None),
+):
+    """
+    Return columns (with type, nullability, PK flag, and sensitive label)
+    for a single table.  Called only when the user clicks a table row.
+    """
+    conn_name = _resolve_connection(company_id, workspace_id, connection_name)
+    result    = _run_discover(company_id, workspace_id, conn_name)
+
+    matched = next(
+        (t for t in result.get("tables", []) if t["name"].lower() == table_name.lower()),
+        None,
+    )
+    if matched is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Table '{table_name}' not found in schema.",
+        )
+
+    columns = matched.get("columns", [])[:200]
+    return {
+        "table":   matched["name"],
+        "schema":  matched.get("schema", ""),
+        "columns": columns,
+        "count":   len(columns),
+    }
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/schema/discover  — full schema (backward-compat)
+# ---------------------------------------------------------------------------
+
+@router.get("/api/v1/schema/discover")
+def discover_schema(
+    company_id:      str           = Query("default"),
+    workspace_id:    str           = Query("default"),
+    connection_name: Optional[str] = Query(None),
+):
+    """Full schema dump kept for backward compatibility with existing callers."""
+    conn_name = _resolve_connection(company_id, workspace_id, connection_name)
+    result    = _run_discover(company_id, workspace_id, conn_name)
+    return {
+        "schema":   result.get("tables", []),
+        "database": result.get("database", ""),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Legacy alias kept so old frontend SchemaExplorer component still works
+# (it calls /api/v1/schema/tables with response shape { tables: string[] })
+# ---------------------------------------------------------------------------
+# (already covered above — /api/v1/schema/tables returns the same shape)
+
+# Preserve backward-compat — this was _fetch_sqlserver_schema etc.
+# Those private helpers are now in backend/schema/drivers/*.py

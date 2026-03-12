@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiUrl } from '../lib/api';
 import EmptyState from '../components/EmptyState';
 import PageHeader from '../components/PageHeader';
+import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from '../lib/polling';
 
 type QueryLogItem = {
   id?: string | number;
@@ -46,25 +47,55 @@ export default function QueryLogs() {
     }));
 
   useEffect(() => {
+    let cancelled = false;
+    let timerId: number | undefined;
+    let failureStreak = 0;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      timerId = window.setTimeout(() => {
+        void loadLogs();
+      }, nextPollDelayMs(failureStreak, BASE_POLL_MS));
+    };
+
     const loadLogs = async () => {
       try {
         const companyId = localStorage.getItem('voxcore_company_id') || 'default';
         const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
         const response = await fetch(apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`));
+
+        if (!response.ok) {
+          if (isRetryableHttpFailure(response.status)) {
+            failureStreak += 1;
+          } else {
+            failureStreak = 0;
+          }
+          setLogs([]);
+          scheduleNext();
+          return;
+        }
+
         const data = await response.json();
         const nextLogs = withForensicIds(data.logs || []);
         setLogs(nextLogs);
         localStorage.setItem('voxcloud_query_logs_cache', JSON.stringify(nextLogs));
+
+        failureStreak = 0;
+        scheduleNext();
       } catch {
+        failureStreak += 1;
         setLogs([]);
+        scheduleNext();
       }
     };
 
-    loadLogs();
-    const intervalId = window.setInterval(loadLogs, 5000);
+    void loadLogs();
 
     return () => {
-      window.clearInterval(intervalId);
+      cancelled = true;
+      if (timerId) {
+        window.clearTimeout(timerId);
+      }
     };
   }, []);
 

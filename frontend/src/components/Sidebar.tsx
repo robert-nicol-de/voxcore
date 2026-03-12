@@ -3,13 +3,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { useWorkspace } from '../context/WorkspaceContext';
 
 const links = [
-  { to: '/app/dashboard', label: 'Dashboard' },
-  { to: '/app/databases', label: 'Databases' },
-  { to: '/app', label: 'SQL Assistant' },
-  { to: '/app/policies', label: 'Policies' },
+  { to: '/app/dashboard',  label: 'Dashboard' },
+  { to: '/app/databases',  label: 'Databases' },
+  { to: '/app/schema',     label: 'Schema Explorer' },
+  { to: '/app',            label: 'SQL Assistant' },
+  { to: '/app/policies',   label: 'Policies' },
   { to: '/app/query-logs', label: 'Query Logs' },
-  { to: '/app/sandbox', label: 'Sandbox' },
-  { to: '/app/settings', label: 'Settings' },
+  { to: '/app/sandbox',    label: 'Sandbox' },
+  { to: '/app/settings',   label: 'Settings' },
 ];
 
 export const Sidebar: React.FC = () => {
