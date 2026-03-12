@@ -159,14 +159,10 @@ function App() {
             }}
           >
             <div>
-              <div style={{ display: 'inline-flex', padding: '8px 14px', borderRadius: 999, background: 'rgba(125,211,252,0.12)', border: '1px solid rgba(125,211,252,0.24)', color: '#7dd3fc', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.75rem' }}>
-                VoxCore protects databases from AI access.
-              </div>
-              <h1 style={{ fontSize: 'clamp(3rem, 7vw, 5.8rem)', lineHeight: 0.95, letterSpacing: '-0.06em', marginTop: 18, maxWidth: 760 }}>
-                AI Database Governance Platform
-              </h1>
-              <p style={{ marginTop: 22, maxWidth: 700, fontSize: '1.2rem', lineHeight: 1.6, color: '#cbd5e1' }}>
-                Control how AI interacts with your databases. Inspect, validate, and audit every AI-generated SQL query before execution.
+              <img src="/assets/VC_full_logo_text.png" alt="VoxCore" style={{ width: 420, maxWidth: '100%', marginBottom: 20 }} />
+              <p style={{ fontSize: '1.1rem', fontWeight: 700, color: '#a6d3ff', marginTop: 0 }}>AI Data Governance Platform</p>
+              <p style={{ marginTop: 8, maxWidth: 700, fontSize: '1.2rem', lineHeight: 1.6, color: '#cbd5e1' }}>
+                Control How AI Touches Your Data
               </p>
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 28 }}>
                 <button
@@ -364,16 +360,53 @@ function App() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#0f172a' }}>
-      <Sidebar />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <header style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ marginRight: 16, color: '#94a3b8', fontSize: 13, alignSelf: 'center' }}>
-            Workspace: <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{currentWorkspace?.name || 'Default'}</span>
+    <div style={{ minHeight: '100vh', background: 'var(--platform-bg)' }}>
+      <header
+        style={{
+          height: 72,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 24px',
+          borderBottom: '1px solid var(--platform-border)',
+          background: 'var(--platform-topbar-bg)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 30,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/assets/vc_logo.png" alt="VoxCloud" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+          <div>
+            <div style={{ color: '#ffffff', fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em' }}>VoxCloud</div>
+            <div style={{ color: 'var(--platform-muted)', fontSize: 12, marginTop: 2 }}>AI Data Governance Platform</div>
           </div>
-          <UserDropdown token={localStorage.getItem('voxcore_token') || ''} onLogout={handleLogout} />
-        </header>
-        <main style={{ padding: 12 }}>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '8px 14px',
+            borderRadius: 999,
+            border: '1px solid var(--platform-border)',
+            background: 'rgba(79,140,255,0.08)',
+            color: 'var(--platform-muted)',
+            fontSize: 13,
+            fontWeight: 500,
+          }}
+        >
+          Workspace:
+          <span style={{ color: '#ffffff', fontWeight: 700 }}>{currentWorkspace?.name || 'Default'}</span>
+        </div>
+
+        <UserDropdown token={localStorage.getItem('voxcore_token') || ''} onLogout={handleLogout} />
+      </header>
+
+      <div style={{ display: 'flex', minHeight: 'calc(100vh - 72px)' }}>
+        <Sidebar />
+        <main style={{ flex: 1, minWidth: 0, padding: 24 }}>
           <Routes>
             <Route path="/app/dashboard" element={<Dashboard />} />
             <Route path="/app/databases" element={<Databases />} />

@@ -77,13 +77,13 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => 
     <div className="login-container">
       <div className="login-content">
         <img 
-          src="/images/voxcore-full-logo.png"
+          src="/assets/VC_full_logo_text.png"
           alt="VoxCore Logo"
           className="login-image login-image-small"
         />
 
         <div className="login-form-card">
-          <h3 className="login-form-title">Sign in to VoxCore</h3>
+          <h3 className="login-form-title">Login to VoxCloud</h3>
           <p className="login-form-subtitle">Enter your credentials to access the platform</p>
 
           <form onSubmit={handleSubmit} className="login-form">

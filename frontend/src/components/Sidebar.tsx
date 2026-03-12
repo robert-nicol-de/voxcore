@@ -19,18 +19,24 @@ export const Sidebar: React.FC = () => {
   return (
     <aside
       style={{
-        width: 240,
-        minHeight: '100vh',
-        background: '#0b1220',
-        borderRight: '1px solid rgba(255,255,255,0.08)',
-        padding: '22px 18px',
+        width: 264,
+        minHeight: 'calc(100vh - 72px)',
+        background: 'var(--platform-sidebar-bg)',
+        borderRight: '1px solid var(--platform-border)',
+        padding: 24,
       }}
     >
-      <div style={{ fontSize: 24, fontWeight: 700, color: '#93c5fd', marginBottom: 8 }}>VoxCloud</div>
-      <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <img src="/assets/vc_logo.png" alt="VoxCloud" style={{ width: 30, height: 30, objectFit: 'contain' }} />
+        <div style={{ fontSize: 24, fontWeight: 700, color: '#ffffff' }}>VoxCloud</div>
+      </div>
+      <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--platform-muted)', marginBottom: 8 }}>
+        Platform
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--platform-muted)', marginBottom: 16 }}>
         Org: {org?.name || 'Organization'}
       </div>
-      <label style={{ fontSize: 11, color: '#cbd5e1', display: 'block', marginBottom: 6 }}>
+      <label style={{ fontSize: 11, color: 'var(--platform-muted)', display: 'block', marginBottom: 6 }}>
         Workspace
       </label>
       <select
@@ -38,10 +44,10 @@ export const Sidebar: React.FC = () => {
         onChange={(e) => setCurrentWorkspaceId(Number(e.target.value))}
         style={{
           width: '100%',
-          marginBottom: 16,
+          marginBottom: 24,
           borderRadius: 8,
-          border: '1px solid rgba(255,255,255,0.16)',
-          background: 'rgba(15,23,42,0.85)',
+          border: '1px solid var(--platform-border)',
+          background: 'var(--platform-card-bg)',
           color: '#e2e8f0',
           padding: '8px 10px',
           fontSize: 13,
@@ -61,10 +67,10 @@ export const Sidebar: React.FC = () => {
               key={item.to}
               to={item.to}
               style={{
-                color: active ? '#0f172a' : '#cbd5e1',
+                color: active ? '#ffffff' : '#dbe7ff',
                 textDecoration: 'none',
-                background: active ? '#93c5fd' : 'transparent',
-                border: active ? '1px solid #93c5fd' : '1px solid rgba(255,255,255,0.08)',
+                background: active ? 'var(--platform-accent)' : 'transparent',
+                border: active ? '1px solid var(--platform-accent)' : '1px solid var(--platform-border)',
                 borderRadius: 10,
                 padding: '10px 12px',
                 fontSize: 14,

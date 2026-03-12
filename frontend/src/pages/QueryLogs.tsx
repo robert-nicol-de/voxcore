@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../lib/api';
+import EmptyState from '../components/EmptyState';
 
 type QueryLogItem = {
   time: string;
@@ -47,15 +48,15 @@ export default function QueryLogs() {
   }, []);
 
   return (
-    <div style={{ padding: 16 }}>
-      <h1 style={{ marginTop: 0 }}>Query Logs</h1>
+    <div style={{ color: '#e8f0ff' }}>
+      <h1 style={{ marginTop: 0, fontSize: '2rem', letterSpacing: '-0.03em' }}>Query Activity</h1>
 
       <div
         style={{
-          marginTop: 12,
-          background: '#111827',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 10,
+          marginTop: 16,
+          background: 'var(--platform-card-bg)',
+          border: '1px solid var(--platform-border)',
+          borderRadius: 12,
           overflow: 'hidden',
         }}
       >
@@ -64,10 +65,14 @@ export default function QueryLogs() {
             display: 'grid',
             gridTemplateColumns: '110px minmax(0, 1fr) 110px 160px',
             gap: 12,
-            padding: '12px 14px',
-            background: '#0b1220',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            padding: '12px 20px',
+            background: 'rgba(10,16,28,0.9)',
+            borderBottom: '1px solid var(--platform-border)',
             fontWeight: 700,
+            color: 'var(--platform-muted)',
+            fontSize: 12,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
           }}
         >
           <div>Time</div>
@@ -75,6 +80,13 @@ export default function QueryLogs() {
           <div>Risk</div>
           <div>Status</div>
         </div>
+
+        {logs.length === 0 && (
+          <EmptyState
+            title="No query activity yet"
+            message="Once AI queries run through VoxCore, they will appear here with risk analysis and policy results."
+          />
+        )}
 
         {logs.map((item, index) => {
           const colors = riskBadgeColor(item.risk);
@@ -85,13 +97,13 @@ export default function QueryLogs() {
                 display: 'grid',
                 gridTemplateColumns: '110px minmax(0, 1fr) 110px 160px',
                 gap: 12,
-                padding: '12px 14px',
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                padding: '14px 20px',
+                borderBottom: '1px solid rgba(79,140,255,0.12)',
                 alignItems: 'center',
               }}
             >
-              <div style={{ opacity: 0.9 }}>{item.time}</div>
-              <div style={{ fontFamily: 'monospace', fontSize: 13 }}>{item.query}</div>
+              <div style={{ opacity: 0.9, color: 'var(--platform-muted)' }}>{item.time}</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#dce8ff' }}>{item.query}</div>
               <div>
                 <span
                   style={{
@@ -108,7 +120,7 @@ export default function QueryLogs() {
                   {(item.risk || 'low').toString()}
                 </span>
               </div>
-              <div>{statusLabel(item.status)}</div>
+              <div style={{ color: '#dce8ff' }}>{statusLabel(item.status)}</div>
             </div>
           );
         })}
