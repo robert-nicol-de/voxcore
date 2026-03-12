@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: voxcore-backend
+    ports:
+      - "10000:10000"
+    environment:
+      - ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379/0
+      - VOXCORE_ENCRYPTION_KEY=${VOXCORE_ENCRYPTION_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    depends_on:
+      - redis
+    restart: always
+    networks:
+      - voxcore-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: voxcore-redis
+    ports:
+      - "6379:6379"
+    restart: always
+    networks:
+      - voxcore-network
+
+  query-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: voxcore-query-worker
+    environment:
+      - ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379/0
+      - VOXCORE_ENCRYPTION_KEY=${VOXCORE_ENCRYPTION_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    command: ["python", "-m", "backend.workers.query_worker"]
+    depends_on:
+      - redis
+    restart: always
+    networks:
+      - voxcore-network
+
+volumes:
+  redis_data:
+
+networks:
+  voxcore-network:
+    driver: bridge

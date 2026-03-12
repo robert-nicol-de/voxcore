@@ -3,20 +3,20 @@ version: '3.8'
 services:
   backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: voxcore-backend
     ports:
-      - "8000:8000"
+      - "10000:10000"
     environment:
       - ENV=production
       - ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
-      - DATABASE_URL=mssql://sa:YourPassword@sqlserver:1433/AdventureWorks2022
+      - DATABASE_URL=mssql+pyodbc://sa:YourPassword@sqlserver:1433/AdventureWorks2022?driver=ODBC+Driver+18+for+SQL+Server
       - REDIS_URL=redis://redis:6379/0
+      - VOXCORE_ENCRYPTION_KEY=${VOXCORE_ENCRYPTION_KEY}
     volumes:
       - ./voxcore/voxquery/logs:/app/logs
     depends_on:
-      - sqlserver
       - redis
     restart: unless-stopped
     networks:
@@ -24,16 +24,16 @@ services:
 
   query-worker:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: voxcore-query-worker
     environment:
       - ENV=production
-      - DATABASE_URL=mssql://sa:YourPassword@sqlserver:1433/AdventureWorks2022
+      - DATABASE_URL=mssql+pyodbc://sa:YourPassword@sqlserver:1433/AdventureWorks2022?driver=ODBC+Driver+18+for+SQL+Server
       - REDIS_URL=redis://redis:6379/0
+      - VOXCORE_ENCRYPTION_KEY=${VOXCORE_ENCRYPTION_KEY}
     command: ["python", "-m", "backend.workers.query_worker"]
     depends_on:
-      - sqlserver
       - redis
     restart: unless-stopped
     networks:
@@ -50,41 +50,17 @@ services:
       - "5173:5173"
     environment:
       - VITE_API_URL=https://yourdomain.com/api
+    depends_on:
+      - backend
     restart: unless-stopped
     networks:
       - voxcore-network
-
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: voxcore-sqlserver
-    environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=YourSecurePassword123!
-    volumes:
-      - sqlserver_data:/var/opt/mssql
-    networks:
-      - voxcore-network
-    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     container_name: voxcore-redis
     ports:
       - "6379:6379"
-    restart: unless-stopped
-    networks:
-      - voxcore-network
-
-  nginx:
-    image: nginx:alpine
-    container_name: voxcore-nginx
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - backend
-      - frontend
     restart: unless-stopped
     networks:
       - voxcore-network
