@@ -81,11 +81,15 @@ def _fetch_mysql_schema(conn, database_name: str) -> List[Dict[str, Any]]:
     return [{"table": table, "columns": columns} for table, columns in tables.items()]
 
 
-def _resolve_connection_name(company_id: str, requested_connection_name: str | None) -> str:
+def _resolve_connection_name(
+    company_id: str,
+    workspace_id: str,
+    requested_connection_name: str | None,
+) -> str:
     if requested_connection_name and requested_connection_name.strip():
         return requested_connection_name.strip()
 
-    available = connection_manager.list_connections(company_id)
+    available = connection_manager.list_connections(company_id, workspace_id=workspace_id)
     if not available:
         raise HTTPException(
             status_code=400,
@@ -98,15 +102,17 @@ def _resolve_connection_name(company_id: str, requested_connection_name: str | N
 @router.get("/api/v1/schema/discover")
 def discover_schema(
     company_id: str = Query("default"),
+    workspace_id: str = Query("default"),
     connection_name: str | None = Query(None),
 ):
-    resolved_connection_name = _resolve_connection_name(company_id, connection_name)
+    resolved_connection_name = _resolve_connection_name(company_id, workspace_id, connection_name)
 
     try:
         config = connection_manager.load_connection(
             company_id,
             resolved_connection_name,
             decrypt_password=True,
+            workspace_id=workspace_id,
         )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -141,3 +147,22 @@ def discover_schema(
             pass
 
     return {"schema": tables}
+
+
+@router.get("/api/v1/schema/tables")
+def list_schema_tables(
+    company_id: str = Query("default"),
+    workspace_id: str = Query("default"),
+    connection_name: str | None = Query(None),
+):
+    """Fast table-only endpoint for workspace database explorers."""
+    payload = discover_schema(
+        company_id=company_id,
+        workspace_id=workspace_id,
+        connection_name=connection_name,
+    )
+    tables = payload.get("schema", [])
+    return {
+        "tables": [item.get("table") for item in tables if item.get("table")],
+        "count": len(tables),
+    }

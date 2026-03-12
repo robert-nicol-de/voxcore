@@ -24,7 +24,8 @@ export default function Databases() {
   const [schema, setSchema] = useState<SchemaTable[]>([]);
   const [connectionName, setConnectionName] = useState('');
 
-  const companyId = 'default';
+  const companyId = localStorage.getItem('voxcore_company_id') || 'default';
+  const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
 
   async function testConnection() {
     setTesting(true);
@@ -58,6 +59,7 @@ export default function Databases() {
           },
           body: JSON.stringify({
             company_id: companyId,
+            workspace_id: workspaceId,
             connection_name: savedConnectionName,
             database: dbType,
             credentials: {
@@ -101,7 +103,7 @@ export default function Databases() {
     setSchemaLoading(true);
     try {
       const response = await fetch(
-        apiUrl(`/api/v1/schema/discover?company_id=${encodeURIComponent(companyId)}&connection_name=${encodeURIComponent(connectionName)}`)
+        apiUrl(`/api/v1/schema/discover?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}&connection_name=${encodeURIComponent(connectionName)}`)
       );
       const data = await response.json();
 

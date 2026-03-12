@@ -21,18 +21,39 @@ class ConnectionManager:
     def _company_connections_dir(self, company_id: str) -> Path:
         return self.base_dir / str(company_id) / "connections"
 
-    def _connection_path(self, company_id: str, connection_name: str) -> Path:
+    def _workspace_connections_dir(self, company_id: str, workspace_id: str) -> Path:
+        return self.base_dir / str(company_id) / "workspaces" / str(workspace_id) / "connections"
+
+    def _connection_path(self, company_id: str, connection_name: str, workspace_id: Optional[str] = None) -> Path:
         safe_name = connection_name.strip().replace("/", "_").replace("\\", "_")
+        if workspace_id:
+            return self._workspace_connections_dir(company_id, workspace_id) / f"{safe_name}.ini"
         return self._company_connections_dir(company_id) / f"{safe_name}.ini"
 
-    def list_connections(self, company_id: str) -> List[str]:
-        directory = self._company_connections_dir(company_id)
+    def list_connections(self, company_id: str, workspace_id: Optional[str] = None) -> List[str]:
+        directory = (
+            self._workspace_connections_dir(company_id, workspace_id)
+            if workspace_id
+            else self._company_connections_dir(company_id)
+        )
         if not directory.exists():
+            # Backward compatibility: if a workspace was requested but no workspace
+            # folder exists yet, fall back to legacy company-level connections.
+            if workspace_id:
+                legacy = self._company_connections_dir(company_id)
+                if legacy.exists():
+                    return sorted([p.stem for p in legacy.glob("*.ini")])
             return []
         return sorted([p.stem for p in directory.glob("*.ini")])
 
-    def save_connection(self, company_id: str, connection_name: str, config: Mapping[str, str]) -> Path:
-        path = self._connection_path(company_id, connection_name)
+    def save_connection(
+        self,
+        company_id: str,
+        connection_name: str,
+        config: Mapping[str, str],
+        workspace_id: Optional[str] = None,
+    ) -> Path:
+        path = self._connection_path(company_id, connection_name, workspace_id)
         path.parent.mkdir(parents=True, exist_ok=True)
 
         db_config = dict(config)
@@ -46,8 +67,17 @@ class ConnectionManager:
             parser.write(f)
         return path
 
-    def load_connection(self, company_id: str, connection_name: str, decrypt_password: bool = True) -> Dict[str, str]:
-        path = self._connection_path(company_id, connection_name)
+    def load_connection(
+        self,
+        company_id: str,
+        connection_name: str,
+        decrypt_password: bool = True,
+        workspace_id: Optional[str] = None,
+    ) -> Dict[str, str]:
+        path = self._connection_path(company_id, connection_name, workspace_id)
+        if not path.exists() and workspace_id:
+            # Backward compatibility with pre-workspace paths
+            path = self._connection_path(company_id, connection_name)
         if not path.exists():
             raise FileNotFoundError(f"Connection not found: {path}")
 

@@ -243,9 +243,10 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          company_id: localStorage.getItem('voxcore_company_id') || 'default',
+          workspace_id: localStorage.getItem('voxcore_workspace_id') || 'default',
           query: questionText,
           agent: 'sql_assistant',
-          company_id: 'default'
         }),
       });
 

@@ -26,7 +26,9 @@ from backend.api.approval import router as approval_router
 from backend.api.inspector import router as inspector_router
 from backend.api.policies import router as policies_router
 from backend.api.schema import router as schema_router
+from backend.api.organizations import router as organizations_router
 from backend.services.rate_limiter import limiter
+from backend.db.org_store import init_db as init_org_db
 
 
 app = FastAPI(
@@ -34,6 +36,8 @@ app = FastAPI(
     description="AI Data Governance and SQL Risk Engine",
     version="1.0"
 )
+
+init_org_db()
 
 # Enable CORS to allow frontend requests from voxcore.org
 app.add_middleware(
@@ -84,6 +88,7 @@ app.include_router(approval_router)
 app.include_router(inspector_router)
 app.include_router(policies_router)
 app.include_router(schema_router)
+app.include_router(organizations_router)
 
 # Serve React frontend from dist folder
 frontend_dist = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')

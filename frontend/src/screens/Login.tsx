@@ -56,6 +56,11 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => 
       localStorage.setItem('voxcore_token', data.access_token);
       if (data.user_name) localStorage.setItem('voxcore_user_name', data.user_name);
       if (data.user_email) localStorage.setItem('voxcore_user_email', data.user_email);
+      if (data.org_id != null) localStorage.setItem('voxcore_org_id', String(data.org_id));
+      if (data.org_name) localStorage.setItem('voxcore_org_name', String(data.org_name));
+      if (data.workspace_id != null) localStorage.setItem('voxcore_workspace_id', String(data.workspace_id));
+      if (data.workspace_name) localStorage.setItem('voxcore_workspace_name', String(data.workspace_name));
+      if (data.company_id != null) localStorage.setItem('voxcore_company_id', String(data.company_id));
 
       // Only call onLogin after successful validation
       if (onLogin) {

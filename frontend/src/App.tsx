@@ -10,6 +10,8 @@ import QueryLogs from './pages/QueryLogs';
 import Sandbox from './pages/Sandbox';
 import SqlAssistant from './pages/SqlAssistant';
 import { Sidebar } from './components/Sidebar';
+import SettingsPage from './pages/Settings';
+import { useWorkspace } from './context/WorkspaceContext';
 
 const platformFeatures = [
   {
@@ -69,6 +71,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoginPage, setShowLoginPage] = useState(false);
   const navigate = useNavigate();
+  const { currentWorkspace } = useWorkspace();
 
   useEffect(() => {
     const token = localStorage.getItem('voxcore_token');
@@ -88,6 +91,11 @@ function App() {
     localStorage.removeItem('voxcore_token');
     localStorage.removeItem('voxcore_user_name');
     localStorage.removeItem('voxcore_user_email');
+    localStorage.removeItem('voxcore_org_id');
+    localStorage.removeItem('voxcore_org_name');
+    localStorage.removeItem('voxcore_company_id');
+    localStorage.removeItem('voxcore_workspace_id');
+    localStorage.removeItem('voxcore_workspace_name');
     navigate('/');
   };
 
@@ -360,6 +368,9 @@ function App() {
       <Sidebar />
       <div style={{ flex: 1, minWidth: 0 }}>
         <header style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ marginRight: 16, color: '#94a3b8', fontSize: 13, alignSelf: 'center' }}>
+            Workspace: <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{currentWorkspace?.name || 'Default'}</span>
+          </div>
           <UserDropdown token={localStorage.getItem('voxcore_token') || ''} onLogout={handleLogout} />
         </header>
         <main style={{ padding: 12 }}>
@@ -369,6 +380,7 @@ function App() {
             <Route path="/app/policies" element={<Policies />} />
             <Route path="/app/query-logs" element={<QueryLogs />} />
             <Route path="/app/sandbox" element={<Sandbox />} />
+            <Route path="/app/settings" element={<SettingsPage />} />
             <Route path="/app" element={<SqlAssistant />} />
             <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
           </Routes>

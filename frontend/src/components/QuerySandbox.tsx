@@ -61,6 +61,9 @@ ORDER BY total_revenue DESC`
 
     setExecutingProduction(true)
     try {
+      const companyId = localStorage.getItem('voxcore_company_id') || 'default'
+      const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default'
+
       const inspectResponse = await fetch(apiUrl('/api/v1/query/inspect'), {
         method: 'POST',
         headers: {
@@ -86,7 +89,8 @@ ORDER BY total_revenue DESC`
         body: JSON.stringify({
           query: sql,
           agent: 'sandbox_page',
-          company_id: 'default',
+          company_id: companyId,
+          workspace_id: workspaceId,
         }),
       })
       const prodData = await prodResponse.json()

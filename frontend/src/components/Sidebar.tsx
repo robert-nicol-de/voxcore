@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useWorkspace } from '../context/WorkspaceContext';
 
 const links = [
   { to: '/app/dashboard', label: 'Dashboard' },
@@ -8,10 +9,12 @@ const links = [
   { to: '/app/policies', label: 'Policies' },
   { to: '/app/query-logs', label: 'Query Logs' },
   { to: '/app/sandbox', label: 'Sandbox' },
+  { to: '/app/settings', label: 'Settings' },
 ];
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
+  const { org, workspaces, currentWorkspace, setCurrentWorkspaceId } = useWorkspace();
 
   return (
     <aside
@@ -23,7 +26,33 @@ export const Sidebar: React.FC = () => {
         padding: '22px 18px',
       }}
     >
-      <div style={{ fontSize: 24, fontWeight: 700, color: '#93c5fd', marginBottom: 20 }}>VoxCloud</div>
+      <div style={{ fontSize: 24, fontWeight: 700, color: '#93c5fd', marginBottom: 8 }}>VoxCloud</div>
+      <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12 }}>
+        Org: {org?.name || 'Organization'}
+      </div>
+      <label style={{ fontSize: 11, color: '#cbd5e1', display: 'block', marginBottom: 6 }}>
+        Workspace
+      </label>
+      <select
+        value={currentWorkspace?.id ?? ''}
+        onChange={(e) => setCurrentWorkspaceId(Number(e.target.value))}
+        style={{
+          width: '100%',
+          marginBottom: 16,
+          borderRadius: 8,
+          border: '1px solid rgba(255,255,255,0.16)',
+          background: 'rgba(15,23,42,0.85)',
+          color: '#e2e8f0',
+          padding: '8px 10px',
+          fontSize: 13,
+        }}
+      >
+        {workspaces.map((ws) => (
+          <option key={ws.id} value={ws.id}>
+            {ws.name}
+          </option>
+        ))}
+      </select>
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {links.map((item) => {
           const active = location.pathname === item.to;
