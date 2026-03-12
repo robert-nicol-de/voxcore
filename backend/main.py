@@ -27,6 +27,7 @@ from backend.api.inspector import router as inspector_router
 from backend.api.policies import router as policies_router
 from backend.api.schema import router as schema_router
 from backend.api.organizations import router as organizations_router
+from backend.datasources.router import router as datasources_router
 from backend.services.rate_limiter import limiter
 from backend.db.org_store import init_db as init_org_db
 
@@ -89,6 +90,7 @@ app.include_router(inspector_router)
 app.include_router(policies_router)
 app.include_router(schema_router)
 app.include_router(organizations_router)
+app.include_router(datasources_router)
 
 # Serve React frontend from dist folder
 frontend_dist = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')

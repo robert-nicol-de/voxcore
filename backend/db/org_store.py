@@ -70,6 +70,31 @@ def init_db():
                 workspace_id  INTEGER REFERENCES workspaces(id) ON DELETE SET NULL,
                 created_at    TEXT NOT NULL DEFAULT (datetime('now'))
             );
+
+            CREATE TABLE IF NOT EXISTS data_sources (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                workspace_id    INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                platform        TEXT NOT NULL,
+                name            TEXT NOT NULL,
+                credentials     TEXT NOT NULL,
+                schema_cache    TEXT,
+                schema_cache_at TEXT,
+                is_active       INTEGER DEFAULT 1,
+                created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS semantic_models (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                workspace_id    INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                datasource_id   INTEGER NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE,
+                name            TEXT NOT NULL,
+                description     TEXT,
+                definition      TEXT NOT NULL,
+                is_active       INTEGER DEFAULT 1,
+                created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+            );
         """)
 
         # Seed default org and workspace on first run only
