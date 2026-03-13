@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from backend.services.data_policy_engine import get_sensitive_columns
+from backend.services.rbac import normalize_role
 
 
 _DEFAULT_POLICY: Dict[str, Any] = {
@@ -31,6 +32,22 @@ _DEFAULT_POLICY: Dict[str, Any] = {
     "risk_based_approval": {
         "enabled": True,
         "threshold": 0.7,
+    },
+    "role_based_access": {
+        "enabled": True,
+        "rules": [
+            {
+                "role": "ai_analyst",
+                "blocked_tables": ["payroll", "salaries", "employee_salary", "compensation"],
+                "blocked_columns": ["salary", "bonus", "ssn"],
+            },
+            {
+                "role": "viewer",
+                "require_approval": True,
+                "blocked_tables": [],
+                "blocked_columns": [],
+            },
+        ],
     },
 }
 
@@ -101,7 +118,12 @@ def _append_limit(sql: str, max_rows: int) -> str:
     return f"{clean_sql} LIMIT {max_rows}"
 
 
-def apply_policies(company_id: str, sql: str, analysis: Dict[str, Any] | None = None) -> Dict[str, Any]:
+def apply_policies(
+    company_id: str,
+    sql: str,
+    analysis: Dict[str, Any] | None = None,
+    actor_role: str | None = None,
+) -> Dict[str, Any]:
     policies = get_company_policies(company_id)
     reasons: List[str] = []
     analysis = analysis or {}
@@ -160,6 +182,33 @@ def apply_policies(company_id: str, sql: str, analysis: Dict[str, Any] | None = 
                     "Approval required for protected table(s): " + ", ".join(sorted(set(hit_tables)))
                 )
 
+    role_access = policies.get("role_based_access", {})
+    normalized_role = normalize_role(actor_role)
+    if role_access.get("enabled", False) and normalized_role:
+        for rule in role_access.get("rules", []):
+            if normalize_role(str(rule.get("role", ""))) != normalized_role:
+                continue
+
+            blocked_tables = [str(x).lower() for x in rule.get("blocked_tables", [])]
+            blocked_columns = [str(x).lower() for x in rule.get("blocked_columns", [])]
+
+            table_hits = [table for table in analyzed_tables if table in blocked_tables]
+            column_hits = [column for column in analyzed_columns if column in blocked_columns]
+
+            if blocked_columns:
+                column_hits.extend(
+                    col for col in _find_sensitive_columns(sql, blocked_columns) if col.lower() not in column_hits
+                )
+
+            for table in sorted(set(table_hits)):
+                reasons.append(f"Role {normalized_role} cannot access table: {table}")
+            for column in sorted(set(column_hits)):
+                reasons.append(f"Role {normalized_role} cannot access column: {column}")
+
+            if bool(rule.get("require_approval")):
+                requires_approval = True
+                approval_reasons.append(f"Role {normalized_role} requires approval for this query")
+
     risk_approval = policies.get("risk_based_approval", {})
     risk_threshold_raw = risk_approval.get("threshold", 0.7)
     try:
@@ -180,6 +229,7 @@ def apply_policies(company_id: str, sql: str, analysis: Dict[str, Any] | None = 
         },
         "requires_approval": requires_approval,
         "approval_reasons": approval_reasons,
+        "actor_role": normalized_role,
         "risk_approval": {
             "enabled": bool(risk_approval.get("enabled", True)),
             "threshold": risk_threshold,

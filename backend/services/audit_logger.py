@@ -1,4 +1,5 @@
 import json
+import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
@@ -10,8 +11,13 @@ def _audit_file() -> Path:
     return path
 
 
+def create_audit_query_id(prefix: str = "VCX") -> str:
+    return f"{prefix}-{secrets.token_hex(4).upper()}"
+
+
 def log_audit_event(event: Dict[str, Any]) -> None:
     payload = {
+        "event_id": event.get("event_id") or secrets.token_hex(8),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         **event,
     }

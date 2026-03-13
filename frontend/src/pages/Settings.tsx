@@ -29,6 +29,8 @@ type ApiKey = {
 type InspectorSnapshot = {
   pending_approvals?: Array<{ id: number; query?: string; query_text?: string; risk_score?: number; risk_level?: string; submitted_at?: string }>;
   firewall_audit?: Array<{ timestamp?: string; status?: string; stage?: string; query?: string; reasons?: string[] }>;
+  metrics_status?: { status?: string; available?: boolean; detail?: string | null };
+  approval_queue_status?: { status?: string; available?: boolean; detail?: string | null };
 };
 
 type CompanyPolicies = {
@@ -38,6 +40,29 @@ type CompanyPolicies = {
 };
 
 type PlatformGravitySnapshot = {
+  control_plane?: {
+    status?: string;
+    orchestrated_flows?: string[];
+    systems?: string[];
+  };
+  rbac?: {
+    workspace_users?: number;
+    roles?: Array<{ role?: string; permissions?: string[] }>;
+  };
+  data_connectors?: {
+    supported?: string[];
+    configured_total?: number;
+    configured_by_platform?: Record<string, number>;
+  };
+  semantic_layer?: {
+    semantic_models?: number;
+    builder_status?: string;
+  };
+  audit_log?: {
+    events?: number;
+    queries_with_ids?: number;
+    latest_query_id?: string | null;
+  };
   copilot_context?: {
     semantic_models?: number;
     data_sources?: number;
@@ -312,6 +337,11 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        <div style={{ marginBottom: 12, display: 'grid', gap: 6, fontSize: 12, color: '#cbd5e1' }}>
+          <div>Metrics service: {(inspector?.metrics_status?.status || 'unknown').toUpperCase()}</div>
+          <div>Approval queue: {(inspector?.approval_queue_status?.status || 'unknown').toUpperCase()}</div>
+        </div>
+
         <div style={{ marginBottom: 10, fontSize: 12, color: '#cbd5e1' }}>
           Approval workflow: {policies?.query_approval_mode?.enabled ? 'ENABLED' : 'DISABLED'} •
           Risk-based approval: {policies?.risk_based_approval?.enabled === false ? 'DISABLED' : 'ENABLED'}
@@ -361,6 +391,51 @@ export default function SettingsPage() {
             <div style={{ fontSize: 20, fontWeight: 700 }}>{gravity?.intelligence_graph?.nodes?.queries ?? 0}</div>
           </div>
         </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 12 }}>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.25)', borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: '#c4b5fd' }}>Control Plane</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{(gravity?.control_plane?.status || 'inactive').toUpperCase()}</div>
+          </div>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.25)', borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: '#c4b5fd' }}>RBAC Roles</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{gravity?.rbac?.roles?.length ?? 0}</div>
+          </div>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.25)', borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: '#c4b5fd' }}>Connectors Supported</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{gravity?.data_connectors?.supported?.length ?? 0}</div>
+          </div>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.25)', borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: '#c4b5fd' }}>Audited Query IDs</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{gravity?.audit_log?.queries_with_ids ?? 0}</div>
+          </div>
+        </div>
+
+        <div style={{ background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.25)', borderRadius: 8, padding: 10, marginBottom: 12, fontSize: 12, color: '#ddd6fe' }}>
+          <div>Core platform systems: {(gravity?.control_plane?.systems || []).join(', ') || 'No systems reported yet.'}</div>
+          <div>Latest audited query: {gravity?.audit_log?.latest_query_id || 'None yet'}</div>
+          <div>Semantic builder status: {(gravity?.semantic_layer?.builder_status || 'ready').toUpperCase()}</div>
+          <div>Configured connector count: {gravity?.data_connectors?.configured_total ?? 0}</div>
+        </div>
+
+        {Array.isArray(gravity?.rbac?.roles) && gravity?.rbac?.roles?.length ? (
+          <div style={{ background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.25)', borderRadius: 8, padding: 10, marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Enterprise Role Matrix</div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {(gravity?.rbac?.roles || []).map((roleDef) => (
+                <div key={roleDef.role} style={{ fontSize: 12, color: '#cbd5e1' }}>
+                  <strong style={{ color: '#e9d5ff' }}>{roleDef.role}</strong>: {(roleDef.permissions || []).slice(0, 6).join(', ')}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {Array.isArray(gravity?.data_connectors?.supported) && gravity?.data_connectors?.supported?.length ? (
+          <div style={{ background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.25)', borderRadius: 8, padding: 10, marginBottom: 12, fontSize: 12, color: '#cbd5e1' }}>
+            Supported connectors: {(gravity?.data_connectors?.supported || []).join(', ')}
+          </div>
+        ) : null}
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
           <button

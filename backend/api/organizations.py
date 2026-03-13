@@ -73,7 +73,7 @@ def get_org_by_id(org_id: int, user=Depends(require_role(["admin", "god"]))):
 # ── Workspace endpoints ────────────────────────────────────────────────────────
 
 @router.get("/orgs/{org_id}/workspaces")
-def get_workspaces(org_id: int, user=Depends(require_role(["analyst", "viewer", "developer", "admin", "god"]))):
+def get_workspaces(org_id: int, user=Depends(require_role(["ai_analyst", "viewer", "developer", "data_guardian", "admin", "god"]))):
     """List all workspaces for an org."""
     if getattr(user, "role", "viewer") != "god" and int(getattr(user, "org_id", 0) or 0) != int(org_id):
         raise HTTPException(status_code=403, detail="Organization access denied")
@@ -167,7 +167,7 @@ def patch_user_role(
 
 
 @router.get("/orgs/{org_id}/datasources")
-def get_org_datasources(org_id: int, user=Depends(require_role(["admin", "god", "developer", "viewer"]))):
+def get_org_datasources(org_id: int, user=Depends(require_role(["admin", "god", "developer", "viewer", "data_guardian", "ai_analyst"]))):
     if getattr(user, "role", "viewer") != "god" and int(getattr(user, "org_id", 0) or 0) != int(org_id):
         raise HTTPException(status_code=403, detail="Organization access denied")
 

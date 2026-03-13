@@ -10,9 +10,20 @@ from pydantic import BaseModel, Field
 import backend.db.org_store as org_store
 from backend.services.audit_logger import get_recent_audit_events
 from backend.services.policy_engine import apply_policies, get_company_policies
+from backend.services.rbac import list_role_definitions
 
 
 router = APIRouter(prefix="/api/v1/platform", tags=["platform"])
+
+
+SUPPORTED_CONNECTORS = [
+    "postgresql",
+    "mysql",
+    "sqlserver",
+    "snowflake",
+    "bigquery",
+    "databricks",
+]
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:
@@ -24,6 +35,13 @@ def _parse_timestamp(value: str | None) -> datetime | None:
         return datetime.fromisoformat(value)
     except Exception:
         return None
+
+
+def _safe_int(value: Any, fallback: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return fallback
 
 
 def _estimate_query_cost(query: str) -> dict[str, Any]:
@@ -76,8 +94,8 @@ def get_platform_gravity_snapshot(request: Request):
     audit_events = get_recent_audit_events(limit=500)
     workspace_events = [
         e for e in audit_events
-        if int(e.get("workspace_id") or workspace_id) == workspace_id
-        and int(e.get("company_id") or org_id) == org_id
+        if _safe_int(e.get("workspace_id"), workspace_id) == workspace_id
+        and _safe_int(e.get("company_id"), org_id) == org_id
     ]
 
     blocked = [e for e in workspace_events if e.get("status") in {"blocked", "blocked_sensitive"}]
@@ -129,7 +147,43 @@ def get_platform_gravity_snapshot(request: Request):
         ],
     }
 
+    configured_connectors = Counter(
+        str((ds.get("platform") or ds.get("type") or "unknown")).lower()
+        for ds in data_sources
+    )
+    audit_query_ids = [str(e.get("query_id")) for e in workspace_events if e.get("query_id")]
+
     return {
+        "control_plane": {
+            "status": "active",
+            "orchestrated_flows": ["query.execute", "query.enqueue"],
+            "systems": [
+                "voxcore_brain",
+                "data_guardian_ai",
+                "semantic_layer",
+                "query_engine",
+                "policy_engine",
+                "observability",
+            ],
+        },
+        "rbac": {
+            "roles": list_role_definitions(),
+            "workspace_users": len(org_store.list_users(org_id)),
+        },
+        "data_connectors": {
+            "supported": SUPPORTED_CONNECTORS,
+            "configured_total": len(data_sources),
+            "configured_by_platform": dict(configured_connectors),
+        },
+        "semantic_layer": {
+            "semantic_models": len(semantic_models),
+            "builder_status": "active" if semantic_models else "ready",
+        },
+        "audit_log": {
+            "events": len(workspace_events),
+            "queries_with_ids": len(audit_query_ids),
+            "latest_query_id": audit_query_ids[0] if audit_query_ids else None,
+        },
         "copilot_context": copilot_context,
         "autonomous_agents": {
             "insights_detected": len([e for e in workspace_events if str(e.get("stage") or "") == "execution"]),
@@ -171,9 +225,9 @@ def simulate_governance_policy(request: Request, body: GovernanceSimulationReque
         ts = _parse_timestamp(str(event.get("timestamp") or ""))
         if ts is None or ts < cutoff:
             continue
-        if int(event.get("workspace_id") or workspace_id) != workspace_id:
+        if _safe_int(event.get("workspace_id"), workspace_id) != workspace_id:
             continue
-        if int(event.get("company_id") or org_id) != org_id:
+        if _safe_int(event.get("company_id"), org_id) != org_id:
             continue
         query = str(event.get("query") or "").strip()
         if query:
@@ -247,9 +301,9 @@ def get_intelligence_graph_summary(
         ts = _parse_timestamp(str(event.get("timestamp") or ""))
         if ts is None or ts < cutoff:
             continue
-        if int(event.get("workspace_id") or workspace_id) != workspace_id:
+        if _safe_int(event.get("workspace_id"), workspace_id) != workspace_id:
             continue
-        if int(event.get("company_id") or org_id) != org_id:
+        if _safe_int(event.get("company_id"), org_id) != org_id:
             continue
 
         queries += 1

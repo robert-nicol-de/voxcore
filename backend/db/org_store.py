@@ -17,6 +17,24 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
+SUPPORTED_ROLES = {
+    "god",
+    "admin",
+    "data_guardian",
+    "ai_analyst",
+    "viewer",
+    "developer",
+    "analyst",
+}
+
+
+def _normalize_role(role: str) -> str:
+    value = (role or "viewer").strip().lower()
+    if value == "analyst":
+        return "ai_analyst"
+    return value if value in SUPPORTED_ROLES else "viewer"
+
+
 # ── Database setup ─────────────────────────────────────────────────────────────
 
 def _db_path() -> Path:
@@ -338,6 +356,7 @@ def create_user(
     org_id: int,
     workspace_id: Optional[int] = None,
 ) -> Dict:
+    role = _normalize_role(role)
     pw_hash = _hash_password(password)
     with _get_conn() as conn:
         conn.execute(
@@ -382,6 +401,7 @@ def verify_user(email: str, password: str) -> Optional[Dict]:
 
 
 def update_user_role(user_id: int, role: str) -> bool:
+    role = _normalize_role(role)
     with _get_conn() as conn:
         cur = conn.execute(
             "UPDATE org_users SET role = ? WHERE id = ?", (role, user_id)

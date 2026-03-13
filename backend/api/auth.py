@@ -253,6 +253,7 @@ def _login(user: LoginRequest):
         token = create_token(
             {
                 "user_id": org_user["id"],
+                "email": org_user["email"],
                 "role": effective_role,
                 "company_id": org_id,
                 "org_id": org_id,
@@ -292,6 +293,7 @@ def _login(user: LoginRequest):
     token = create_token(
         {
             "user_id": db_user["id"],
+            "email": db_user["email"],
             "role": effective_role,
             "company_id": default_org_id,
             "org_id": default_org_id,

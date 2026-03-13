@@ -13,7 +13,7 @@ from backend.services import approval_queue as queue
 from backend.services.policy_engine import apply_policies
 from backend.services.sql_analysis import analyze_sql
 from backend.services.safety_validator import validate_query_safety
-from backend.services.audit_logger import log_audit_event
+from backend.services.audit_logger import create_audit_query_id, log_audit_event
 from backend.services.data_policy_engine import find_sensitive_columns_in_query, get_sensitive_columns
 from backend.services.query_job_queue import enqueue_query_job, get_job, get_worker_stats
 from backend.services.ai_context_builder import build_ai_query_context_with_runtime
@@ -606,9 +606,13 @@ def _add_ai_context(request: Request, payload: QueryRequest, body: dict[str, Any
 def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, Any]:
     start = time.perf_counter()
     query = payload.query
+    query_id = create_audit_query_id()
     company_id, workspace_id = _resolve_tenant_context(
         request, payload.company_id, payload.workspace_id
     )
+    actor_role = str(getattr(request.state, "role", "viewer") or "viewer")
+    actor_email = getattr(request.state, "user_email", None)
+    actor_user_id = getattr(request.state, "user_id", None)
     previous_plan = _get_previous_plan(company_id, workspace_id)
     semantic_payload = _build_semantic_payload(
         request,
@@ -618,6 +622,45 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     )
     _save_latest_plan(company_id, workspace_id, semantic_payload["analytical_plan"])
     semantic_sql = str(semantic_payload.get("generated_sql") or "")
+
+    def audit_event(
+        status: str,
+        stage: str,
+        reasons: list[str],
+        *,
+        analysis: dict[str, Any] | None = None,
+        risk_score: int | None = None,
+        risk_level: str | None = None,
+        guardian_validation: str | None = None,
+        execution_time_ms: float | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        event = {
+            "query_id": query_id,
+            "company_id": company_id,
+            "workspace_id": workspace_id,
+            "user_id": actor_user_id,
+            "user_email": actor_email,
+            "actor_role": actor_role,
+            "agent": payload.agent,
+            "intent": payload.query,
+            "generated_sql": semantic_sql,
+            "status": status,
+            "stage": stage,
+            "query_type": (analysis or {}).get("query_type"),
+            "tables": (analysis or {}).get("tables"),
+            "columns": (analysis or {}).get("columns"),
+            "query": query,
+            "reasons": reasons,
+            "risk_score": risk_score,
+            "risk_level": risk_level,
+            "guardian_validation": guardian_validation,
+            "execution_time_ms": execution_time_ms,
+            "system": "voxcore_control_plane",
+        }
+        if extra:
+            event.update(extra)
+        log_audit_event(event)
     
     # 1) Query Inspector: Parse SQL first.
     analysis = analyze_sql(query)
@@ -668,7 +711,7 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
         } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     # 2) Policy Engine enforcement.
-    policy_result = apply_policies(company_id, query, analysis=analysis)
+    policy_result = apply_policies(company_id, query, analysis=analysis, actor_role=actor_role)
     if policy_result["blocked"]:
         _append_activity(request, query, "blocked", "high", company_id, workspace_id)
         execution_time = time.perf_counter() - start
@@ -680,19 +723,14 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             risk_level="POLICY_BLOCK",
             blocked=True,
         )
-        log_audit_event(
-            {
-                "company_id": company_id,
-                "workspace_id": workspace_id,
-                "agent": payload.agent,
-                "status": "blocked",
-                "stage": "policy_engine",
-                "query_type": analysis.get("query_type"),
-                "tables": analysis.get("tables"),
-                "columns": analysis.get("columns"),
-                "query": query,
-                "reasons": policy_result["reasons"],
-            }
+        audit_event(
+            "blocked",
+            "policy_engine",
+            list(policy_result["reasons"]),
+            analysis=analysis,
+            risk_level="high",
+            guardian_validation="blocked",
+            execution_time_ms=round(execution_time * 1000, 2),
         )
         _publish_policy_violation(
             company_id,
@@ -727,19 +765,14 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             risk_level="SAFETY_BLOCK",
             blocked=True,
         )
-        log_audit_event(
-            {
-                "company_id": company_id,
-                "workspace_id": workspace_id,
-                "agent": payload.agent,
-                "status": "blocked",
-                "stage": "safety_validation",
-                "query_type": analysis.get("query_type"),
-                "tables": analysis.get("tables"),
-                "columns": analysis.get("columns"),
-                "query": query,
-                "reasons": safety["reasons"],
-            }
+        audit_event(
+            "blocked",
+            "safety_validation",
+            list(safety["reasons"]),
+            analysis=analysis,
+            risk_level="high",
+            guardian_validation="blocked",
+            execution_time_ms=round(execution_time * 1000, 2),
         )
         _publish_policy_violation(
             company_id,
@@ -785,22 +818,18 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
         except Exception as _queue_err:
             print(f"[!] Approval queue insert failed: {_queue_err}")
 
-        log_audit_event(
-            {
-                "company_id": company_id,
-                "workspace_id": workspace_id,
-                "agent": payload.agent,
-                "status": "approval_required",
-                "stage": "policy_engine",
-                "query_type": analysis.get("query_type"),
-                "tables": analysis.get("tables"),
-                "columns": analysis.get("columns"),
-                "query": query,
-                "reasons": approval_reasons,
-                "queue_id": queued_id,
-            }
+        audit_event(
+            "approval_required",
+            "policy_engine",
+            list(approval_reasons),
+            analysis=analysis,
+            risk_level="approval_required",
+            guardian_validation="approval_required",
+            execution_time_ms=round(execution_time * 1000, 2),
+            extra={"queue_id": queued_id},
         )
         return {
+            "query_id": query_id,
             "status": "approval_required",
             "queue_id": queued_id,
             "requires_approval": True,
@@ -826,19 +855,14 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             risk_level="CRITICAL",
             blocked=True,
         )
-        log_audit_event(
-            {
-                "company_id": payload.company_id,
-                "workspace_id": payload.workspace_id,
-                "agent": payload.agent,
-                "status": "blocked",
-                "stage": "query_inspector",
-                "query_type": analysis.get("query_type"),
-                "tables": analysis.get("tables"),
-                "columns": analysis.get("columns"),
-                "query": query,
-                "reasons": ["Critical risk detected by query inspector"],
-            }
+        audit_event(
+            "blocked",
+            "query_inspector",
+            ["Critical risk detected by query inspector"],
+            analysis=analysis,
+            risk_level="critical",
+            guardian_validation="blocked",
+            execution_time_ms=round(execution_time * 1000, 2),
         )
         raise
 
@@ -876,20 +900,16 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             queued_id = row.get("id")
         except Exception as _queue_err:
             print(f"[!] Approval queue insert failed: {_queue_err}")
-        log_audit_event(
-            {
-                "company_id": company_id,
-                "workspace_id": workspace_id,
-                "agent": payload.agent,
-                "status": "approval_required",
-                "stage": "risk_engine",
-                "query_type": analysis.get("query_type"),
-                "tables": analysis.get("tables"),
-                "columns": analysis.get("columns"),
-                "query": query,
-                "reasons": risk_result["reasons"] + [f"Risk threshold {approval_threshold:.2f} exceeded"],
-                "queue_id": queued_id,
-            }
+        audit_event(
+            "approval_required",
+            "risk_engine",
+            list(risk_result["reasons"] + [f"Risk threshold {approval_threshold:.2f} exceeded"]),
+            analysis=analysis,
+            risk_score=risk_score,
+            risk_level=risk_level,
+            guardian_validation="approval_required",
+            execution_time_ms=round(execution_time * 1000, 2),
+            extra={"queue_id": queued_id},
         )
         _publish_policy_violation(
             company_id,
@@ -899,6 +919,7 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             list(risk_result["reasons"]),
         )
         return {
+            "query_id": query_id,
             "status": "approval_required",
             "queue_id": queued_id,
             "risk_score": risk_score,
@@ -928,42 +949,36 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
 
     if risk.get("status") == "BLOCKED":
         _append_activity(request, query, "blocked", _normalize_risk_level(risk_level), company_id, workspace_id)
-        log_audit_event(
-            {
-                "company_id": company_id,
-                "workspace_id": workspace_id,
-                "agent": payload.agent,
-                "status": "blocked",
-                "stage": "execution_guard",
-                "query_type": analysis.get("query_type"),
-                "tables": analysis.get("tables"),
-                "columns": analysis.get("columns"),
-                "query": query,
-                "reasons": ["Execution guard blocked query"],
-            }
+        audit_event(
+            "blocked",
+            "execution_guard",
+            ["Execution guard blocked query"],
+            analysis=analysis,
+            risk_score=risk_score,
+            risk_level=risk_level,
+            guardian_validation="blocked",
+            execution_time_ms=round(execution_time * 1000, 2),
         )
         return {
+            "query_id": query_id,
             "status": "blocked",
             "analysis": analysis,
             "risk": risk
         } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
-    log_audit_event(
-        {
-            "company_id": company_id,
-            "workspace_id": workspace_id,
-            "agent": payload.agent,
-            "status": "allowed",
-            "stage": "execution",
-            "query_type": analysis.get("query_type"),
-            "tables": analysis.get("tables"),
-            "columns": analysis.get("columns"),
-            "query": query,
-            "reasons": risk_result["reasons"],
-        }
+    audit_event(
+        "allowed",
+        "execution",
+        list(risk_result["reasons"]),
+        analysis=analysis,
+        risk_score=risk_score,
+        risk_level=risk_level,
+        guardian_validation="approved",
+        execution_time_ms=round(execution_time * 1000, 2),
     )
 
     return _add_ai_context(request, payload, {
+        "query_id": query_id,
         "status": "allowed",
         "company_id": company_id,
         "workspace_id": workspace_id,

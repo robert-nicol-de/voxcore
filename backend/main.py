@@ -35,6 +35,7 @@ from backend.datasources.router import router as datasources_router
 from backend.api.agents import router as agents_router
 from backend.api.platform import router as platform_router
 from backend.agents import agent_scheduler
+from backend.services.rbac import normalize_role
 from backend.workers.query_worker import start_worker_thread
 from backend.services.auth import SECRET_KEY, ALGORITHM
 from backend.services.rate_limiter import limiter
@@ -91,7 +92,7 @@ async def enforce_jwt_for_api(request: Request, call_next):
 
         user_id = int(payload.get("user_id", 0) or 0)
         org_id = int(payload.get("org_id", payload.get("company_id", 1)) or 1)
-        role = str(payload.get("role", "viewer"))
+        role = normalize_role(str(payload.get("role", "viewer")))
         token_workspace_id = payload.get("workspace_id")
         requested_workspace = request.headers.get("X-Workspace-ID")
 
@@ -114,6 +115,7 @@ async def enforce_jwt_for_api(request: Request, call_next):
                 return JSONResponse(status_code=403, content={"detail": "Workspace access denied"})
 
         request.state.user_id = user_id
+        request.state.user_email = payload.get("email")
         request.state.org_id = org_id
         request.state.role = role
         request.state.workspace_id = workspace_id
