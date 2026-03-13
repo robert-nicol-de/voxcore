@@ -1,10 +1,12 @@
 from fastapi import APIRouter
 from backend.services.query_metrics import (
+    get_metrics_status,
     get_recent_queries,
     get_risk_distribution,
     get_system_metrics,
 )
 from backend.services.approval_queue import list_pending
+from backend.services import approval_queue
 from backend.services.audit_logger import get_recent_audit_events
 
 router = APIRouter()
@@ -42,4 +44,6 @@ def inspector_dashboard():
         "firewall_audit": audit_events,
         "risk_distribution": risk_distribution,
         "system_metrics": system_metrics,
+        "metrics_status": get_metrics_status(),
+        "approval_queue_status": approval_queue.get_queue_status(),
     }

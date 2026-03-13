@@ -15,12 +15,20 @@ from typing import Any
 
 import psycopg2
 import psycopg2.extras
+import logging
 
-DB_HOST = os.environ.get("DB_HOST", "localhost")
-DB_PORT = int(os.environ.get("DB_PORT", 5432))
-DB_NAME = os.environ.get("DB_NAME", "voxcore")
-DB_USER = os.environ.get("DB_USER", "postgres")
-DB_PASSWORD = os.environ.get("DB_PASSWORD", "postgres")
+
+logger = logging.getLogger(__name__)
+
+DB_HOST = os.environ.get("APPROVAL_DB_HOST", os.environ.get("DB_HOST", "localhost"))
+DB_PORT = int(os.environ.get("APPROVAL_DB_PORT", os.environ.get("DB_PORT", 5432)))
+DB_NAME = os.environ.get("APPROVAL_DB_NAME", os.environ.get("DB_NAME", "voxcore"))
+DB_USER = os.environ.get("APPROVAL_DB_USER", os.environ.get("DB_USER", "postgres"))
+DB_PASSWORD = os.environ.get("APPROVAL_DB_PASSWORD", os.environ.get("DB_PASSWORD", "postgres"))
+
+
+_QUEUE_AVAILABLE: bool | None = None
+_QUEUE_ERROR: str | None = None
 
 
 def _conn():
@@ -34,7 +42,19 @@ def _conn():
     )
 
 
-def ensure_table() -> None:
+def get_queue_status() -> dict[str, Any]:
+    global _QUEUE_AVAILABLE, _QUEUE_ERROR
+    if _QUEUE_AVAILABLE is None:
+        ensure_table()
+    return {
+        "available": bool(_QUEUE_AVAILABLE),
+        "status": "ok" if _QUEUE_AVAILABLE else "approval_queue_unavailable",
+        "detail": _QUEUE_ERROR,
+    }
+
+
+def ensure_table() -> bool:
+    global _QUEUE_AVAILABLE, _QUEUE_ERROR
     sql = """
     CREATE TABLE IF NOT EXISTS pending_queries (
         id SERIAL PRIMARY KEY,
@@ -52,9 +72,18 @@ def ensure_table() -> None:
         reviewed_at TIMESTAMP
     )
     """
-    with _conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql)
+    try:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql)
+        _QUEUE_AVAILABLE = True
+        _QUEUE_ERROR = None
+        return True
+    except Exception as exc:
+        _QUEUE_AVAILABLE = False
+        _QUEUE_ERROR = str(exc)
+        logger.warning("Approval queue unavailable; approval endpoints degraded: %s", exc)
+        return False
 
 
 def submit(
@@ -67,7 +96,8 @@ def submit(
     company_id: int = 1,
     user_id: int = 1,
 ) -> dict[str, Any]:
-    ensure_table()
+    if not ensure_table():
+        raise RuntimeError("Approval queue unavailable")
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -94,7 +124,8 @@ def submit(
 
 
 def list_pending(company_id: int | None = None) -> list[dict[str, Any]]:
-    ensure_table()
+    if not ensure_table():
+        return []
     with _conn() as conn:
         with conn.cursor() as cur:
             if company_id:
@@ -110,7 +141,8 @@ def list_pending(company_id: int | None = None) -> list[dict[str, Any]]:
 
 
 def get_by_id(query_id: int) -> dict[str, Any] | None:
-    ensure_table()
+    if not ensure_table():
+        return None
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM pending_queries WHERE id=%s", (query_id,))
@@ -119,7 +151,8 @@ def get_by_id(query_id: int) -> dict[str, Any] | None:
 
 
 def _update_status(query_id: int, status: str, reviewed_by: str) -> dict[str, Any]:
-    ensure_table()
+    if not ensure_table():
+        raise RuntimeError("Approval queue unavailable")
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(

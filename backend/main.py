@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import logging
 
 env_path = Path(__file__).parent.parent / '.env'
 if env_path.exists():
@@ -31,10 +32,17 @@ from backend.api.policies import router as policies_router
 from backend.api.schema import router as schema_router
 from backend.api.organizations import router as organizations_router
 from backend.datasources.router import router as datasources_router
+from backend.api.agents import router as agents_router
+from backend.api.platform import router as platform_router
+from backend.agents import agent_scheduler
+from backend.workers.query_worker import start_worker_thread
 from backend.services.auth import SECRET_KEY, ALGORITHM
 from backend.services.rate_limiter import limiter
 from backend.db.org_store import init_db as init_org_db
 import backend.db.org_store as org_store
+
+
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(
@@ -146,6 +154,29 @@ app.include_router(policies_router)
 app.include_router(schema_router)
 app.include_router(organizations_router)
 app.include_router(datasources_router)
+app.include_router(agents_router)
+app.include_router(platform_router)
+
+
+def _autostart_query_worker_enabled() -> bool:
+    raw_value = os.environ.get("VOXCORE_AUTOSTART_QUERY_WORKER", "false").strip().lower()
+    return raw_value in {"1", "true", "yes", "on"}
+
+
+@app.on_event("startup")
+async def start_agent_scheduler():
+    """Start AI Data Agents background scheduler on server boot."""
+    agent_scheduler.start()
+    if _autostart_query_worker_enabled():
+        start_worker_thread()
+        logger.info("Started background query worker thread")
+
+
+@app.on_event("shutdown")
+async def stop_agent_scheduler():
+    """Cleanly stop the agent scheduler on server shutdown."""
+    agent_scheduler.stop()
+
 
 # Serve React frontend from dist folder
 frontend_dist = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')

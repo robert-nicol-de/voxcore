@@ -3,12 +3,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { useWorkspace } from '../context/WorkspaceContext';
 
 const primaryLinks = [
-  { to: '/app/dashboard',  label: 'Dashboard' },
-  { to: '/app',            label: 'SQL Assistant' },
-  { to: '/app/policies',   label: 'Policies' },
-  { to: '/app/query-logs', label: 'Query Logs' },
-  { to: '/app/sandbox',    label: 'Sandbox' },
-  { to: '/app/settings',   label: 'Settings' },
+  { to: '/app/dashboard',     label: 'Dashboard' },
+  { to: '/app',               label: 'SQL Assistant' },
+  { to: '/app/policies',      label: 'Policies' },
+  { to: '/app/query-logs',    label: 'Query Logs' },
+  { to: '/app/sandbox',       label: 'Sandbox' },
+  { to: '/app/architecture',  label: 'Architecture' },
+  { to: '/app/agents',        label: 'AI Agents' },
+  { to: '/app/settings',      label: 'Settings' },
 ];
 
 const dataLinks = [

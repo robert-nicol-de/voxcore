@@ -70,6 +70,41 @@ curl -X POST http://localhost:8000/api/v1/query \
   }'
 ```
 
+## VoxCore Dev Stack
+
+```bash
+# 1. Start API
+uvicorn backend.main:app --reload
+
+# 2. Start Query Worker
+python -m backend.workers.query_worker
+
+# 3. Start Frontend
+cd frontend && npm run dev
+```
+
+For single-process local development, you can opt into background worker autostart by setting `VOXCORE_AUTOSTART_QUERY_WORKER=true` in `.env`.
+
+## VoxCore Control Plane
+
+VoxCore now exposes a first-class Control Plane layer that sits between clients and the execution engines. This is the orchestration boundary that decides how a request moves through governance, semantic intelligence, telemetry, and execution.
+
+Current Control Plane responsibilities:
+
+- route query requests through the correct platform path
+- coordinate Semantic Brain, Data Guardian, policy enforcement, and risk evaluation
+- attach a canonical `control_plane` envelope to orchestrated query responses
+- support both sync execution and queued worker execution through the same orchestration layer
+- provide a clean platform story for future agent, copilot, and external AI integrations
+
+Current implementation entry points:
+
+- `backend/control_plane/orchestrator.py` for orchestration
+- `backend/control_plane/models.py` for context and route-plan contracts
+- `backend/control_plane/context.py` for request normalization and worker request context
+
+The current slice focuses on the query lifecycle first. Agents, platform telemetry, and cross-system coordination can now converge on the same orchestration boundary instead of growing as independent subsystems.
+
 ## Development
 
 ```bash

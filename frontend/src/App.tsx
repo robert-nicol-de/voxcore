@@ -16,6 +16,8 @@ import SqlAssistant from './pages/SqlAssistant';
 import { Sidebar } from './components/Sidebar';
 import SettingsPage from './pages/Settings';
 import SchemaExplorerPage from './pages/SchemaExplorerPage';
+import ArchitecturePage from './pages/Architecture';
+import AgentInsightsPage from './pages/AgentInsights';
 import RequireAuth from './components/auth/RequireAuth';
 import WorkspaceSwitcher from './components/WorkspaceSwitcher';
 
@@ -431,6 +433,8 @@ function App() {
               <Route path="/app/sandbox" element={<RequireAuth><Sandbox /></RequireAuth>} />
               <Route path="/app/schema" element={<RequireAuth><SchemaExplorerPage /></RequireAuth>} />
               <Route path="/app/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+              <Route path="/app/architecture" element={<RequireAuth><ArchitecturePage /></RequireAuth>} />
+              <Route path="/app/agents" element={<RequireAuth><AgentInsightsPage /></RequireAuth>} />
               <Route path="/app" element={<RequireAuth><SqlAssistant /></RequireAuth>} />
               <Route path="/dashboard" element={<RequireAuth><Navigate to="/app/dashboard" replace /></RequireAuth>} />
               <Route path="/datasources" element={<RequireAuth><Navigate to="/app/datasources" replace /></RequireAuth>} />

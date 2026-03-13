@@ -28,6 +28,10 @@ _DEFAULT_POLICY: Dict[str, Any] = {
         "require_for_query_types": ["select"],
         "require_for_tables": [],
     },
+    "risk_based_approval": {
+        "enabled": True,
+        "threshold": 0.7,
+    },
 }
 
 
@@ -156,6 +160,14 @@ def apply_policies(company_id: str, sql: str, analysis: Dict[str, Any] | None = 
                     "Approval required for protected table(s): " + ", ".join(sorted(set(hit_tables)))
                 )
 
+    risk_approval = policies.get("risk_based_approval", {})
+    risk_threshold_raw = risk_approval.get("threshold", 0.7)
+    try:
+        risk_threshold = float(risk_threshold_raw)
+    except (TypeError, ValueError):
+        risk_threshold = 0.7
+    risk_threshold = max(0.0, min(1.0, risk_threshold))
+
     return {
         "blocked": blocked,
         "reasons": reasons,
@@ -168,6 +180,10 @@ def apply_policies(company_id: str, sql: str, analysis: Dict[str, Any] | None = 
         },
         "requires_approval": requires_approval,
         "approval_reasons": approval_reasons,
+        "risk_approval": {
+            "enabled": bool(risk_approval.get("enabled", True)),
+            "threshold": risk_threshold,
+        },
         "policies": policies,
     }
 

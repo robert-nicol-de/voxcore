@@ -19,6 +19,15 @@ interface CompanyPolicies {
     enabled: boolean;
     max_rows: number;
   };
+  query_approval_mode: {
+    enabled: boolean;
+    require_for_query_types: string[];
+    require_for_tables: string[];
+  };
+  risk_based_approval: {
+    enabled: boolean;
+    threshold: number;
+  };
 }
 
 interface QueryTestResult {
@@ -46,6 +55,15 @@ const DEFAULT_POLICIES: CompanyPolicies = {
   query_result_limits: {
     enabled: false,
     max_rows: 1000,
+  },
+  query_approval_mode: {
+    enabled: false,
+    require_for_query_types: ['select'],
+    require_for_tables: [],
+  },
+  risk_based_approval: {
+    enabled: true,
+    threshold: 0.7,
   },
 };
 
@@ -102,6 +120,8 @@ export const PoliciesManager: React.FC = () => {
       policies.protect_sensitive_columns.enabled,
       policies.read_only_ai_mode.enabled,
       policies.query_result_limits.enabled,
+      policies.query_approval_mode.enabled,
+      policies.risk_based_approval.enabled,
     ].filter(Boolean).length;
   }, [policies]);
 
@@ -214,7 +234,7 @@ export const PoliciesManager: React.FC = () => {
       <div className="policies-stats">
         <div className="stat-card">
           <div className="stat-label">Total Policies</div>
-          <div className="stat-value">4</div>
+          <div className="stat-value">6</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Enabled</div>
@@ -222,7 +242,7 @@ export const PoliciesManager: React.FC = () => {
         </div>
         <div className="stat-card">
           <div className="stat-label">Disabled</div>
-          <div className="stat-value">{4 - enabledCount}</div>
+          <div className="stat-value">{6 - enabledCount}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Mode</div>
@@ -372,6 +392,95 @@ export const PoliciesManager: React.FC = () => {
                   })
                 }
               />
+            </div>
+          </div>
+        </div>
+
+        <div className={`policy-card ${policies.query_approval_mode.enabled ? 'enabled' : 'disabled'}`}>
+          <div className="policy-header">
+            <div className="policy-left">
+              <div className="policy-toggle">
+                <input
+                  type="checkbox"
+                  checked={policies.query_approval_mode.enabled}
+                  onChange={(e) => updatePolicyState('query_approval_mode', { enabled: e.target.checked })}
+                  id="toggle-approval"
+                />
+                <label htmlFor="toggle-approval"></label>
+              </div>
+              <div className="policy-info">
+                <div className="policy-name">Query Approval Workflow</div>
+                <div className="policy-description">Require human approval by query type or table</div>
+              </div>
+            </div>
+          </div>
+          <div className="policy-details open">
+            <div className="rules-section">
+              <h4>Require For Query Types (comma separated)</h4>
+              <input
+                className="policy-input"
+                value={policies.query_approval_mode.require_for_query_types.join(', ')}
+                onChange={(e) =>
+                  updatePolicyState('query_approval_mode', {
+                    require_for_query_types: normalizeCsv(e.target.value),
+                  })
+                }
+                placeholder="select, with"
+              />
+            </div>
+            <div className="rules-section">
+              <h4>Require For Tables (comma separated)</h4>
+              <input
+                className="policy-input"
+                value={policies.query_approval_mode.require_for_tables.join(', ')}
+                onChange={(e) =>
+                  updatePolicyState('query_approval_mode', {
+                    require_for_tables: normalizeCsv(e.target.value),
+                  })
+                }
+                placeholder="customers, payroll, employee_ssn"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className={`policy-card ${policies.risk_based_approval.enabled ? 'enabled' : 'disabled'}`}>
+          <div className="policy-header">
+            <div className="policy-left">
+              <div className="policy-toggle">
+                <input
+                  type="checkbox"
+                  checked={policies.risk_based_approval.enabled}
+                  onChange={(e) => updatePolicyState('risk_based_approval', { enabled: e.target.checked })}
+                  id="toggle-risk-approval"
+                />
+                <label htmlFor="toggle-risk-approval"></label>
+              </div>
+              <div className="policy-info">
+                <div className="policy-name">Risk-Based Approval Threshold</div>
+                <div className="policy-description">Auto-hold queries when risk score exceeds your threshold</div>
+              </div>
+            </div>
+          </div>
+          <div className="policy-details open">
+            <div className="rules-section">
+              <h4>Threshold ({policies.risk_based_approval.threshold.toFixed(2)})</h4>
+              <input
+                className="policy-input"
+                type="range"
+                min={0.1}
+                max={1}
+                step={0.05}
+                value={policies.risk_based_approval.threshold}
+                onChange={(e) =>
+                  updatePolicyState('risk_based_approval', {
+                    threshold: Math.max(0.1, Math.min(1, Number(e.target.value || '0.7'))),
+                  })
+                }
+              />
+              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>
+                Example: 0.70 means risk score greater than or equal to 70 requires approval.
+              </div>
             </div>
           </div>
         </div>

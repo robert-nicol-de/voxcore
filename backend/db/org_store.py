@@ -142,6 +142,19 @@ def init_db():
                 created_at    TEXT NOT NULL DEFAULT (datetime('now')),
                 last_used_at  TEXT
             );
+
+            CREATE TABLE IF NOT EXISTS agent_alerts (
+                id            TEXT PRIMARY KEY,
+                agent_type    TEXT NOT NULL,
+                severity      TEXT NOT NULL DEFAULT 'info',
+                title         TEXT NOT NULL,
+                description   TEXT NOT NULL,
+                workspace_id  INTEGER,
+                org_id        INTEGER,
+                metadata      TEXT,
+                is_dismissed  INTEGER NOT NULL DEFAULT 0,
+                created_at    TEXT NOT NULL
+            );
         """)
 
         # Lightweight forward-only schema compatibility for already-created DBs

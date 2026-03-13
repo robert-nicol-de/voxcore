@@ -1,5 +1,62 @@
 # VoxQuery Architecture
 
+## VoxCore Control Plane
+
+VoxCore is evolving from a query-generation tool into an AI data platform. The architectural boundary that enables that shift is the VoxCore Control Plane.
+
+The Control Plane is the orchestration layer between users, agents, semantic intelligence, governance, and execution systems. Instead of each subsystem coordinating requests independently, the Control Plane provides a single platform decision point.
+
+### Responsibilities
+
+- AI governance orchestration: policy enforcement, approval paths, and role-aware execution decisions
+- intelligence routing: decide whether a request should invoke Semantic Brain planning, governance enforcement, risk analysis, queueing, or execution
+- agent coordination: provide one orchestration surface for platform agents and future external AI clients
+- platform telemetry: emit one normalized execution story for inspector, platform gravity, and event feeds
+
+### First Implementation Slice
+
+The first production slice is implemented in `backend/control_plane/` and currently owns the query lifecycle orchestration path.
+
+```
+backend/control_plane/
+├── __init__.py
+├── context.py        # request normalization and worker context creation
+├── models.py         # control-plane context and route-plan contracts
+└── orchestrator.py   # query orchestration entry point
+```
+
+The query API and queued worker path now both route through the Control Plane orchestrator before reaching the rest of the query-governance stack.
+
+### Platform Topology
+
+```
+User / Agent / External AI
+       |
+       v
+    VoxCore Control Plane
+       |
+   +-------+--------+-------------------+
+   |       |        |                   |
+   v       v        v                   v
+Semantic  Data    Agent System      Query Engine
+ Brain   Guardian                    + Workers
+   |       |        |                   |
+   +-------+--------+-------------------+
+       |
+       v
+   Enterprise Databases / Services
+```
+
+### Why This Matters
+
+This architecture changes the product story from "AI analytics tool with governance features" to "governed AI data platform." It creates a clean expansion path for:
+
+- external AI gateway integrations
+- multi-agent orchestration
+- richer platform observability
+- admin-level governance controls
+- future workflow and automation layers
+
 ## System Overview
 
 VoxQuery is a natural language SQL generation system that converts business questions into executable SQL across multiple warehouses.

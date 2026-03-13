@@ -26,6 +26,58 @@ type ApiKey = {
   created_at?: string;
 };
 
+type InspectorSnapshot = {
+  pending_approvals?: Array<{ id: number; query?: string; query_text?: string; risk_score?: number; risk_level?: string; submitted_at?: string }>;
+  firewall_audit?: Array<{ timestamp?: string; status?: string; stage?: string; query?: string; reasons?: string[] }>;
+};
+
+type CompanyPolicies = {
+  query_approval_mode?: { enabled?: boolean };
+  risk_based_approval?: { enabled?: boolean; threshold?: number };
+  protect_sensitive_columns?: { enabled?: boolean; blocked_columns?: string[] };
+};
+
+type PlatformGravitySnapshot = {
+  copilot_context?: {
+    semantic_models?: number;
+    data_sources?: number;
+    governance_rules?: number;
+    recent_queries?: number;
+    insights_history?: number;
+  };
+  autonomous_agents?: {
+    insights_detected?: number;
+    anomalies?: number;
+    policy_blocks?: number;
+  };
+  governance_simulator_preview?: {
+    window_days?: number;
+    queries_seen?: number;
+    blocked_queries?: number;
+    risky_queries_prevented?: number;
+  };
+  intelligence_graph?: {
+    nodes?: {
+      metrics?: number;
+      tables?: number;
+      users?: number;
+      policies?: number;
+      queries?: number;
+      workspaces?: number;
+    };
+    highlights?: string[];
+  };
+};
+
+type GovernanceSimulation = {
+  queries_analyzed?: number;
+  queries_affected?: number;
+  queries_blocked?: number;
+  queries_requiring_approval?: number;
+  high_cost_queries?: number;
+  risky_queries_prevented?: number;
+};
+
 export default function SettingsPage() {
   const { org, workspaces, currentWorkspace } = useWorkspace();
   const [users, setUsers] = useState<OrgUser[]>([]);
@@ -34,6 +86,12 @@ export default function SettingsPage() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [newApiKeyName, setNewApiKeyName] = useState('');
   const [newApiKeySecret, setNewApiKeySecret] = useState<string | null>(null);
+  const [inspector, setInspector] = useState<InspectorSnapshot | null>(null);
+  const [policies, setPolicies] = useState<CompanyPolicies | null>(null);
+  const [sensitiveColumns, setSensitiveColumns] = useState<string[]>([]);
+  const [gravity, setGravity] = useState<PlatformGravitySnapshot | null>(null);
+  const [simulation, setSimulation] = useState<GovernanceSimulation | null>(null);
+  const [simLoading, setSimLoading] = useState(false);
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -93,10 +151,66 @@ export default function SettingsPage() {
       }
     };
 
+    const loadEnterpriseSnapshot = async () => {
+      if (!org?.id) return;
+      const token = localStorage.getItem('voxcore_token') || '';
+      const workspaceHeader: Record<string, string> = currentWorkspace?.id
+        ? { 'X-Workspace-ID': String(currentWorkspace.id) }
+        : {};
+
+      try {
+        const [inspectorRes, policyRes] = await Promise.all([
+          fetch(apiUrl('/api/inspector'), {
+            headers: { Authorization: `Bearer ${token}`, ...workspaceHeader },
+          }),
+          fetch(apiUrl(`/api/v1/policies/${org.id}`), {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        try {
+          const gravityRes = await fetch(apiUrl('/api/v1/platform/gravity'), {
+            headers: { Authorization: `Bearer ${token}`, ...workspaceHeader },
+          });
+          if (gravityRes.ok) {
+            const gravityData = await gravityRes.json();
+            setGravity(gravityData || null);
+          } else {
+            setGravity(null);
+          }
+        } catch {
+          setGravity(null);
+        }
+
+        if (inspectorRes.ok) {
+          const data = await inspectorRes.json();
+          setInspector(data || null);
+        } else {
+          setInspector(null);
+        }
+
+        if (policyRes.ok) {
+          const data = await policyRes.json();
+          setPolicies(data.policies || null);
+          const cols = data?.policies?.protect_sensitive_columns?.blocked_columns;
+          setSensitiveColumns(Array.isArray(cols) ? cols.slice(0, 25).map((v: any) => String(v)) : []);
+        } else {
+          setPolicies(null);
+          setSensitiveColumns([]);
+        }
+      } catch {
+        setInspector(null);
+        setPolicies(null);
+        setSensitiveColumns([]);
+        setGravity(null);
+      }
+    };
+
     loadUsers();
     loadDatasources();
     loadApiKeys();
-  }, [org?.id]);
+    loadEnterpriseSnapshot();
+  }, [org?.id, currentWorkspace?.id]);
 
   const createApiKey = async () => {
     if (!org?.id || !newApiKeyName.trim()) return;
@@ -135,6 +249,36 @@ export default function SettingsPage() {
     setApiKeys((prev) => prev.map((k) => (k.id === id ? { ...k, is_active: 0 } : k)));
   };
 
+  const runGovernanceSimulation = async () => {
+    if (!org?.id) return;
+    setSimLoading(true);
+    const token = localStorage.getItem('voxcore_token') || '';
+    const workspaceHeader: Record<string, string> = currentWorkspace?.id
+      ? { 'X-Workspace-ID': String(currentWorkspace.id) }
+      : {};
+    try {
+      const res = await fetch(apiUrl('/api/v1/platform/governance/simulate'), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          ...workspaceHeader,
+        },
+        body: JSON.stringify({ window_days: 30, policy_overrides: {} }),
+      });
+      if (!res.ok) {
+        setSimulation(null);
+        return;
+      }
+      const data = await res.json();
+      setSimulation(data || null);
+    } catch {
+      setSimulation(null);
+    } finally {
+      setSimLoading(false);
+    }
+  };
+
   return (
     <div style={{ color: '#e2e8f0' }}>
       <PageHeader title="Settings" subtitle="Organization, Workspace, and Access Management" />
@@ -145,6 +289,107 @@ export default function SettingsPage() {
         <div>Current Workspace: {currentWorkspace?.name || 'Unknown'}</div>
         <div>Environment: {String((currentWorkspace as { environment?: string } | null)?.environment || 'dev').toUpperCase()}</div>
         <div>Workspace Count: {workspaces.length}</div>
+      </section>
+
+      <section style={{ marginTop: 14, background: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: 14 }}>
+        <h3 style={{ marginTop: 0 }}>Enterprise Governance Snapshot</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 12 }}>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: '#93c5fd' }}>Pending AI Queries</div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>{inspector?.pending_approvals?.length || 0}</div>
+          </div>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: '#93c5fd' }}>Risk Threshold</div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>{Number(policies?.risk_based_approval?.threshold ?? 0.7).toFixed(2)}</div>
+          </div>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: '#93c5fd' }}>Sensitive Columns Tagged</div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>{sensitiveColumns.length}</div>
+          </div>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: '#93c5fd' }}>Audit Events (Recent)</div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>{inspector?.firewall_audit?.length || 0}</div>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 10, fontSize: 12, color: '#cbd5e1' }}>
+          Approval workflow: {policies?.query_approval_mode?.enabled ? 'ENABLED' : 'DISABLED'} •
+          Risk-based approval: {policies?.risk_based_approval?.enabled === false ? 'DISABLED' : 'ENABLED'}
+        </div>
+
+        {sensitiveColumns.length > 0 && (
+          <div style={{ marginBottom: 10, fontSize: 12, color: '#94a3b8' }}>
+            Sensitive policy coverage: {sensitiveColumns.slice(0, 8).join(', ')}
+            {sensitiveColumns.length > 8 ? ' ...' : ''}
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gap: 8 }}>
+          {(inspector?.pending_approvals || []).slice(0, 3).map((row) => (
+            <div key={row.id} style={{ background: '#0f172a', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: 8, padding: 10 }}>
+              <div style={{ fontWeight: 700 }}>Query #{row.id} · Risk {(row.risk_score ?? 0).toString()} ({(row.risk_level || 'unknown').toUpperCase()})</div>
+              <div style={{ fontSize: 12, color: '#cbd5e1' }}>{row.query || row.query_text || 'No query text available'}</div>
+            </div>
+          ))}
+          {(inspector?.pending_approvals || []).length === 0 && (
+            <div style={{ fontSize: 12, color: '#94a3b8' }}>No pending approvals right now.</div>
+          )}
+        </div>
+      </section>
+
+      <section style={{ marginTop: 14, background: '#111827', border: '1px solid rgba(124, 58, 237, 0.35)', borderRadius: 10, padding: 14 }}>
+        <h3 style={{ marginTop: 0 }}>Platform Gravity Preview</h3>
+        <div style={{ marginBottom: 10, fontSize: 12, color: '#c4b5fd' }}>
+          Foundations for AI Copilot, Autonomous Agents, Governance Simulator, and Data Intelligence Graph.
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 12 }}>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.25)', borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: '#c4b5fd' }}>Copilot Semantic Context</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{gravity?.copilot_context?.semantic_models ?? 0} models</div>
+          </div>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.25)', borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: '#c4b5fd' }}>Autonomous Agent Signals</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{gravity?.autonomous_agents?.insights_detected ?? 0} insights</div>
+          </div>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.25)', borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: '#c4b5fd' }}>Intelligence Graph Tables</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{gravity?.intelligence_graph?.nodes?.tables ?? 0}</div>
+          </div>
+          <div style={{ background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.25)', borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: '#c4b5fd' }}>Graph Query Volume</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{gravity?.intelligence_graph?.nodes?.queries ?? 0}</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+          <button
+            onClick={() => void runGovernanceSimulation()}
+            style={{ background: '#7c3aed', border: 'none', borderRadius: 8, color: '#fff', padding: '8px 12px', cursor: 'pointer' }}
+            disabled={simLoading}
+          >
+            {simLoading ? 'Simulating...' : 'Run AI Governance Simulator (30d)'}
+          </button>
+        </div>
+
+        {simulation && (
+          <div style={{ background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.25)', borderRadius: 8, padding: 10, fontSize: 12, color: '#ddd6fe' }}>
+            <div>Queries analyzed: {simulation.queries_analyzed ?? 0}</div>
+            <div>Queries affected: {simulation.queries_affected ?? 0}</div>
+            <div>Queries blocked: {simulation.queries_blocked ?? 0}</div>
+            <div>Approval required: {simulation.queries_requiring_approval ?? 0}</div>
+            <div>High cost queries: {simulation.high_cost_queries ?? 0}</div>
+            <div>Risky queries prevented: {simulation.risky_queries_prevented ?? 0}</div>
+          </div>
+        )}
+
+        {Array.isArray(gravity?.intelligence_graph?.highlights) && gravity?.intelligence_graph?.highlights?.length ? (
+          <div style={{ marginTop: 10, fontSize: 12, color: '#cbd5e1' }}>
+            {(gravity?.intelligence_graph?.highlights || []).slice(0, 2).map((h) => (
+              <div key={h}>• {h}</div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section style={{ marginTop: 14, background: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: 14 }}>

@@ -24,6 +24,8 @@ env/
 
 # Node
 node_modules/
+dist/
+frontend/dist/
 npm-debug.log
 yarn-error.log
 .next/
@@ -55,3 +57,4 @@ logs/
 # Temp files
 *.tmp
 *.bak
+.tmp/

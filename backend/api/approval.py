@@ -13,7 +13,8 @@ router = APIRouter(prefix="/api/approval", tags=["approval-queue"])
 def get_pending():
     """Return all queries awaiting human approval."""
     try:
-        return {"pending": queue.list_pending()}
+        status = queue.get_queue_status()
+        return {"pending": queue.list_pending(), **status}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -22,6 +23,9 @@ def get_pending():
 
 @router.get("/{query_id}")
 def get_query(query_id: int):
+    status = queue.get_queue_status()
+    if not status["available"]:
+        raise HTTPException(status_code=503, detail=status["detail"] or "Approval queue unavailable")
     row = queue.get_by_id(query_id)
     if not row:
         raise HTTPException(status_code=404, detail="Query not found")
@@ -42,6 +46,8 @@ def approve_query(query_id: int, body: ReviewRequest):
         return {"status": "approved", "query": row}
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -56,5 +62,7 @@ def reject_query(query_id: int, body: ReviewRequest):
         return {"status": "rejected", "query": row}
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
