@@ -46,6 +46,7 @@ out/
 *.db
 *.sqlite
 *.sqlite3
+data/
 
 # Logs
 *.log
