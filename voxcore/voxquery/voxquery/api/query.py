@@ -1,7 +1,7 @@
 """Query endpoints"""
 
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Dict, Any
 import logging
 import re
@@ -158,6 +158,8 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     """Query response model"""
+    model_config = ConfigDict(protected_namespaces=())
+
     question: str
     sql: Optional[str] = None
     query_type: Optional[str] = None

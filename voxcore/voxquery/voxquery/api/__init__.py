@@ -4,6 +4,7 @@ __all__ = ["app"]
 
 import logging
 import os
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
@@ -14,6 +15,28 @@ from . import health, query, schema, auth, connection, metrics, governance, fire
 from .models import init_db
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_frontend_dir(env_var: str, candidates: list[Path], label: str) -> str:
+    """Resolve frontend directory from env override then known deployment paths."""
+    env_path = os.environ.get(env_var)
+    search_paths: list[Path] = []
+
+    if env_path:
+        search_paths.append(Path(env_path).expanduser())
+    search_paths.extend(candidates)
+
+    for candidate in search_paths:
+        resolved = candidate.resolve()
+        if resolved.exists() and resolved.is_dir():
+            return str(resolved)
+
+    logger.warning(
+        "%s folder not found. Checked paths: %s",
+        label,
+        ", ".join(str(path) for path in search_paths),
+    )
+    return ""
 
 # Create FastAPI app
 app = FastAPI(
@@ -39,8 +62,15 @@ app.add_middleware(
 )
 
 # Serve static files from frontend public folder (marketing site)
-frontend_public = os.path.join(os.path.dirname(__file__), "../../../../frontend/public")
-frontend_public = os.path.abspath(frontend_public)  # Normalize the path
+_api_dir = Path(__file__).resolve().parent
+frontend_public = _resolve_frontend_dir(
+    "FRONTEND_PUBLIC",
+    [
+        _api_dir / "../../../../frontend/public",
+        Path("/opt/render/project/src/frontend/public"),
+    ],
+    "Frontend public",
+)
 if os.path.exists(frontend_public):
     # Mount styles folder if it exists
     styles_dir = os.path.join(frontend_public, "styles")
@@ -50,21 +80,23 @@ if os.path.exists(frontend_public):
     images_dir = os.path.join(frontend_public, "images")
     if os.path.exists(images_dir):
         app.mount("/images", StaticFiles(directory=images_dir), name="images")
-    logger.info(f"✅ Marketing site static files mounted from {frontend_public}")
-else:
-    logger.warning(f"⚠️  Frontend public folder not found at {frontend_public}")
+    logger.info(f"Marketing site static files mounted from {frontend_public}")
 
 # Serve built React SPA from frontend/dist/ (the actual app)
-frontend_dist = os.path.join(os.path.dirname(__file__), "../../../../frontend/dist")
-frontend_dist = os.path.abspath(frontend_dist)
+frontend_dist = _resolve_frontend_dir(
+    "FRONTEND_DIST",
+    [
+        _api_dir / "../../../../frontend/dist",
+        Path("/opt/render/project/src/frontend/dist"),
+    ],
+    "Frontend dist",
+)
 if os.path.exists(frontend_dist):
     # Mount the assets folder for JS/CSS bundles
     assets_dir = os.path.join(frontend_dist, "assets")
     if os.path.exists(assets_dir):
         app.mount("/assets", StaticFiles(directory=assets_dir), name="spa-assets")
-    logger.info(f"✅ React SPA static files mounted from {frontend_dist}")
-else:
-    logger.warning(f"⚠️  Frontend dist folder not found at {frontend_dist}")
+    logger.info(f"React SPA static files mounted from {frontend_dist}")
 
 # Root endpoint - serve marketing home page
 @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
