@@ -13,6 +13,7 @@ import json
 import secrets
 import sqlite3
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -20,8 +21,10 @@ from typing import Dict, List, Optional
 SUPPORTED_ROLES = {
     "god",
     "admin",
+    "platform_owner",
     "data_guardian",
     "ai_analyst",
+    "sandbox_user",
     "viewer",
     "developer",
     "analyst",
@@ -173,6 +176,33 @@ def init_db():
                 is_dismissed  INTEGER NOT NULL DEFAULT 0,
                 created_at    TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS playground_sessions (
+                session_id    TEXT PRIMARY KEY,
+                org_id        INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+                workspace_id  INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                role          TEXT NOT NULL DEFAULT 'sandbox_user',
+                database_name TEXT NOT NULL DEFAULT 'voxcore_demo',
+                expires_at    TEXT NOT NULL,
+                created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS share_insights (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                share_id       TEXT NOT NULL UNIQUE,
+                session_id     TEXT,
+                org_id         INTEGER NOT NULL,
+                workspace_id   INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                title          TEXT NOT NULL,
+                question       TEXT,
+                sql_query      TEXT,
+                ai_explanation TEXT,
+                chart_data     TEXT,
+                preview_rows   TEXT,
+                created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+                expires_at     TEXT NOT NULL,
+                is_playground_only INTEGER NOT NULL DEFAULT 1
+            );
         """)
 
         # Lightweight forward-only schema compatibility for already-created DBs
@@ -258,6 +288,12 @@ def create_org(name: str) -> Dict:
             ("Default", "default", org_id),
         )
     return get_org(org_id)
+
+
+def delete_org(org_id: int) -> bool:
+    with _get_conn() as conn:
+        cur = conn.execute("DELETE FROM organizations WHERE id = ?", (org_id,))
+    return cur.rowcount > 0
 
 
 # ── Workspaces ─────────────────────────────────────────────────────────────────
@@ -843,3 +879,151 @@ def delete_semantic_model(model_id: int) -> bool:
             (model_id,),
         )
     return cur.rowcount > 0
+
+
+def create_playground_session(duration_hours: int = 24) -> Dict:
+    safe_hours = max(4, min(int(duration_hours or 24), 24))
+    suffix = secrets.randbelow(90000) + 10000
+    session_id = f"playground_session_{suffix}"
+    workspace_name = f"playground_session_{suffix}"
+    workspace_slug = f"playground-{suffix}"
+    org_name = f"VoxCore Playground {suffix}"
+    org_slug = f"voxcore-playground-{suffix}"
+    expires_at = (datetime.utcnow() + timedelta(hours=safe_hours)).strftime("%Y-%m-%d %H:%M:%S")
+
+    with _get_conn() as conn:
+        conn.execute(
+            "INSERT INTO organizations (name, slug) VALUES (?, ?)",
+            (org_name, org_slug),
+        )
+        org_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        conn.execute(
+            """
+            INSERT INTO workspaces (name, slug, org_id, environment)
+            VALUES (?, ?, ?, ?)
+            """,
+            (workspace_name, workspace_slug, org_id, "test"),
+        )
+        workspace_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        conn.execute(
+            """
+            INSERT INTO playground_sessions (session_id, org_id, workspace_id, role, database_name, expires_at)
+            VALUES (?, ?, ?, 'sandbox_user', 'voxcore_demo', ?)
+            """,
+            (session_id, org_id, workspace_id, expires_at),
+        )
+
+    return {
+        "session_id": session_id,
+        "org_id": org_id,
+        "workspace_id": workspace_id,
+        "workspace_name": workspace_name,
+        "role": "sandbox_user",
+        "database": "voxcore_demo",
+        "expires_at": expires_at,
+        "expires_in_hours": safe_hours,
+    }
+
+
+def get_playground_session(session_id: str) -> Optional[Dict]:
+    with _get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT session_id, org_id, workspace_id, role, database_name, expires_at, created_at
+            FROM playground_sessions
+            WHERE session_id = ?
+            """,
+            (session_id,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def cleanup_expired_playground_sessions() -> int:
+    with _get_conn() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT org_id FROM playground_sessions WHERE expires_at <= datetime('now')"
+        ).fetchall()
+        org_ids = [int(r[0]) for r in rows]
+        for org_id in org_ids:
+            conn.execute("DELETE FROM organizations WHERE id = ?", (org_id,))
+    return len(org_ids)
+
+
+def create_share_insight(
+    org_id: int,
+    workspace_id: int,
+    title: str,
+    question: str,
+    sql_query: str,
+    ai_explanation: str,
+    chart_data: Dict,
+    preview_rows: List[Dict],
+    session_id: Optional[str] = None,
+    ttl_hours: int = 72,
+) -> Dict:
+    safe_ttl = max(1, min(int(ttl_hours or 72), 168))
+    share_id = secrets.token_urlsafe(6).replace("-", "").replace("_", "")[:8].lower()
+    expires_at = (datetime.utcnow() + timedelta(hours=safe_ttl)).strftime("%Y-%m-%d %H:%M:%S")
+
+    with _get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO share_insights (
+                share_id, session_id, org_id, workspace_id, title, question,
+                sql_query, ai_explanation, chart_data, preview_rows, expires_at, is_playground_only
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            """,
+            (
+                share_id,
+                session_id,
+                org_id,
+                workspace_id,
+                (title or "VoxCore Playground Insight").strip(),
+                (question or "").strip(),
+                (sql_query or "").strip(),
+                (ai_explanation or "").strip(),
+                json.dumps(chart_data or {}),
+                json.dumps(preview_rows or []),
+                expires_at,
+            ),
+        )
+
+    return {
+        "share_id": share_id,
+        "org_id": org_id,
+        "workspace_id": workspace_id,
+        "expires_at": expires_at,
+    }
+
+
+def get_share_insight(share_id: str) -> Optional[Dict]:
+    with _get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT share_id, session_id, org_id, workspace_id, title, question,
+                   sql_query, ai_explanation, chart_data, preview_rows, created_at, expires_at,
+                   is_playground_only
+            FROM share_insights
+            WHERE share_id = ?
+              AND expires_at > datetime('now')
+            """,
+            (share_id,),
+        ).fetchone()
+    if not row:
+        return None
+    item = dict(row)
+    for key in ("chart_data", "preview_rows"):
+        try:
+            item[key] = json.loads(item.get(key) or "{}")
+        except Exception:
+            item[key] = {} if key == "chart_data" else []
+    return item
+
+
+def cleanup_expired_share_insights() -> int:
+    with _get_conn() as conn:
+        cur = conn.execute("DELETE FROM share_insights WHERE expires_at <= datetime('now')")
+    return int(cur.rowcount or 0)

@@ -24,6 +24,17 @@ ROLE_PERMISSIONS: Dict[str, list[str]] = {
         "queries.run",
         "insights.view",
     ],
+    "platform_owner": [
+        "system.manage",
+        "policies.manage",
+        "users.manage",
+        "datasources.manage",
+        "semantic_models.manage",
+        "observability.view",
+        "queries.approve",
+        "queries.run",
+        "insights.view",
+    ],
     "data_guardian": [
         "queries.approve",
         "policies.manage",

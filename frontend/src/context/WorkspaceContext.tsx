@@ -17,6 +17,8 @@ type Org = {
 type WorkspaceContextValue = {
   loading: boolean;
   org: Org | null;
+  role: string;
+  isSuperAdmin: boolean;
   workspaces: Workspace[];
   currentWorkspace: Workspace | null;
   setCurrentWorkspaceId: (workspaceId: number) => Promise<void>;
@@ -36,6 +38,8 @@ function parseNumber(value: string | null, fallback: number): number {
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [org, setOrg] = useState<Org | null>(null);
+  const [role, setRole] = useState<string>('viewer');
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
 
@@ -66,6 +70,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('voxcore_workspace_id', String(workspaceId));
         if (me.org_name) localStorage.setItem('voxcore_org_name', String(me.org_name));
         if (me.workspace_name) localStorage.setItem('voxcore_workspace_name', String(me.workspace_name));
+        localStorage.setItem('voxcore_role', String(me.role || 'viewer'));
+        localStorage.setItem('voxcore_is_super_admin', String(Boolean(me.is_super_admin)));
+        setRole(String(me.role || 'viewer'));
+        setIsSuperAdmin(Boolean(me.is_super_admin));
 
         setOrg({ id: orgId, name: String(me.org_name || 'Organization') });
 
@@ -101,6 +109,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           name: localStorage.getItem('voxcore_workspace_name') || 'Default',
         };
         setOrg(fallbackOrg);
+        setRole(localStorage.getItem('voxcore_role') || 'viewer');
+        setIsSuperAdmin(localStorage.getItem('voxcore_is_super_admin') === 'true');
         setWorkspaces([fallbackWs]);
         setCurrentWorkspace(fallbackWs);
       } finally {
@@ -145,11 +155,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     () => ({
       loading,
       org,
+      role,
+      isSuperAdmin,
       workspaces,
       currentWorkspace,
       setCurrentWorkspaceId,
     }),
-    [loading, org, workspaces, currentWorkspace]
+    [loading, org, role, isSuperAdmin, workspaces, currentWorkspace]
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

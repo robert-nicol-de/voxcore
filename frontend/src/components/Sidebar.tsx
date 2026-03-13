@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { canAccessControlCenter } from '../utils/permissions';
 
 const primaryLinks = [
   { to: '/app/dashboard',     label: 'Dashboard' },
@@ -21,7 +22,11 @@ const dataLinks = [
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
-  const { org, workspaces, currentWorkspace, setCurrentWorkspaceId } = useWorkspace();
+  const { org, role, isSuperAdmin, workspaces, currentWorkspace, setCurrentWorkspaceId } = useWorkspace();
+  const showControlCenter = canAccessControlCenter(role, isSuperAdmin);
+  const platformLinks = showControlCenter
+    ? [...primaryLinks, { to: '/app/control-center', label: 'VoxCore Control Center' }]
+    : primaryLinks;
 
   return (
     <aside
@@ -95,7 +100,7 @@ export const Sidebar: React.FC = () => {
         Platform
       </div>
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {primaryLinks.map((item) => {
+        {platformLinks.map((item) => {
           const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
           return (
             <Link

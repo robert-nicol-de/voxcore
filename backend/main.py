@@ -118,6 +118,7 @@ async def enforce_jwt_for_api(request: Request, call_next):
         request.state.user_email = payload.get("email")
         request.state.org_id = org_id
         request.state.role = role
+        request.state.is_super_admin = bool(payload.get("is_super_admin", False))
         request.state.workspace_id = workspace_id
         request.state.datasource_id = request.headers.get("X-Datasource-ID")
 

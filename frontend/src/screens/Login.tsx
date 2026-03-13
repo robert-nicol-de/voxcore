@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Login.css';
 import { apiUrl } from '../lib/api';
 
@@ -8,6 +9,7 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -61,11 +63,16 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => 
       if (data.workspace_id != null) localStorage.setItem('voxcore_workspace_id', String(data.workspace_id));
       if (data.workspace_name) localStorage.setItem('voxcore_workspace_name', String(data.workspace_name));
       if (data.company_id != null) localStorage.setItem('voxcore_company_id', String(data.company_id));
+      localStorage.setItem('voxcore_role', String(data.role || 'viewer'));
+      localStorage.setItem('voxcore_is_super_admin', String(Boolean(data.is_super_admin)));
 
       // Only call onLogin after successful validation
       if (onLogin) {
         onLogin(data.user_name);
       }
+
+      // Enforce a direct post-login route so auth never falls back to marketing view.
+      navigate('/app/dashboard', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {

@@ -18,8 +18,10 @@ import SettingsPage from './pages/Settings';
 import SchemaExplorerPage from './pages/SchemaExplorerPage';
 import ArchitecturePage from './pages/Architecture';
 import AgentInsightsPage from './pages/AgentInsights';
+import ControlCenter from './pages/ControlCenter';
 import RequireAuth from './components/auth/RequireAuth';
 import WorkspaceSwitcher from './components/WorkspaceSwitcher';
+import { apiUrl } from './lib/api';
 
 const platformFeatures = [
   {
@@ -78,6 +80,7 @@ const riskList = [
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoginPage, setShowLoginPage] = useState(false);
+  const [launchingPlayground, setLaunchingPlayground] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -104,6 +107,8 @@ function App() {
     localStorage.removeItem('voxcore_company_id');
     localStorage.removeItem('voxcore_workspace_id');
     localStorage.removeItem('voxcore_workspace_name');
+    localStorage.removeItem('voxcore_role');
+    localStorage.removeItem('voxcore_is_super_admin');
     navigate('/');
   };
 
@@ -111,8 +116,42 @@ function App() {
     document.getElementById('voxcore-demo')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const launchPlayground = async () => {
+    setLaunchingPlayground(true);
+    try {
+      const response = await fetch(apiUrl('/api/v1/auth/playground'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expires_hours: 24 }),
+      });
+      if (!response.ok) {
+        throw new Error('Unable to start playground session');
+      }
+
+      const data = await response.json();
+      localStorage.setItem('voxcore_token', data.access_token);
+      if (data.user_name) localStorage.setItem('voxcore_user_name', data.user_name);
+      if (data.user_email) localStorage.setItem('voxcore_user_email', data.user_email);
+      if (data.org_id != null) localStorage.setItem('voxcore_org_id', String(data.org_id));
+      if (data.org_name) localStorage.setItem('voxcore_org_name', String(data.org_name));
+      if (data.workspace_id != null) localStorage.setItem('voxcore_workspace_id', String(data.workspace_id));
+      if (data.workspace_name) localStorage.setItem('voxcore_workspace_name', String(data.workspace_name));
+      if (data.company_id != null) localStorage.setItem('voxcore_company_id', String(data.company_id));
+      localStorage.setItem('voxcore_role', String(data.role || 'sandbox_user'));
+      localStorage.setItem('voxcore_is_super_admin', 'false');
+
+      setIsLoggedIn(true);
+      navigate('/app', { replace: true });
+    } catch {
+      setShowLoginPage(true);
+    } finally {
+      setLaunchingPlayground(false);
+    }
+  };
+
   const protectedPaths = ['/dashboard', '/datasources', '/sql', '/schema', '/governance', '/workspaces'];
   const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token');
+  const showAuthRequiredBanner = !token && new URLSearchParams(location.search).get('auth') === 'required';
   const isProtectedPath =
     location.pathname.startsWith('/app') ||
     location.pathname.startsWith('/datasources/new') ||
@@ -127,7 +166,7 @@ function App() {
   }
 
   if (!token && isProtectedPath) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/?auth=required" replace />;
   }
 
   if (!token) {
@@ -173,6 +212,22 @@ function App() {
         </header>
 
         <main>
+          {showAuthRequiredBanner && (
+            <div
+              style={{
+                margin: '14px auto 0',
+                maxWidth: 1160,
+                borderRadius: 10,
+                padding: '10px 14px',
+                border: '1px solid rgba(251,191,36,0.35)',
+                color: '#fef3c7',
+                background: 'rgba(120,53,15,0.35)',
+                fontSize: 13,
+              }}
+            >
+              You’re not signed in. Please log in to access VoxCore workspace routes.
+            </div>
+          )}
           <section
             style={{
               color: '#fff',
@@ -186,7 +241,18 @@ function App() {
             }}
           >
             <div>
-              <img src="/assets/VC_full_logo_text.png" alt="VoxCore" style={{ width: 420, maxWidth: '100%', marginBottom: 20 }} />
+              <div
+                style={{
+                  display: 'inline-flex',
+                  padding: 10,
+                  borderRadius: 14,
+                  background: 'rgba(248,250,252,0.92)',
+                  boxShadow: '0 16px 40px rgba(2,6,23,0.35)',
+                  marginBottom: 20,
+                }}
+              >
+                <img src="/assets/VC_full_logo_text.png" alt="VoxCore" style={{ width: 520, maxWidth: '100%', objectFit: 'contain' }} />
+              </div>
               <p style={{ fontSize: '1.1rem', fontWeight: 700, color: '#a6d3ff', marginTop: 0 }}>AI Data Governance Platform</p>
               <p style={{ marginTop: 8, maxWidth: 700, fontSize: '1.2rem', lineHeight: 1.6, color: '#cbd5e1' }}>
                 Control How AI Touches Your Data
@@ -200,9 +266,9 @@ function App() {
                 </button>
                 <button
                   style={{ background: 'rgba(15,23,42,0.35)', color: '#e2e8f0', border: '1px solid rgba(148,163,184,0.3)', borderRadius: '999px', padding: '14px 22px', fontWeight: 800, cursor: 'pointer' }}
-                  onClick={scrollToDemo}
+                  onClick={launchPlayground}
                 >
-                  View Demo
+                  {launchingPlayground ? 'Starting Playground...' : 'Try VoxCore Playground'}
                 </button>
               </div>
             </div>
@@ -435,6 +501,7 @@ function App() {
               <Route path="/app/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
               <Route path="/app/architecture" element={<RequireAuth><ArchitecturePage /></RequireAuth>} />
               <Route path="/app/agents" element={<RequireAuth><AgentInsightsPage /></RequireAuth>} />
+              <Route path="/app/control-center" element={<RequireAuth><ControlCenter /></RequireAuth>} />
               <Route path="/app" element={<RequireAuth><SqlAssistant /></RequireAuth>} />
               <Route path="/dashboard" element={<RequireAuth><Navigate to="/app/dashboard" replace /></RequireAuth>} />
               <Route path="/datasources" element={<RequireAuth><Navigate to="/app/datasources" replace /></RequireAuth>} />

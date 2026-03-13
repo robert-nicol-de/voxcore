@@ -96,6 +96,10 @@ class SwitchWorkspaceRequest(BaseModel):
     workspace_id: int
 
 
+class PlaygroundBootstrapRequest(BaseModel):
+    expires_hours: Optional[int] = 24
+
+
 router = APIRouter()
 connection_manager = ConnectionManager()
 org_store.init_db()
@@ -241,6 +245,7 @@ def _login(user: LoginRequest):
     org_user = org_store.verify_user(login_email, provided_password)
     if org_user:
         effective_role = org_user["role"]
+        is_super_admin = effective_role == "god"
         org_id = org_user["org_id"]
         workspace_id = org_user.get("workspace_id")
         if not workspace_id:
@@ -258,6 +263,7 @@ def _login(user: LoginRequest):
                 "company_id": org_id,
                 "org_id": org_id,
                 "workspace_id": workspace_id,
+                "is_super_admin": is_super_admin,
             },
             expires_hours=token_expires_hours,
         )
@@ -273,6 +279,7 @@ def _login(user: LoginRequest):
             "org_name": org.get("name", ""),
             "workspace_id": workspace_id,
             "workspace_name": (ws_detail or {}).get("name", "Default"),
+            "is_super_admin": is_super_admin,
         }
 
     db_user = get_user_by_email(login_email)
@@ -282,6 +289,7 @@ def _login(user: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     effective_role = "god" if login_email == PRIMARY_GOD_EMAIL.lower() else db_user["role"]
+    is_super_admin = effective_role == "god"
     default_org_id = 1
     ws_default = org_store.get_default_workspace(default_org_id)
     default_ws_id = ws_default["id"] if ws_default else None
@@ -298,6 +306,7 @@ def _login(user: LoginRequest):
             "company_id": default_org_id,
             "org_id": default_org_id,
             "workspace_id": default_ws_id,
+            "is_super_admin": is_super_admin,
         },
         expires_hours=token_expires_hours,
     )
@@ -313,6 +322,7 @@ def _login(user: LoginRequest):
         "org_name": org_name,
         "workspace_id": default_ws_id,
         "workspace_name": ws_name,
+        "is_super_admin": is_super_admin,
     }
 
 
@@ -324,6 +334,43 @@ def login(user: LoginRequest):
 @router.post("/api/v1/auth/login")
 def login_v1(user: LoginRequest):
     return _login(user)
+
+
+@router.post("/api/v1/auth/playground")
+def bootstrap_playground(req: PlaygroundBootstrapRequest):
+    session = org_store.create_playground_session(duration_hours=req.expires_hours or 24)
+    token = create_token(
+        {
+            "user_id": 0,
+            "email": "playground@voxcore.local",
+            "role": "sandbox_user",
+            "company_id": session["org_id"],
+            "org_id": session["org_id"],
+            "workspace_id": session["workspace_id"],
+            "is_super_admin": False,
+            "session_type": "playground",
+            "session_id": session["session_id"],
+        },
+        expires_hours=session.get("expires_in_hours", 24),
+    )
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user_name": "Playground User",
+        "user_email": "playground@voxcore.local",
+        "role": "sandbox_user",
+        "is_super_admin": False,
+        "company_id": session["org_id"],
+        "org_id": session["org_id"],
+        "org_name": "VoxCore Playground",
+        "workspace_id": session["workspace_id"],
+        "workspace_name": "VoxCore Playground",
+        "database": session.get("database", "voxcore_demo"),
+        "session_id": session["session_id"],
+        "expires_at": session["expires_at"],
+        "mode": "playground",
+    }
 
 
 @router.post("/api/logout")
@@ -492,6 +539,7 @@ def get_me(request: Request):
     return {
         "user_id": payload.get("user_id"),
         "role": payload.get("role"),
+        "is_super_admin": bool(payload.get("is_super_admin", False)),
         "company_id": payload.get("company_id", org_id),
         "org_id": org_id,
         "org_name": org.get("name", "VoxCore Demo"),
@@ -526,6 +574,7 @@ def switch_workspace(req: SwitchWorkspaceRequest, request: Request):
             "company_id": payload.get("company_id", org_id),
             "org_id": org_id,
             "workspace_id": req.workspace_id,
+            "is_super_admin": bool(payload.get("is_super_admin", False)),
         },
         expires_hours=None if payload.get("role") == "god" else 8,
     )
