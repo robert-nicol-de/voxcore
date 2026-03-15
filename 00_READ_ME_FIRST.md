@@ -1,3 +1,45 @@
+# VoxCore: AI Failure Handling System (AFHS)
+
+VoxCore includes a production-grade AI Failure Handling System (AFHS) that ensures every AI request is validated, recoverable, and explainable.
+
+**Core features:**
+- Prevents bad SQL from reaching databases
+- Detects and recovers from AI reasoning failures
+- Provides clear, actionable user feedback
+- Logs all failures for learning and continuous improvement
+- Integrates with Guardian for final safety enforcement
+
+**System state levels:** GREEN (confident), YELLOW (ambiguous), ORANGE (auto-corrected), RED (failure)
+
+**Why it matters:**
+Wrong answers are worse than failed answers. VoxCore always prefers safe failure over hallucination, making it enterprise-grade.
+
+See AFHS_ARCHITECTURE.md for full details and architecture diagram.
+
+# VoxCore: Three-Level Metric System & Governance (Key Differentiator)
+
+VoxCore tracks and exposes metrics at three levels:
+
+**Level 1 — Internal (Engineering Only):**
+- AI Accuracy (benchmark/canonical question score)
+- Semantic Coverage (% of metrics/dimensions covered)
+- Benchmark Score (aggregated from test harness)
+
+**Level 2 — Platform Health (Owner Dashboard):**
+- Query Success Rate
+- AI Response Latency
+- Guardian Security Events
+
+**Level 3 — Customer View:**
+- AI Capabilities (analytics, NLQ, coverage)
+- Security Features (Guardian, audit, compliance)
+- Data Governance (lineage, access controls)
+
+**Why This Matters:**
+VoxCore’s architecture (Brain, Semantic Layer, Insight Engine, Guardian, Benchmark system) enables measurable, explainable, and secure AI analytics. This is a major selling point and differentiator versus typical AI data tools.
+
+See METRIC_LEVELS.md for full details and mapping.
+
 # 🎯 VoxQuery - Complete Project Built From Scratch
 
 ## 📍 Project Location

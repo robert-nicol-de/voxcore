@@ -44,12 +44,77 @@ type ControlCenterPayload = {
     status?: string;
     components?: Record<string, string>;
   };
+  platform_intelligence?: {
+    feature_adoption?: {
+      items?: Array<{ feature?: string; usage?: number; adoption_pct?: number }>;
+      insight?: string;
+      suggested_improvement?: string;
+    };
+    ai_failure_detection?: {
+      unclear_results_pct?: number;
+      rephrase_rate_pct?: number;
+      finance_query_share_pct?: number;
+      insight?: string;
+      suggested_improvement?: string;
+    };
+    guardian_activity?: {
+      blocked_unsafe_queries?: number;
+      permission_violations_prevented?: number;
+      insight?: string;
+      suggested_improvement?: string;
+    };
+    organization_health?: Array<{ name?: string; queries?: number; health?: string; suggested_action?: string }>;
+    system_performance?: {
+      average_query_time_ms?: number;
+      peak_usage_window?: string;
+      query_success_rate_pct?: number;
+      insight?: string;
+      suggested_improvement?: string;
+    };
+    ai_recommendations?: Array<{ title?: string; detail?: string; priority?: string }>;
+    platform_risk_detector?: {
+      title?: string;
+      alerts?: Array<{ severity?: string; message?: string }>;
+    };
+    executive_briefing?: {
+      title?: string;
+      summary_lines?: string[];
+      suggested_action?: string;
+    };
+    product_roadmap_ai?: {
+      insights?: Array<{ title?: string; evidence?: string; recommendation?: string; priority?: string }>;
+      founder_mode?: {
+        global_user_activity?: number;
+        fastest_growing_organizations?: Array<{ name?: string; current_queries?: number; previous_queries?: number; growth_pct?: number }>;
+        ai_usage_trend_pct?: number;
+        system_risk_level?: string;
+        recommended_focus?: string;
+      };
+      weekly_founder_briefing?: {
+        title?: string;
+        summary_lines?: string[];
+        suggested_focus?: string;
+      };
+    };
+  };
+};
+
+type PlatformIntelligencePayload = NonNullable<ControlCenterPayload['platform_intelligence']> & {
+  selected_range?: string;
+  platform_health?: {
+    score?: number;
+    query_success_rate_pct?: number;
+    guardian_status?: string;
+    latency_status?: string;
+  };
 };
 
 export default function ControlCenter() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<ControlCenterPayload | null>(null);
+  const [intelligence, setIntelligence] = useState<PlatformIntelligencePayload | null>(null);
+  const [timeRange, setTimeRange] = useState('7d');
 
   const role = (localStorage.getItem('voxcore_role') || '').toLowerCase();
   const isSuperAdmin = localStorage.getItem('voxcore_is_super_admin') === 'true';
@@ -64,17 +129,24 @@ export default function ControlCenter() {
       const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
       setLoading(true);
       try {
-        const response = await fetch(apiUrl('/api/v1/platform/control-center'), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) {
+        const headers = {
+          Authorization: `Bearer ${token}`,
+        };
+        const [response, intelligenceResponse] = await Promise.all([
+          fetch(apiUrl('/api/v1/platform/control-center'), { headers }),
+          fetch(apiUrl(`/api/v1/platform/intelligence?range=${encodeURIComponent(timeRange)}`), { headers }),
+        ]);
+        if (!response.ok || !intelligenceResponse.ok) {
           const body = await response.json().catch(() => ({}));
-          throw new Error(body.detail || 'Failed to load control center');
+          const intelligenceBody = await intelligenceResponse.json().catch(() => ({}));
+          throw new Error(body.detail || intelligenceBody.detail || 'Failed to load control center');
         }
-        const data = await response.json();
+        const [data, intelligenceData] = await Promise.all([
+          response.json(),
+          intelligenceResponse.json(),
+        ]);
         setPayload(data || {});
+        setIntelligence(intelligenceData || null);
         setError(null);
       } catch (err: any) {
         setError(err.message || 'Failed to load control center');
@@ -84,7 +156,7 @@ export default function ControlCenter() {
     };
 
     void load();
-  }, [allowed]);
+  }, [allowed, timeRange]);
 
   const cards = useMemo(() => {
     const o = payload?.overview || {};
@@ -131,6 +203,20 @@ export default function ControlCenter() {
   const byPlatform = payload?.data_sources?.by_platform || {};
   const securityAlerts = payload?.security?.alerts || [];
   const components = payload?.system_health?.components || {};
+  const platformIntelligence = intelligence || payload?.platform_intelligence;
+  const featureAdoption = platformIntelligence?.feature_adoption;
+  const aiFailure = platformIntelligence?.ai_failure_detection;
+  const guardianActivity = platformIntelligence?.guardian_activity;
+  const orgHealth = platformIntelligence?.organization_health || [];
+  const systemPerformance = platformIntelligence?.system_performance;
+  const aiRecommendations = platformIntelligence?.ai_recommendations || [];
+  const riskAlerts = platformIntelligence?.platform_risk_detector?.alerts || [];
+  const executiveBriefing = platformIntelligence?.executive_briefing;
+  const platformHealth = platformIntelligence?.platform_health;
+  const productRoadmap = platformIntelligence?.product_roadmap_ai;
+  const founderMode = productRoadmap?.founder_mode;
+  const founderBriefing = productRoadmap?.weekly_founder_briefing;
+  const roadmapInsights = productRoadmap?.insights || [];
 
   return (
     <div>
@@ -146,6 +232,201 @@ export default function ControlCenter() {
             <div style={{ marginTop: 8, fontSize: 24, fontWeight: 700, color: '#e2e8f0' }}>{item.value}</div>
           </div>
         ))}
+      </section>
+
+      <section style={panelStyle}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+          <h3 style={{ ...sectionTitle, margin: 0 }}>Platform Intelligence</h3>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#cbd5e1', fontSize: 13 }}>
+            <span>Time Range</span>
+            <select
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+              style={{
+                background: 'rgba(15,23,42,0.75)',
+                color: '#e2e8f0',
+                border: '1px solid rgba(148,163,184,0.22)',
+                borderRadius: 8,
+                padding: '6px 10px',
+              }}
+            >
+              <option value="24h">Last 24 Hours</option>
+              <option value="7d">Last 7 Days</option>
+              <option value="30d">Last 30 Days</option>
+              <option value="all">All Time</option>
+            </select>
+          </label>
+        </div>
+        {platformHealth ? (
+          <div style={healthScoreStyle}>
+            <div>
+              <div style={{ color: '#7dd3fc', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Platform Health</div>
+              <div style={{ color: '#f8fafc', fontSize: 32, fontWeight: 800, marginTop: 4 }}>{platformHealth.score ?? 0}%</div>
+            </div>
+            <div style={healthMetricsStyle}>
+              <span>Query Success Rate: <strong>{platformHealth.query_success_rate_pct ?? 0}%</strong></span>
+              <span>Guardian Blocks: <strong>{String(platformHealth.guardian_status || 'normal').toUpperCase()}</strong></span>
+              <span>System Latency: <strong>{String(platformHealth.latency_status || 'optimal').toUpperCase()}</strong></span>
+            </div>
+          </div>
+        ) : null}
+        {executiveBriefing ? (
+          <div style={briefingStyle}>
+            <div style={briefingTitleStyle}>{executiveBriefing.title || 'VoxCore Executive Briefing'}</div>
+            <ul style={briefingListStyle}>
+              {(executiveBriefing.summary_lines || []).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            <div style={briefingActionStyle}>{executiveBriefing.suggested_action}</div>
+          </div>
+        ) : null}
+
+        <div style={twoColStyle}>
+          <div style={subPanelStyle}>
+            <h4 style={subSectionTitle}>Feature Adoption</h4>
+            {(featureAdoption?.items || []).map((item) => (
+              <div key={item.feature} style={metricRowStyle}>
+                <span>{item.feature}</span>
+                <strong>{item.adoption_pct ?? 0}%</strong>
+              </div>
+            ))}
+            <div style={insightBoxStyle}>{featureAdoption?.insight}</div>
+            <div style={actionHintStyle}>{featureAdoption?.suggested_improvement}</div>
+          </div>
+
+          <div style={subPanelStyle}>
+            <h4 style={subSectionTitle}>AI Failure Detection</h4>
+            <div style={metricRowStyle}><span>Unclear Results</span><strong>{aiFailure?.unclear_results_pct ?? 0}%</strong></div>
+            <div style={metricRowStyle}><span>Rephrase Rate</span><strong>{aiFailure?.rephrase_rate_pct ?? 0}%</strong></div>
+            <div style={metricRowStyle}><span>Finance Query Share</span><strong>{aiFailure?.finance_query_share_pct ?? 0}%</strong></div>
+            <div style={insightBoxStyle}>{aiFailure?.insight}</div>
+            <div style={actionHintStyle}>{aiFailure?.suggested_improvement}</div>
+          </div>
+        </div>
+
+        <div style={twoColStyle}>
+          <div style={subPanelStyle}>
+            <h4 style={subSectionTitle}>Guardian Activity</h4>
+            <div style={metricRowStyle}><span>Unsafe Queries Blocked</span><strong>{guardianActivity?.blocked_unsafe_queries ?? guardianActivity?.blocked_queries ?? 0}</strong></div>
+            <div style={metricRowStyle}><span>Permission Violations Prevented</span><strong>{guardianActivity?.permission_violations_prevented ?? guardianActivity?.permission_violations ?? 0}</strong></div>
+            <div style={insightBoxStyle}>{guardianActivity?.insight}</div>
+            <div style={actionHintStyle}>{guardianActivity?.suggested_improvement}</div>
+          </div>
+
+          <div style={subPanelStyle}>
+            <h4 style={subSectionTitle}>System Performance Intelligence</h4>
+            <div style={metricRowStyle}><span>Average Query Time</span><strong>{systemPerformance?.average_query_time_ms ?? 0}ms</strong></div>
+            <div style={metricRowStyle}><span>Peak Usage</span><strong>{systemPerformance?.peak_usage_window || systemPerformance?.peak_usage_hour || 'n/a'}</strong></div>
+            <div style={metricRowStyle}><span>Query Success Rate</span><strong>{systemPerformance?.query_success_rate_pct ?? 0}%</strong></div>
+            <div style={insightBoxStyle}>{systemPerformance?.insight}</div>
+            <div style={actionHintStyle}>{systemPerformance?.suggested_improvement}</div>
+          </div>
+        </div>
+
+        <div style={twoColStyle}>
+          <div style={subPanelStyle}>
+            <h4 style={subSectionTitle}>Organization Health Monitoring</h4>
+            <div style={tableWrapStyle}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Organization</th>
+                    <th style={thStyle}>Queries</th>
+                    <th style={thStyle}>Health</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orgHealth.length === 0 ? (
+                    <tr><td style={tdStyle} colSpan={3}>No health signals yet</td></tr>
+                  ) : orgHealth.map((org) => (
+                    <tr key={org.name}>
+                      <td style={tdStyle}>{org.name || '-'}</td>
+                      <td style={tdStyle}>{org.queries ?? 0}</td>
+                      <td style={tdStyle}>{org.health || 'unknown'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style={subPanelStyle}>
+            <h4 style={subSectionTitle}>AI Improvement Recommendations</h4>
+            {aiRecommendations.length === 0 ? (
+              <div style={{ color: 'var(--platform-muted)' }}>No recommendations available.</div>
+            ) : aiRecommendations.map((item, idx) => (
+              <div key={`${item.title || 'rec'}-${idx}`} style={recommendationCardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                  <strong style={{ color: '#e2e8f0' }}>{item.title}</strong>
+                  <span style={priorityBadgeStyle(String(item.priority || 'medium'))}>{item.priority || 'medium'}</span>
+                </div>
+                <div style={{ color: '#cbd5e1', marginTop: 6 }}>{item.detail}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={subPanelStyle}>
+          <h4 style={subSectionTitle}>Platform Risk Detector</h4>
+          {riskAlerts.length === 0 ? (
+            <div style={{ color: 'var(--platform-muted)' }}>No active platform risks detected.</div>
+          ) : riskAlerts.map((alert, idx) => (
+            <div key={`${alert.message || 'risk'}-${idx}`} style={riskAlertStyle(String(alert.severity || 'low'))}>
+              <strong style={{ textTransform: 'uppercase', fontSize: 11 }}>{alert.severity || 'low'}</strong>
+              <div style={{ marginTop: 4 }}>{alert.message}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={twoColStyle}>
+          <div style={subPanelStyle}>
+            <h4 style={subSectionTitle}>Product Roadmap AI</h4>
+            {roadmapInsights.length === 0 ? (
+              <div style={{ color: 'var(--platform-muted)' }}>No roadmap insights available.</div>
+            ) : roadmapInsights.map((item, idx) => (
+              <div key={`${item.title || 'roadmap'}-${idx}`} style={recommendationCardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                  <strong style={{ color: '#e2e8f0' }}>{item.title}</strong>
+                  <span style={priorityBadgeStyle(String(item.priority || 'medium'))}>{item.priority || 'medium'}</span>
+                </div>
+                <div style={{ color: '#cbd5e1', marginTop: 6 }}>{item.evidence}</div>
+                <div style={{ color: '#93c5fd', marginTop: 8 }}>{item.recommendation}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={subPanelStyle}>
+            <h4 style={subSectionTitle}>Founder Mode</h4>
+            <div style={metricRowStyle}><span>Global User Activity</span><strong>{founderMode?.global_user_activity ?? 0}</strong></div>
+            <div style={metricRowStyle}><span>AI Usage Trend</span><strong>{founderMode?.ai_usage_trend_pct ?? 0}%</strong></div>
+            <div style={metricRowStyle}><span>System Risk Level</span><strong>{String(founderMode?.system_risk_level || 'low').toUpperCase()}</strong></div>
+            <div style={insightBoxStyle}>{founderMode?.recommended_focus}</div>
+            <div style={{ marginTop: 12 }}>
+              <div style={{ color: '#e2e8f0', fontWeight: 700, marginBottom: 8 }}>Fastest Growing Organizations</div>
+              {(founderMode?.fastest_growing_organizations || []).length === 0 ? (
+                <div style={{ color: 'var(--platform-muted)' }}>No growth signals available.</div>
+              ) : (founderMode?.fastest_growing_organizations || []).map((org) => (
+                <div key={org.name} style={metricRowStyle}>
+                  <span>{org.name}</span>
+                  <strong>{org.growth_pct ?? 0}%</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {founderBriefing ? (
+          <div style={briefingStyle}>
+            <div style={briefingTitleStyle}>{founderBriefing.title}</div>
+            <ul style={briefingListStyle}>
+              {(founderBriefing.summary_lines || []).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            <div style={briefingActionStyle}>{founderBriefing.suggested_focus}</div>
+          </div>
+        ) : null}
       </section>
 
       <section style={panelStyle}>
@@ -352,3 +633,115 @@ const metricLineStyle: React.CSSProperties = {
   color: '#dbe7ff',
   marginBottom: 6,
 };
+
+const subPanelStyle: React.CSSProperties = {
+  background: 'rgba(15,23,42,0.55)',
+  border: '1px solid rgba(148,163,184,0.12)',
+  borderRadius: 12,
+  padding: 16,
+  marginBottom: 14,
+};
+
+const subSectionTitle: React.CSSProperties = {
+  margin: '0 0 12px 0',
+  fontSize: 15,
+  color: '#e2e8f0',
+};
+
+const briefingStyle: React.CSSProperties = {
+  background: 'linear-gradient(135deg, rgba(12,20,38,0.96), rgba(26,34,58,0.92))',
+  border: '1px solid rgba(96,165,250,0.22)',
+  borderRadius: 14,
+  padding: 18,
+  marginBottom: 16,
+};
+
+const briefingTitleStyle: React.CSSProperties = {
+  color: '#7dd3fc',
+  fontSize: 12,
+  textTransform: 'uppercase',
+  letterSpacing: '0.12em',
+  fontWeight: 700,
+};
+
+const briefingListStyle: React.CSSProperties = {
+  margin: '10px 0 12px 18px',
+  color: '#eff6ff',
+  display: 'grid',
+  gap: 8,
+};
+
+const briefingActionStyle: React.CSSProperties = {
+  color: '#cbd5e1',
+  fontSize: 13,
+};
+
+const healthScoreStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 16,
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  background: 'linear-gradient(135deg, rgba(12,20,38,0.96), rgba(26,34,58,0.92))',
+  border: '1px solid rgba(96,165,250,0.22)',
+  borderRadius: 14,
+  padding: 18,
+  marginBottom: 16,
+};
+
+const healthMetricsStyle: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 12,
+  color: '#cbd5e1',
+  fontSize: 13,
+};
+
+const insightBoxStyle: React.CSSProperties = {
+  marginTop: 12,
+  padding: '10px 12px',
+  borderRadius: 10,
+  background: 'rgba(30,41,59,0.72)',
+  color: '#dbe7ff',
+  lineHeight: 1.5,
+};
+
+const actionHintStyle: React.CSSProperties = {
+  marginTop: 8,
+  color: '#93c5fd',
+  fontSize: 13,
+};
+
+const metricRowStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 12,
+  color: '#dbe7ff',
+  marginBottom: 8,
+};
+
+const recommendationCardStyle: React.CSSProperties = {
+  background: 'rgba(30,41,59,0.72)',
+  border: '1px solid rgba(148,163,184,0.12)',
+  borderRadius: 10,
+  padding: 12,
+  marginBottom: 10,
+};
+
+const priorityBadgeStyle = (priority: string): React.CSSProperties => ({
+  borderRadius: 999,
+  padding: '4px 8px',
+  fontSize: 11,
+  fontWeight: 700,
+  color: priority === 'high' ? '#fecaca' : '#fde68a',
+  background: priority === 'high' ? 'rgba(127,29,29,0.35)' : 'rgba(120,53,15,0.35)',
+});
+
+const riskAlertStyle = (severity: string): React.CSSProperties => ({
+  background: severity === 'medium' ? 'rgba(120,53,15,0.32)' : 'rgba(30,41,59,0.72)',
+  border: severity === 'medium' ? '1px solid rgba(251,191,36,0.3)' : '1px solid rgba(148,163,184,0.12)',
+  color: severity === 'medium' ? '#fde68a' : '#dbe7ff',
+  borderRadius: 10,
+  padding: 12,
+  marginBottom: 10,
+});

@@ -39,8 +39,12 @@ class QueryGraphExecutor:
 
     # ── SQL compilation ────────────────────────────────────────────────────
 
+    def ordered_nodes(self, nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return sorted(nodes, key=lambda node: int(node.get("execution_order") or 0))
+
     def compile_sql(self, nodes: list[dict[str, Any]]) -> str:
         """Compile the graph nodes into a deterministic SQL query."""
+        nodes = self.ordered_nodes(nodes)
         metric = _find(nodes, "metric")
         dimension = _find(nodes, "dimension")
         time_grain = _find(nodes, "time_grain")
@@ -126,6 +130,7 @@ class QueryGraphExecutor:
 
     def to_chart_recommendation(self, nodes: list[dict[str, Any]]) -> dict[str, str]:
         """Read the visualization node from the graph and return a chart dict."""
+        nodes = self.ordered_nodes(nodes)
         viz = _find(nodes, "visualization")
         if viz:
             return {
@@ -144,6 +149,7 @@ class QueryGraphExecutor:
 
     def to_insight_hints(self, nodes: list[dict[str, Any]]) -> list[str]:
         """Generate plain-text insight context strings from the graph."""
+        nodes = self.ordered_nodes(nodes)
         hints: list[str] = []
         metric = _find(nodes, "metric")
         comparison = _find(nodes, "comparison")
@@ -171,6 +177,7 @@ class QueryGraphExecutor:
 
     def to_followup_questions(self, nodes: list[dict[str, Any]]) -> list[str]:
         """Generate relevant follow-up question suggestions from the graph."""
+        nodes = self.ordered_nodes(nodes)
         questions: list[str] = []
         dimension = _find(nodes, "dimension")
         metric = _find(nodes, "metric")
@@ -202,6 +209,7 @@ class QueryGraphExecutor:
 
     def to_drilldowns(self, nodes: list[dict[str, Any]]) -> list[str]:
         """Generate dimension drilldown path strings from the graph."""
+        nodes = self.ordered_nodes(nodes)
         dimension = _find(nodes, "dimension")
         if not dimension:
             return []
@@ -216,6 +224,7 @@ class QueryGraphExecutor:
 
     def to_explanation(self, nodes: list[dict[str, Any]]) -> str:
         """Return a one-paragraph explanation of what the graph represents."""
+        nodes = self.ordered_nodes(nodes)
         metric = _find(nodes, "metric")
         dimension = _find(nodes, "dimension")
         comparison = _find(nodes, "comparison")
@@ -235,3 +244,57 @@ class QueryGraphExecutor:
             parts.append(f"Data is aggregated at the {t_val} level.")
         parts.append(f"Results are limited to the top {limit_n} rows.")
         return " ".join(parts)
+
+    def to_execution_trace(self, nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        ordered_nodes = self.ordered_nodes(nodes)
+        trace: list[dict[str, Any]] = []
+        for node in ordered_nodes:
+            trace.append(
+                {
+                    "node_id": node.get("id"),
+                    "type": node.get("type"),
+                    "stage": node.get("stage"),
+                    "execution_order": node.get("execution_order"),
+                    "label": node.get("label") or node.get("name") or node.get("type"),
+                    "purpose": node.get("purpose") or "",
+                    "depends_on": list(node.get("depends_on") or []),
+                    "output_name": node.get("output_name") or "",
+                    "output_summary": node.get("output_summary") or self._default_output_summary(node),
+                    "status": node.get("status") or "planned",
+                }
+            )
+        return trace
+
+    def to_graph_summary(self, nodes: list[dict[str, Any]]) -> dict[str, Any]:
+        ordered_nodes = self.ordered_nodes(nodes)
+        stages: list[str] = []
+        seen_stages: set[str] = set()
+        for node in ordered_nodes:
+            stage = str(node.get("stage") or "")
+            if stage and stage not in seen_stages:
+                seen_stages.add(stage)
+                stages.append(stage)
+        return {
+            "node_count": len(ordered_nodes),
+            "stage_count": len(stages),
+            "stages": stages,
+            "execution_path": [str(node.get("id") or "") for node in ordered_nodes if node.get("id")],
+        }
+
+    def _default_output_summary(self, node: dict[str, Any]) -> str:
+        node_type = str(node.get("type") or "")
+        if node_type == "metric":
+            return f"Measure {node.get('name') or 'metric'} using {node.get('aggregation') or 'sum'}."
+        if node_type == "dimension":
+            return f"Group by {node.get('column') or node.get('name') or 'dimension'}."
+        if node_type == "time_grain":
+            return f"Bucket {node.get('time_column') or 'time'} by {node.get('value') or 'year'}."
+        if node_type == "comparison":
+            return f"Apply {node.get('value') or 'comparison'} period logic."
+        if node_type == "filter":
+            return f"Filter {node.get('column') or 'field'} {node.get('operator') or '='} {node.get('filter_value')!r}."
+        if node_type == "limit":
+            return f"Limit output to top {node.get('value') or 10}."
+        if node_type == "visualization":
+            return f"Render as {node.get('chart_type') or 'bar_chart'}."
+        return "Reasoning step prepared."

@@ -8,6 +8,7 @@ from backend.services.auth import ALGORITHM, SECRET_KEY
 
 ROLE_ALIASES = {
     "analyst": "ai_analyst",
+    "org_admin": "admin",
 }
 
 
@@ -61,6 +62,15 @@ ROLE_PERMISSIONS: Dict[str, list[str]] = {
         "observability.view",
         "queries.run",
         "insights.view",
+    ],
+    "workspace_admin": [
+        "workspace.manage",
+        "workspace_users.manage",
+        "datasources.manage",
+        "semantic_models.manage",
+        "queries.run",
+        "insights.view",
+        "observability.view",
     ],
 }
 

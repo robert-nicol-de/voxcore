@@ -65,10 +65,23 @@ def extract_query_intent(query_text: str) -> dict[str, Any]:
         "year",
     }
 
+    # Derive a coarse intent_type for downstream consumers
+    if comparison:
+        intent_type = "time_comparison"
+    elif any(token in lowered for token in ["top ", "bottom ", "highest", "lowest", "ranking"]):
+        intent_type = "ranking"
+    elif any(token in lowered for token in ["why", "what drove", "driver", "explain"]):
+        intent_type = "diagnostic"
+    elif has_trend:
+        intent_type = "trend"
+    else:
+        intent_type = "aggregate"
+
     return {
         "metric": metric,
         "dimension": dimension,
         "comparison": comparison,
         "has_trend": has_trend,
         "is_sql_input": is_sql_like(text),
+        "intent_type": intent_type,
     }

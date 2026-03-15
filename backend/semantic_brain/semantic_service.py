@@ -1,21 +1,32 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import backend.db.org_store as store
 
 from .analytical_planner import AnalyticalPlanner
 from .auto_drill_engine import AutoDrillEngine
+from .brain_logger import BrainLogger
+from .confidence_scorer import ConfidenceScorer
 from .context_injector import build_context_prompt
+from .correction_engine import CorrectionEngine
+from .difficulty_classifier import classify_difficulty
 from .dimension_catalog import DimensionCatalog
 from .hypothesis_engine import HypothesisEngine
 from .insight_ranker import InsightRanker
+from .intent_classifier import classify_intent
 from .intent_parser import extract_query_intent
 from .metric_expansion import MetricExpansionEngine
 from .metric_registry import MetricRegistry
 from .pattern_detection import PatternDetectionEngine
+from .query_knowledge_store import QueryKnowledgeStore
 from .relationship_graph import RelationshipGraph
 from .schema_intelligence import SchemaIntelligence
+from .semantic_validator import SemanticValidator
+from .sql_component_builder import SqlComponentBuilder
+from .sql_validator import validate_sql
+from .training_dataset import TrainingDataset
 from .visualization_engine import VisualizationEngine
 from .query_graph import QueryGraphBuilder, QueryGraphExecutor
 
@@ -35,6 +46,14 @@ class SemanticBrainService:
         self.schema_intelligence = SchemaIntelligence()
         self.graph_builder = QueryGraphBuilder()
         self.graph_executor = QueryGraphExecutor()
+        # ── Training & improvement services ───────────────────────────────────
+        self.semantic_validator = SemanticValidator()
+        self.sql_component_builder = SqlComponentBuilder()
+        self.confidence_scorer = ConfidenceScorer()
+        self.knowledge_store = QueryKnowledgeStore()
+        self.correction_engine = CorrectionEngine()
+        self.training_dataset = TrainingDataset()
+        self.brain_logger = BrainLogger()
 
     def build_snapshot(self, workspace_id: Any, ai_context: dict[str, Any] | None = None) -> dict[str, Any]:
         try:
@@ -354,10 +373,31 @@ class SemanticBrainService:
         previous_plan: dict[str, Any] | None = None,
         preview_rows: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
+        t_start = time.perf_counter()
+
         intent = extract_query_intent(query_text)
+        # ── Intent classification (confidence + entities) ──────────────────────
+        intent_classification = classify_intent(query_text)
+
         snapshot = self.build_snapshot(workspace_id, ai_context)
         plan = self.build_analytical_plan(query_text, snapshot, intent, previous_plan)
+
+        # ── Semantic validation ────────────────────────────────────────────────
+        semantic_validation = self.semantic_validator.validate(plan, snapshot)
+        # Apply dimension fallback when the requested dimension is not in catalog
+        if (
+            not semantic_validation["dimension_valid"]
+            and semantic_validation["dimension_fallback"]
+        ):
+            fallback_dim = semantic_validation["dimension_fallback"]
+            plan["dimension"]        = fallback_dim
+            plan["dimension_column"] = fallback_dim
+
         generated_sql = self.generate_sql(plan, fallback_sql=self.suggest_sql(query_text, intent))
+
+        # ── Structured SQL components ──────────────────────────────────────────
+        structured_sql, sql_components = self.sql_component_builder.build_and_compile(plan)
+
         preview = preview_rows or []
         insights = self.detect_insights(plan, preview)
         hypotheses = self.hypothesis_engine.generate_hypotheses(plan)
@@ -378,20 +418,93 @@ class SemanticBrainService:
         graph_followups = self.graph_executor.to_followup_questions(query_graph)
         graph_drilldowns = self.graph_executor.to_drilldowns(query_graph)
         graph_explanation = self.graph_executor.to_explanation(query_graph)
+        graph_trace = self.graph_executor.to_execution_trace(query_graph)
+        graph_summary = self.graph_executor.to_graph_summary(query_graph)
+
+        # ── SQL self-validation ────────────────────────────────────────────────
+        sql_validation = validate_sql(graph_sql, sql_components, snapshot)
+        # Use auto-repaired SQL when available
+        final_sql = sql_validation.get("corrected_sql") or graph_sql
+
+        # ── Difficulty classification ──────────────────────────────────────────
+        query_difficulty = classify_difficulty(query_text, plan)
+
+        # ── Composite confidence scoring ───────────────────────────────────────
+        historical_rate = self.knowledge_store.success_rate(
+            str(plan.get("metric") or ""),
+            str(plan.get("dimension") or ""),
+        )
+        confidence = self.confidence_scorer.score(
+            intent_classification,
+            semantic_validation,
+            sql_validation,
+            historical_rate,
+        )
+        confidence_score = confidence["confidence_score"]
+
+        # ── Observability logging ─────────────────────────────────────────────
+        execution_time_ms = (time.perf_counter() - t_start) * 1000
+        query_id = self.brain_logger.log(
+            query_text       = query_text,
+            intent_type      = str(intent_classification.get("intent_type") or "aggregate"),
+            metric           = str(plan.get("metric") or ""),
+            dimension        = str(plan.get("dimension") or ""),
+            confidence       = confidence_score,
+            difficulty_level = int(query_difficulty.get("level") or 1),
+            sql_risk         = str(sql_validation.get("risk_level") or "low"),
+            execution_time_ms = execution_time_ms,
+            semantic_valid   = bool(semantic_validation.get("overall_valid", True)),
+            sql_valid        = bool(sql_validation.get("sql_valid", True)),
+            issues           = (
+                semantic_validation.get("issues", [])
+                + sql_validation.get("issues", [])
+            ),
+            workspace_id     = workspace_id,
+        )
+
+        # ── Learning: persist high-confidence results ──────────────────────────
+        if confidence_score >= 0.70 and not intent.get("is_sql_input"):
+            self.knowledge_store.record_success(
+                metric      = str(plan.get("metric") or ""),
+                dimension   = str(plan.get("dimension") or ""),
+                intent_type = str(intent_classification.get("intent_type") or "aggregate"),
+                sql         = final_sql,
+                query_text  = query_text,
+            )
+            self.training_dataset.record(
+                question         = query_text,
+                intent_type      = str(intent_classification.get("intent_type") or "aggregate"),
+                metric           = str(plan.get("metric") or ""),
+                dimension        = str(plan.get("dimension") or ""),
+                sql              = final_sql,
+                confidence       = confidence_score,
+                difficulty_level = int(query_difficulty.get("level") or 1),
+            )
 
         return {
+            "query_id": query_id,
             "ai_context": ai_context,
             "schema_summary": self.extract_schema_summary(ai_context),
             "schema_intelligence": schema_matches,
             "intent": intent,
+            "intent_classification": intent_classification,
             "understanding": self.build_understanding(intent),
             "analysis_plan": plan,
             "analytical_plan": plan,
             "chart_recommendation": chart_rec,
             "generated_sql": generated_sql,
+            "structured_sql": {
+                "sql": structured_sql,
+                "components": sql_components,
+            },
             "query_graph": {
+                "graph_id": f"reasoning-{str(plan.get('metric') or 'metric')}-{len(query_graph)}",
+                "graph_type": "reasoning_graph",
                 "nodes": query_graph,
-                "compiled_sql": graph_sql,
+                "execution_trace": graph_trace,
+                "execution_order": graph_summary.get("execution_path", []),
+                "summary": graph_summary,
+                "compiled_sql": final_sql,
                 "insight_hints": graph_insight_hints,
                 "followup_questions": graph_followups,
                 "drilldowns": graph_drilldowns,
@@ -405,6 +518,10 @@ class SemanticBrainService:
                 "business_logic_rules": snapshot.get("business_logic_rules", [])[:10],
             },
             "semantic_context_prompt": self.build_semantic_context_prompt(snapshot),
+            "semantic_validation": semantic_validation,
+            "sql_validation": sql_validation,
+            "confidence": confidence,
+            "query_difficulty": query_difficulty,
             "insights": insights,
             "insight_summary": str(insights.get("narrative") or "No clear insights yet."),
             "ranked_insights": ranked_insights,
@@ -415,3 +532,55 @@ class SemanticBrainService:
             "related_metrics": related_metrics,
             "suggested_questions": self.generate_suggested_questions(plan, insights),
         }
+
+    def attempt_sql_correction(
+        self,
+        sql: str,
+        error_message: str,
+        plan: dict[str, Any],
+        workspace_id: Any,
+        attempt: int = 1,
+        failure_type: str = "sql_generation_failure",
+        recovery_attempts: int = 0,
+        resolution_status: str = "unresolved",
+        semantic_entities_missing: list = None,
+    ) -> dict[str, Any]:
+        """
+        Invoke the correction engine when SQL execution fails.
+        Logs all AFHS failure categories and outcomes.
+        Returns the same dict shape as CorrectionEngine.attempt_correction plus
+        a ``knowledge_updated`` flag indicating whether the failure was recorded
+        in the knowledge store.
+        """
+        import backend.db.org_store as org_store
+        snapshot = self.build_snapshot(workspace_id, {})
+        result = self.correction_engine.attempt_correction(
+            sql=sql,
+            error_message=error_message,
+            plan=plan,
+            snapshot=snapshot,
+            attempt=attempt,
+        )
+        knowledge_updated = False
+        if not result.get("give_up"):
+            self.knowledge_store.record_failure(
+                metric    = str(plan.get("metric") or ""),
+                dimension = str(plan.get("dimension") or ""),
+            )
+            knowledge_updated = True
+        # --- AFHS Failure Telemetry Logging ---
+        org_store.create_feature_telemetry_event(
+            event_name="afhs_failure",
+            workspace_id=workspace_id,
+            metadata={
+                "user_question": plan.get("user_question"),
+                "generated_sql": sql,
+                "failure_type": failure_type,
+                "semantic_entities_missing": semantic_entities_missing or [],
+                "recovery_attempts": recovery_attempts,
+                "resolution_status": resolution_status,
+                "error_message": error_message,
+            },
+        )
+        result["knowledge_updated"] = knowledge_updated
+        return result

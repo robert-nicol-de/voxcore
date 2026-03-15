@@ -22,6 +22,7 @@ SUPPORTED_ROLES = {
     "god",
     "admin",
     "platform_owner",
+    "workspace_admin",
     "data_guardian",
     "ai_analyst",
     "sandbox_user",
@@ -33,6 +34,8 @@ SUPPORTED_ROLES = {
 
 def _normalize_role(role: str) -> str:
     value = (role or "viewer").strip().lower()
+    if value == "org_admin":
+        return "admin"
     if value == "analyst":
         return "ai_analyst"
     return value if value in SUPPORTED_ROLES else "viewer"
@@ -202,6 +205,17 @@ def init_db():
                 created_at     TEXT NOT NULL DEFAULT (datetime('now')),
                 expires_at     TEXT NOT NULL,
                 is_playground_only INTEGER NOT NULL DEFAULT 1
+            );
+
+            CREATE TABLE IF NOT EXISTS feature_telemetry (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_name     TEXT NOT NULL,
+                user_id        INTEGER,
+                org_id         INTEGER,
+                workspace_id   INTEGER,
+                dataset        TEXT,
+                metadata       TEXT,
+                created_at     TEXT NOT NULL DEFAULT (datetime('now'))
             );
         """)
 
@@ -1027,3 +1041,79 @@ def cleanup_expired_share_insights() -> int:
     with _get_conn() as conn:
         cur = conn.execute("DELETE FROM share_insights WHERE expires_at <= datetime('now')")
     return int(cur.rowcount or 0)
+
+
+def create_feature_telemetry_event(
+    event_name: str,
+    user_id: Optional[int] = None,
+    org_id: Optional[int] = None,
+    workspace_id: Optional[int] = None,
+    dataset: Optional[str] = None,
+    metadata: Optional[Dict] = None,
+) -> Dict:
+    with _get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO feature_telemetry (event_name, user_id, org_id, workspace_id, dataset, metadata)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                (event_name or "unknown").strip(),
+                user_id,
+                org_id,
+                workspace_id,
+                (dataset or "").strip() or None,
+                json.dumps(metadata or {}),
+            ),
+        )
+        event_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        row = conn.execute("SELECT * FROM feature_telemetry WHERE id = ?", (event_id,)).fetchone()
+    item = dict(row) if row else {"id": event_id}
+    if item.get("metadata"):
+        try:
+            item["metadata"] = json.loads(item["metadata"])
+        except Exception:
+            item["metadata"] = {}
+    return item
+
+
+def list_feature_telemetry_events(
+    org_id: Optional[int] = None,
+    workspace_id: Optional[int] = None,
+    since: Optional[str] = None,
+    event_names: Optional[List[str]] = None,
+    limit: int = 5000,
+) -> List[Dict]:
+    query = "SELECT * FROM feature_telemetry WHERE 1=1"
+    params: List = []
+
+    if org_id is not None:
+        query += " AND org_id = ?"
+        params.append(org_id)
+    if workspace_id is not None:
+        query += " AND workspace_id = ?"
+        params.append(workspace_id)
+    if since is not None:
+        query += " AND created_at >= ?"
+        params.append(since)
+    if event_names:
+        placeholders = ",".join("?" for _ in event_names)
+        query += f" AND event_name IN ({placeholders})"
+        params.extend(event_names)
+
+    query += " ORDER BY created_at DESC LIMIT ?"
+    params.append(limit)
+
+    with _get_conn() as conn:
+        rows = conn.execute(query, tuple(params)).fetchall()
+
+    items: List[Dict] = []
+    for row in rows:
+        item = dict(row)
+        if item.get("metadata"):
+            try:
+                item["metadata"] = json.loads(item["metadata"])
+            except Exception:
+                item["metadata"] = {}
+        items.append(item)
+    return items

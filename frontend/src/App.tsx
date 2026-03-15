@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 import { Login } from './screens/Login';
@@ -18,10 +18,11 @@ import SettingsPage from './pages/Settings';
 import SchemaExplorerPage from './pages/SchemaExplorerPage';
 import ArchitecturePage from './pages/Architecture';
 import AgentInsightsPage from './pages/AgentInsights';
-import ControlCenter from './pages/ControlCenter';
 import RequireAuth from './components/auth/RequireAuth';
 import WorkspaceSwitcher from './components/WorkspaceSwitcher';
 import { apiUrl } from './lib/api';
+
+const ControlCenter = lazy(() => import('./pages/ControlCenter'));
 
 const platformFeatures = [
   {
@@ -81,8 +82,10 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoginPage, setShowLoginPage] = useState(false);
   const [launchingPlayground, setLaunchingPlayground] = useState(false);
+  const [playgroundError, setPlaygroundError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
+  const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token');
 
   useEffect(() => {
     const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token');
@@ -93,7 +96,9 @@ function App() {
 
   const handleLogin = () => {
     setIsLoggedIn(true);
-    navigate('/app/dashboard');
+    const redirectTarget = localStorage.getItem('voxcore_post_login_redirect') || '/app/dashboard';
+    localStorage.removeItem('voxcore_post_login_redirect');
+    navigate(redirectTarget);
   };
 
   const handleLogout = () => {
@@ -112,13 +117,40 @@ function App() {
     navigate('/');
   };
 
-  const scrollToDemo = () => {
-    document.getElementById('voxcore-demo')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const navigateToPlatform = (path: string) => {
+    if (token) {
+      navigate(path);
+      return;
+    }
+    localStorage.setItem('voxcore_post_login_redirect', path);
+    setShowLoginPage(true);
+  };
+
+  const scrollToSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const launchPlayground = async () => {
     setLaunchingPlayground(true);
+    setPlaygroundError('');
     try {
+      const healthAbort = new AbortController();
+      const healthTimer = window.setTimeout(() => healthAbort.abort(), 3500);
+      let healthResponse: Response;
+      try {
+        healthResponse = await fetch(apiUrl('/api/v1/health'), {
+          method: 'GET',
+          signal: healthAbort.signal,
+        });
+      } finally {
+        window.clearTimeout(healthTimer);
+      }
+
+      if (!healthResponse.ok) {
+        setPlaygroundError('VoxCore backend is not healthy right now. Please make sure localhost:8000 is running.');
+        return;
+      }
+
       const response = await fetch(apiUrl('/api/v1/auth/playground'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -141,16 +173,17 @@ function App() {
       localStorage.setItem('voxcore_is_super_admin', 'false');
 
       setIsLoggedIn(true);
-      navigate('/app', { replace: true });
+      const redirectTarget = localStorage.getItem('voxcore_post_login_redirect') || '/app/sandbox';
+      localStorage.removeItem('voxcore_post_login_redirect');
+      navigate(redirectTarget, { replace: true });
     } catch {
-      setShowLoginPage(true);
+      setPlaygroundError('Backend is unreachable. Start VoxCore API on localhost:8000, then try Playground again.');
     } finally {
       setLaunchingPlayground(false);
     }
   };
 
   const protectedPaths = ['/dashboard', '/datasources', '/sql', '/schema', '/governance', '/workspaces'];
-  const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token');
   const showAuthRequiredBanner = !token && new URLSearchParams(location.search).get('auth') === 'required';
   const isProtectedPath =
     location.pathname.startsWith('/app') ||
@@ -195,18 +228,50 @@ function App() {
               Powered by the VoxCore Engine
             </div>
           </div>
-          <nav style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <nav style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            {[
+              { label: 'Platform', onClick: () => scrollToSection('platform-section') },
+              { label: 'Features', onClick: () => scrollToSection('features-section') },
+              { label: 'Pricing', onClick: () => scrollToSection('pricing-section') },
+              { label: 'About', onClick: () => scrollToSection('about-section') },
+            ].map((item) => (
+              <button
+                key={item.label}
+                style={{
+                  background: 'transparent',
+                  color: '#bfdbfe',
+                  border: 'none',
+                  borderRadius: 999,
+                  padding: '8px 10px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontSize: 14,
+                }}
+                onClick={item.onClick}
+              >
+                {item.label}
+              </button>
+            ))}
             <button
-              style={{ background: 'transparent', color: '#cbd5e1', border: '1px solid rgba(148,163,184,0.35)', borderRadius: '999px', padding: '10px 16px', fontWeight: 700, cursor: 'pointer' }}
-              onClick={scrollToDemo}
+              style={{
+                background: 'transparent',
+                color: '#e2e8f0',
+                border: '1px solid rgba(148,163,184,0.35)',
+                borderRadius: 999,
+                padding: '8px 14px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontSize: 14,
+              }}
+              onClick={() => setShowLoginPage(true)}
             >
-              View Demo
+              Login
             </button>
             <button
               style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)', color: '#fff', border: 'none', borderRadius: '999px', padding: '10px 18px', fontWeight: 800, cursor: 'pointer', boxShadow: '0 10px 30px rgba(14,165,233,0.35)' }}
-              onClick={() => setShowLoginPage(true)}
+              onClick={() => navigateToPlatform('/app/dashboard')}
             >
-              Launch VoxCloud
+              Launch VoxCloud Platform
             </button>
           </nav>
         </header>
@@ -229,6 +294,7 @@ function App() {
             </div>
           )}
           <section
+            id="platform-section"
             style={{
               color: '#fff',
               padding: '72px 28px 120px',
@@ -260,17 +326,22 @@ function App() {
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 28 }}>
                 <button
                   style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)', color: '#fff', border: 'none', borderRadius: '999px', padding: '14px 22px', fontWeight: 800, cursor: 'pointer', boxShadow: '0 12px 34px rgba(14,165,233,0.34)' }}
-                  onClick={() => setShowLoginPage(true)}
+                  onClick={() => navigateToPlatform('/app/dashboard')}
                 >
-                  Launch VoxCloud
+                  Launch VoxCloud Platform
                 </button>
                 <button
                   style={{ background: 'rgba(15,23,42,0.35)', color: '#e2e8f0', border: '1px solid rgba(148,163,184,0.3)', borderRadius: '999px', padding: '14px 22px', fontWeight: 800, cursor: 'pointer' }}
                   onClick={launchPlayground}
                 >
-                  {launchingPlayground ? 'Starting Playground...' : 'Try VoxCore Playground'}
+                  {launchingPlayground ? 'Starting VoxCore Playground...' : 'Try VoxCore Playground'}
                 </button>
               </div>
+              {playgroundError ? (
+                <div style={{ marginTop: 12, color: '#fca5a5', fontSize: 13, maxWidth: 620 }}>
+                  {playgroundError}
+                </div>
+              ) : null}
             </div>
 
             <div
@@ -324,7 +395,7 @@ function App() {
             </div>
           </section>
 
-          <section style={{ background: '#f2f5f9', color: '#0f172a', padding: '48px 28px' }}>
+          <section id="about-section" style={{ background: '#f2f5f9', color: '#0f172a', padding: '48px 28px' }}>
             <div style={{ maxWidth: 1160, margin: '0 auto', display: 'grid', gap: 24 }}>
               <div>
                 <div style={{ color: '#0284c7', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.78rem' }}>Solution</div>
@@ -376,7 +447,7 @@ function App() {
             </div>
           </section>
 
-          <section style={{ background: '#f8fafc', color: '#0f172a', padding: '56px 28px' }}>
+          <section id="features-section" style={{ background: '#f8fafc', color: '#0f172a', padding: '56px 28px' }}>
             <div style={{ maxWidth: 1160, margin: '0 auto' }}>
               <div style={{ color: '#2563eb', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.78rem' }}>Platform Features</div>
               <h2 style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', letterSpacing: '-0.05em', marginTop: 10 }}>VoxCloud Platform</h2>
@@ -387,6 +458,26 @@ function App() {
                   <div key={feature.title} style={{ background: '#fff', borderRadius: 18, padding: 20, border: '1px solid rgba(15,23,42,0.08)', boxShadow: '0 10px 28px rgba(15,23,42,0.05)' }}>
                     <h3 style={{ fontSize: '1.05rem', marginBottom: 10 }}>{feature.title}</h3>
                     <p style={{ color: '#475569', lineHeight: 1.6 }}>{feature.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section id="pricing-section" style={{ background: '#eef4fb', color: '#0f172a', padding: '56px 28px' }}>
+            <div style={{ maxWidth: 1160, margin: '0 auto' }}>
+              <div style={{ color: '#0369a1', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.78rem' }}>Pricing</div>
+              <h2 style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', letterSpacing: '-0.05em', marginTop: 10 }}>Enterprise-ready plans for every team</h2>
+              <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                {[
+                  { title: 'Starter', price: 'Free', note: 'Sandbox exploration and demo datasets.' },
+                  { title: 'Growth', price: '$199 / mo', note: 'Production connectors, governance policies, and query monitoring.' },
+                  { title: 'Enterprise', price: 'Custom', note: 'Private deployment, SSO, advanced controls, and audit automation.' },
+                ].map((plan) => (
+                  <div key={plan.title} style={{ background: '#fff', borderRadius: 18, padding: 20, border: '1px solid rgba(15,23,42,0.08)', boxShadow: '0 10px 24px rgba(15,23,42,0.05)' }}>
+                    <div style={{ fontWeight: 800, fontSize: 18 }}>{plan.title}</div>
+                    <div style={{ marginTop: 8, color: '#0369a1', fontWeight: 800, fontSize: 22 }}>{plan.price}</div>
+                    <div style={{ marginTop: 10, color: '#475569', lineHeight: 1.6 }}>{plan.note}</div>
                   </div>
                 ))}
               </div>
@@ -501,7 +592,7 @@ function App() {
               <Route path="/app/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
               <Route path="/app/architecture" element={<RequireAuth><ArchitecturePage /></RequireAuth>} />
               <Route path="/app/agents" element={<RequireAuth><AgentInsightsPage /></RequireAuth>} />
-              <Route path="/app/control-center" element={<RequireAuth><ControlCenter /></RequireAuth>} />
+              <Route path="/app/control-center" element={<RequireAuth><Suspense fallback={<div style={{ color: '#cbd5e1', padding: 24 }}>Loading control center...</div>}><ControlCenter /></Suspense></RequireAuth>} />
               <Route path="/app" element={<RequireAuth><SqlAssistant /></RequireAuth>} />
               <Route path="/dashboard" element={<RequireAuth><Navigate to="/app/dashboard" replace /></RequireAuth>} />
               <Route path="/datasources" element={<RequireAuth><Navigate to="/app/datasources" replace /></RequireAuth>} />

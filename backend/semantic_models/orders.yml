@@ -1,0 +1,9 @@
+# Example semantic model for the 'orders' table
+# Defines join relationships for semantic join intelligence
+
+joins:
+  - left: orders.customer_id
+    right: customers.customer_id
+  - left: orders.product_id
+    right: products.product_id
+# Add more relationships as needed

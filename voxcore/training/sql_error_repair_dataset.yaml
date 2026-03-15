@@ -1,0 +1,172 @@
+dataset: voxcore_sql_error_repair
+version: 1.0
+
+examples:
+
+- id: 001
+  error_type: column_not_found
+  question: "Show customer revenue"
+  generated_sql: |
+    SELECT customer_name, SUM(revenue)
+    FROM orders
+    GROUP BY customer_name;
+  database_error: |
+    column "customer_name" does not exist
+  repair_logic:
+    detect_missing_column: true
+    check_semantic_mapping: true
+    possible_column: customers.name
+  corrected_sql: |
+    SELECT customers.name, SUM(orders.revenue)
+    FROM orders
+    JOIN customers
+    ON orders.customer_id = customers.customer_id
+    GROUP BY customers.name;
+
+- id: 002
+  error_type: ambiguous_column
+  question: "Show order revenue by customer"
+  generated_sql: |
+    SELECT customer_id, SUM(revenue)
+    FROM orders
+    JOIN customers
+    ON orders.customer_id = customers.customer_id
+    GROUP BY customer_id;
+  database_error: |
+    column "customer_id" is ambiguous
+  repair_logic:
+    add_table_alias: true
+  corrected_sql: |
+    SELECT customers.customer_id, SUM(orders.revenue)
+    FROM orders
+    JOIN customers
+    ON orders.customer_id = customers.customer_id
+    GROUP BY customers.customer_id;
+
+- id: 003
+  error_type: missing_table
+  question: "Show product sales"
+  generated_sql: |
+    SELECT product_name, SUM(revenue)
+    FROM sales_data
+    GROUP BY product_name;
+  database_error: |
+    relation "sales_data" does not exist
+  repair_logic:
+    check_schema_tables: true
+    closest_match: sales
+  corrected_sql: |
+    SELECT product_name, SUM(revenue)
+    FROM sales
+    GROUP BY product_name;
+
+- id: 004
+  error_type: syntax_error
+  question: "Show total revenue"
+  generated_sql: |
+    SELECT SUM(revenue
+    FROM sales;
+  database_error: |
+    syntax error near "FROM"
+  repair_logic:
+    detect_unclosed_function: true
+  corrected_sql: |
+    SELECT SUM(revenue)
+    FROM sales;
+
+- id: 005
+  error_type: invalid_function
+  question: "Show current date orders"
+  generated_sql: |
+    SELECT *
+    FROM orders
+    WHERE order_date = NOW();
+  database_error: |
+    function NOW() does not exist
+  repair_logic:
+    dialect_function_mapping: true
+    replace_function: CURRENT_DATE
+  corrected_sql: |
+    SELECT *
+    FROM orders
+    WHERE order_date = CURRENT_DATE;
+
+- id: 006
+  error_type: group_by_error
+  question: "Show revenue by region"
+  generated_sql: |
+    SELECT region, SUM(revenue)
+    FROM sales;
+  database_error: |
+    column "region" must appear in the GROUP BY clause
+  repair_logic:
+    add_group_by: true
+  corrected_sql: |
+    SELECT region, SUM(revenue)
+    FROM sales
+    GROUP BY region;
+
+- id: 007
+  error_type: invalid_column
+  question: "Show average order size"
+  generated_sql: |
+    SELECT AVG(order_size)
+    FROM orders;
+  database_error: |
+    column "order_size" does not exist
+  repair_logic:
+    semantic_column_match: order_total
+  corrected_sql: |
+    SELECT AVG(order_total)
+    FROM orders;
+
+- id: 008
+  error_type: invalid_join
+  question: "Show customer country and revenue"
+  generated_sql: |
+    SELECT country, SUM(revenue)
+    FROM orders
+    GROUP BY country;
+  database_error: |
+    column "country" does not exist
+  repair_logic:
+    detect_missing_join: true
+    join_table: customers
+  corrected_sql: |
+    SELECT customers.country, SUM(orders.revenue)
+    FROM orders
+    JOIN customers
+    ON orders.customer_id = customers.customer_id
+    GROUP BY customers.country;
+
+- id: 009
+  error_type: invalid_limit
+  question: "Show top 10 customers"
+  generated_sql: |
+    SELECT *
+    FROM customers
+    LIMIT TEN;
+  database_error: |
+    syntax error near TEN
+  repair_logic:
+    convert_word_to_number: true
+  corrected_sql: |
+    SELECT *
+    FROM customers
+    LIMIT 10;
+
+- id: 010
+  error_type: invalid_date_function
+  question: "Show orders last 30 days"
+  generated_sql: |
+    SELECT *
+    FROM orders
+    WHERE order_date >= TODAY() - 30;
+  database_error: |
+    function TODAY() does not exist
+  repair_logic:
+    replace_function: CURRENT_DATE
+  corrected_sql: |
+    SELECT *
+    FROM orders
+    WHERE order_date >= CURRENT_DATE - INTERVAL '30 days';

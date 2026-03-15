@@ -1,0 +1,236 @@
+dataset: voxcore_sql_time_intelligence
+version: 1.0
+
+examples:
+
+- id: 001
+  question: "Show orders from the last 7 days"
+  time_intent:
+    type: relative_range
+    value: last_7_days
+  neutral_query:
+    table: orders
+    filter:
+      order_date >= last_7_days
+  sql: |
+    SELECT *
+    FROM orders
+    WHERE order_date >= CURRENT_DATE - INTERVAL '7 days';
+
+- id: 002
+  question: "Show orders from the last 30 days"
+  time_intent:
+    type: relative_range
+    value: last_30_days
+  neutral_query:
+    table: orders
+    filter:
+      order_date >= last_30_days
+  sql: |
+    SELECT *
+    FROM orders
+    WHERE order_date >= CURRENT_DATE - INTERVAL '30 days';
+
+- id: 003
+  question: "Show revenue for the current month"
+  time_intent:
+    type: period
+    value: current_month
+  neutral_query:
+    metric: SUM(revenue)
+    filter:
+      month: current_month
+  sql: |
+    SELECT SUM(revenue)
+    FROM orders
+    WHERE DATE_TRUNC('month', order_date) = DATE_TRUNC('month', CURRENT_DATE);
+
+- id: 004
+  question: "Show revenue for the previous month"
+  time_intent:
+    type: period
+    value: previous_month
+  neutral_query:
+    metric: SUM(revenue)
+    filter:
+      month: previous_month
+  sql: |
+    SELECT SUM(revenue)
+    FROM orders
+    WHERE DATE_TRUNC('month', order_date) =
+          DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month');
+
+- id: 005
+  question: "Show revenue by month"
+  time_intent:
+    type: group_by_period
+    value: month
+  neutral_query:
+    metric: SUM(revenue)
+    group_by: month(order_date)
+  sql: |
+    SELECT DATE_TRUNC('month', order_date) AS month,
+           SUM(revenue)
+    FROM orders
+    GROUP BY DATE_TRUNC('month', order_date)
+    ORDER BY month;
+
+- id: 006
+  question: "Show revenue by year"
+  time_intent:
+    type: group_by_period
+    value: year
+  neutral_query:
+    metric: SUM(revenue)
+    group_by: year(order_date)
+  sql: |
+    SELECT DATE_TRUNC('year', order_date) AS year,
+           SUM(revenue)
+    FROM orders
+    GROUP BY DATE_TRUNC('year', order_date)
+    ORDER BY year;
+
+- id: 007
+  question: "Show daily order count"
+  time_intent:
+    type: group_by_period
+    value: day
+  neutral_query:
+    metric: COUNT(order_id)
+    group_by: day(order_date)
+  sql: |
+    SELECT DATE_TRUNC('day', order_date) AS day,
+           COUNT(order_id)
+    FROM orders
+    GROUP BY DATE_TRUNC('day', order_date)
+    ORDER BY day;
+
+- id: 008
+  question: "Show running total revenue"
+  time_intent:
+    type: rolling_total
+  neutral_query:
+    metric: running_sum(revenue)
+    order_by: order_date
+  sql: |
+    SELECT order_date,
+           SUM(revenue) OVER (ORDER BY order_date)
+    FROM orders;
+
+- id: 009
+  question: "Show month over month revenue growth"
+  time_intent:
+    type: period_comparison
+    comparison: month_over_month
+  neutral_query:
+    metric: SUM(revenue)
+    comparison: previous_month
+  sql: |
+    SELECT
+      month,
+      revenue,
+      revenue - LAG(revenue) OVER (ORDER BY month) AS growth
+    FROM (
+        SELECT DATE_TRUNC('month', order_date) AS month,
+               SUM(revenue) AS revenue
+        FROM orders
+        GROUP BY DATE_TRUNC('month', order_date)
+    ) t;
+
+- id: 010
+  question: "Show year over year revenue growth"
+  time_intent:
+    type: period_comparison
+    comparison: year_over_year
+  neutral_query:
+    metric: SUM(revenue)
+    comparison: previous_year
+  sql: |
+    SELECT
+      year,
+      revenue,
+      revenue - LAG(revenue) OVER (ORDER BY year) AS growth
+    FROM (
+        SELECT DATE_TRUNC('year', order_date) AS year,
+               SUM(revenue) AS revenue
+        FROM orders
+        GROUP BY DATE_TRUNC('year', order_date)
+    ) t;
+
+- id: 011
+  question: "Show top products last month"
+  time_intent:
+    type: relative_period
+    value: last_month
+  neutral_query:
+    metric: SUM(quantity)
+    group_by: product_id
+    filter: last_month
+  sql: |
+    SELECT product_id,
+           SUM(quantity)
+    FROM sales
+    WHERE DATE_TRUNC('month', sale_date) =
+          DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+    GROUP BY product_id
+    ORDER BY SUM(quantity) DESC;
+
+- id: 012
+  question: "Show orders this week"
+  time_intent:
+    type: period
+    value: current_week
+  neutral_query:
+    table: orders
+    filter: current_week
+  sql: |
+    SELECT *
+    FROM orders
+    WHERE DATE_TRUNC('week', order_date) =
+          DATE_TRUNC('week', CURRENT_DATE);
+
+- id: 013
+  question: "Show revenue last quarter"
+  time_intent:
+    type: period
+    value: last_quarter
+  neutral_query:
+    metric: SUM(revenue)
+    filter: last_quarter
+  sql: |
+    SELECT SUM(revenue)
+    FROM orders
+    WHERE DATE_TRUNC('quarter', order_date) =
+          DATE_TRUNC('quarter', CURRENT_DATE - INTERVAL '3 months');
+
+- id: 014
+  question: "Show average revenue per day"
+  time_intent:
+    type: daily_average
+  neutral_query:
+    metric: AVG(daily_revenue)
+  sql: |
+    SELECT AVG(daily_revenue)
+    FROM (
+        SELECT DATE_TRUNC('day', order_date),
+               SUM(revenue) AS daily_revenue
+        FROM orders
+        GROUP BY DATE_TRUNC('day', order_date)
+    ) t;
+
+- id: 015
+  question: "Show revenue for the last 12 months"
+  time_intent:
+    type: relative_range
+    value: last_12_months
+  neutral_query:
+    metric: SUM(revenue)
+    filter: last_12_months
+    group_by: month
+  sql: |
+    SELECT DATE_TRUNC('month', order_date),
+           SUM(revenue)
+    FROM orders
+    WHERE order_date >= CURRENT_DATE - INTERVAL '12 months'
+    GROUP BY DATE_TRUNC('month', order_date)
+    ORDER BY DATE_TRUNC('month', order_date);

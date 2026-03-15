@@ -148,7 +148,7 @@ def create_datasource(
     platform = req.platform or req.type or "unknown"
     effective_workspace_id = req.workspace_id or _resolve_workspace_id(request, workspace_id)
 
-    if ctx.get("role") != "god":
+    if ctx.get("role") not in {"god", "platform_owner"}:
         workspace = store.get_workspace(effective_workspace_id)
         if not workspace or int(workspace.get("org_id", -1)) != int(ctx["org_id"]):
             raise HTTPException(status_code=403, detail="Workspace is outside your organization")

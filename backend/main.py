@@ -34,6 +34,8 @@ from backend.api.organizations import router as organizations_router
 from backend.datasources.router import router as datasources_router
 from backend.api.agents import router as agents_router
 from backend.api.platform import router as platform_router
+from backend.api.insights import router as insights_router
+from backend.api.agent import router as agent_router
 from backend.agents import agent_scheduler
 from backend.services.rbac import normalize_role
 from backend.workers.query_worker import start_worker_thread
@@ -59,7 +61,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://127.0.0.1:3000",
         "http://localhost:5173",
+        "http://127.0.0.1:5173",
         "https://voxcore.org",
         "https://www.voxcore.org",
         "https://voxquery-api.onrender.com",
@@ -78,6 +82,18 @@ async def enforce_jwt_for_api(request: Request, call_next):
     """Require Bearer JWT on all /api/v1/* routes except /api/v1/auth/* and preflight."""
     path = request.url.path
     if request.method == "OPTIONS":
+        return await call_next(request)
+
+    if path == "/api/v1/health":
+        return await call_next(request)
+
+    # Playground & sandbox routes are public — no auth required
+    _PUBLIC_PREFIXES = (
+        "/api/v1/playground/",
+        "/api/v1/query/sandbox",
+        "/api/v1/query/risk",
+    )
+    if any(path.startswith(p) for p in _PUBLIC_PREFIXES):
         return await call_next(request)
 
     if path.startswith("/api/v1/") and not path.startswith("/api/v1/auth/"):
@@ -107,7 +123,7 @@ async def enforce_jwt_for_api(request: Request, call_next):
             fallback = org_store.get_default_workspace(org_id)
             workspace_id = int((fallback or {}).get("id", 1))
 
-        if role != "god":
+        if role not in {"god", "platform_owner"}:
             workspace = org_store.get_workspace(workspace_id)
             if not workspace or int(workspace.get("org_id", -1)) != org_id:
                 return JSONResponse(status_code=403, content={"detail": "Workspace is outside your organization"})
@@ -144,6 +160,14 @@ def health():
     }
 
 
+@app.get("/api/v1/health")
+def api_health():
+    return {
+        "status": "ok",
+        "service": "voxcore-api"
+    }
+
+
 # Include API routes BEFORE static files
 app.include_router(auth_router)
 app.include_router(admin_router)
@@ -159,6 +183,10 @@ app.include_router(organizations_router)
 app.include_router(datasources_router)
 app.include_router(agents_router)
 app.include_router(platform_router)
+app.include_router(insights_router)
+app.include_router(
+    __import__('backend.api.agent', fromlist=['router']).router
+)
 
 
 def _autostart_query_worker_enabled() -> bool:
@@ -181,9 +209,34 @@ async def stop_agent_scheduler():
     agent_scheduler.stop()
 
 
+def _resolve_frontend_dist_path() -> Path | None:
+    """Locate frontend dist across local and Render deployment layouts."""
+    backend_dir = Path(__file__).resolve().parent
+    env_dist = os.environ.get("FRONTEND_DIST")
+
+    candidate_paths = [
+        backend_dir.parent / "frontend" / "dist",
+        backend_dir / "frontend" / "dist",
+        Path("/opt/render/project/src/frontend/dist"),
+    ]
+
+    if env_dist:
+        candidate_paths.insert(0, Path(env_dist).expanduser())
+
+    for candidate in candidate_paths:
+        if candidate.exists() and candidate.is_dir():
+            return candidate
+
+    logger.warning(
+        "Frontend dist directory not found. Checked paths: %s",
+        ", ".join(str(path) for path in candidate_paths),
+    )
+    return None
+
+
 # Serve React frontend from dist folder
-frontend_dist = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')
-if os.path.exists(frontend_dist):
-    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="static")
-    print(f"Frontend mounted from: {frontend_dist}")
+frontend_dist = _resolve_frontend_dist_path()
+if frontend_dist:
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="static")
+    logger.info("Frontend mounted from: %s", frontend_dist)
 

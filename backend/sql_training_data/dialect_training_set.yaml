@@ -1,0 +1,201 @@
+# VoxCore SQL Dialect Training Set (First 5 Examples)
+- user_question: Show top 10 customers by revenue
+  neutral_query:
+    metric: SUM(order_total)
+    table: orders
+    group_by: customer_id
+    sort: revenue DESC
+    limit: 10
+  expected_sql:
+    sqlserver: |
+      SELECT TOP 10
+      customer_id,
+      SUM(order_total) AS revenue
+      FROM orders
+      GROUP BY customer_id
+      ORDER BY revenue DESC;
+    postgres: |
+      SELECT
+      customer_id,
+      SUM(order_total) AS revenue
+      FROM orders
+      GROUP BY customer_id
+      ORDER BY revenue DESC
+      LIMIT 10;
+    snowflake: |
+      SELECT
+      customer_id,
+      SUM(order_total) AS revenue
+      FROM orders
+      GROUP BY customer_id
+      ORDER BY revenue DESC
+      LIMIT 10;
+    mysql: |
+      SELECT
+      customer_id,
+      SUM(order_total) AS revenue
+      FROM orders
+      GROUP BY customer_id
+      ORDER BY revenue DESC
+      LIMIT 10;
+    sqlite: |
+      SELECT
+      customer_id,
+      SUM(order_total) AS revenue
+      FROM orders
+      GROUP BY customer_id
+      ORDER BY revenue DESC
+      LIMIT 10;
+    bigquery: |
+      SELECT
+      customer_id,
+      SUM(order_total) AS revenue
+      FROM orders
+      GROUP BY customer_id
+      ORDER BY revenue DESC
+      LIMIT 10;
+  tags: [aggregation, group_by, limit, sort]
+
+- user_question: Show orders from the last 30 days
+  neutral_query:
+    table: orders
+    filter:
+      - column: order_date
+        op: ">="
+        value: last_30_days
+  expected_sql:
+    sqlserver: |
+      SELECT *
+      FROM orders
+      WHERE order_date >= DATEADD(day, -30, GETDATE());
+    postgres: |
+      SELECT *
+      FROM orders
+      WHERE order_date >= CURRENT_DATE - INTERVAL '30 days';
+    snowflake: |
+      SELECT *
+      FROM orders
+      WHERE order_date >= DATEADD(day, -30, CURRENT_DATE);
+    mysql: |
+      SELECT *
+      FROM orders
+      WHERE order_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY);
+    sqlite: |
+      SELECT *
+      FROM orders
+      WHERE order_date >= DATE('now', '-30 day');
+    bigquery: |
+      SELECT *
+      FROM orders
+      WHERE order_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY);
+  tags: [filter, date]
+
+- user_question: Show revenue by month
+  neutral_query:
+    metric: SUM(revenue)
+    table: orders
+    group_by: month(order_date)
+  expected_sql:
+    sqlserver: |
+      SELECT
+      DATEFROMPARTS(YEAR(order_date), MONTH(order_date), 1) AS month,
+      SUM(revenue)
+      FROM orders
+      GROUP BY DATEFROMPARTS(YEAR(order_date), MONTH(order_date), 1);
+    postgres: |
+      SELECT
+      DATE_TRUNC('month', order_date) AS month,
+      SUM(revenue)
+      FROM orders
+      GROUP BY DATE_TRUNC('month', order_date);
+    snowflake: |
+      SELECT
+      DATE_TRUNC('month', order_date) AS month,
+      SUM(revenue)
+      FROM orders
+      GROUP BY DATE_TRUNC('month', order_date);
+    mysql: |
+      SELECT
+      DATE_FORMAT(order_date,'%Y-%m-01') AS month,
+      SUM(revenue)
+      FROM orders
+      GROUP BY DATE_FORMAT(order_date,'%Y-%m-01');
+    sqlite: |
+      SELECT
+      strftime('%Y-%m', order_date) AS month,
+      SUM(revenue)
+      FROM orders
+      GROUP BY strftime('%Y-%m', order_date);
+    bigquery: |
+      SELECT
+      DATE_TRUNC(order_date, MONTH) AS month,
+      SUM(revenue)
+      FROM orders
+      GROUP BY month;
+  tags: [aggregation, group_by, date]
+
+- user_question: Show customer full names
+  neutral_query:
+    column: first_name + last_name
+  expected_sql:
+    sqlserver: |
+      SELECT first_name + ' ' + last_name AS full_name
+      FROM customers;
+    postgres: |
+      SELECT first_name || ' ' || last_name AS full_name
+      FROM customers;
+    snowflake: |
+      SELECT first_name || ' ' || last_name AS full_name
+      FROM customers;
+    mysql: |
+      SELECT CONCAT(first_name,' ',last_name) AS full_name
+      FROM customers;
+    sqlite: |
+      SELECT first_name || ' ' || last_name AS full_name
+      FROM customers;
+    bigquery: |
+      SELECT CONCAT(first_name,' ',last_name) AS full_name
+      FROM customers;
+  tags: [string, concat]
+
+- user_question: Rank customers by revenue
+  neutral_query:
+    metric: revenue
+    rank: revenue DESC
+  expected_sql:
+    sqlserver: |
+      SELECT
+      customer_id,
+      SUM(order_total) AS revenue,
+      RANK() OVER (ORDER BY SUM(order_total) DESC) AS rank
+      FROM orders
+      GROUP BY customer_id;
+    postgres: |
+      SELECT
+      customer_id,
+      SUM(order_total) AS revenue,
+      RANK() OVER (ORDER BY SUM(order_total) DESC) AS rank
+      FROM orders
+      GROUP BY customer_id;
+    snowflake: |
+      SELECT
+      customer_id,
+      SUM(order_total) AS revenue,
+      RANK() OVER (ORDER BY SUM(order_total) DESC) AS rank
+      FROM orders
+      GROUP BY customer_id;
+    mysql: |
+      SELECT
+      customer_id,
+      SUM(order_total) AS revenue,
+      RANK() OVER (ORDER BY SUM(order_total) DESC) AS rank
+      FROM orders
+      GROUP BY customer_id;
+    sqlite: |
+      SELECT
+      customer_id,
+      SUM(order_total) AS revenue,
+      RANK() OVER (ORDER BY SUM(order_total) DESC) AS rank
+      FROM orders
+      GROUP BY customer_id;
+  tags: [window, rank, aggregation]

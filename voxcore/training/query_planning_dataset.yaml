@@ -1,0 +1,108 @@
+dataset: voxcore_query_planning
+version: 1.0
+
+examples:
+
+- id: 001
+  question: "Show all customers"
+  query_plan:
+    intent: select
+    base_table: customers
+    dimension: customers.*
+
+- id: 002
+  question: "Show revenue by region"
+  query_plan:
+    intent: aggregation
+    base_table: orders
+    metric: SUM(orders.order_total)
+    dimension: regions.region_name
+    joins:
+      - customers
+      - regions
+
+- id: 003
+  question: "Show top 10 customers by revenue last month"
+  query_plan:
+    intent: ranking
+    base_table: orders
+    metric: SUM(orders.order_total)
+    dimension: customers.name
+    joins:
+      - customers
+    time_filter: last_month
+    sort: revenue DESC
+    limit: 10
+
+- id: 004
+  question: "Show average order value by product"
+  query_plan:
+    intent: aggregation
+    base_table: order_items
+    metric: AVG(order_items.price)
+    dimension: products.product_name
+    joins:
+      - products
+
+- id: 005
+  question: "Show sales growth by month"
+  query_plan:
+    intent: trend
+    base_table: orders
+    metric: SUM(orders.order_total)
+    dimension: month(orders.order_date)
+    time_group: month
+    comparison: previous_month
+
+- id: 006
+  question: "Show orders from the last 30 days"
+  query_plan:
+    intent: select
+    base_table: orders
+    dimension: orders.*
+    filters:
+      order_date: last_30_days
+
+- id: 007
+  question: "Show customer names and their orders"
+  query_plan:
+    intent: select
+    base_table: orders
+    dimension: customers.name
+    joins:
+      - customers
+
+- id: 008
+  question: "Show revenue for the current year by region"
+  query_plan:
+    intent: aggregation
+    base_table: orders
+    metric: SUM(orders.order_total)
+    dimension: regions.region_name
+    joins:
+      - customers
+      - regions
+    time_filter: current_year
+
+- id: 009
+  question: "Show top 5 products by revenue last month"
+  query_plan:
+    intent: ranking
+    base_table: order_items
+    metric: SUM(order_items.quantity * order_items.price)
+    dimension: products.product_name
+    joins:
+      - products
+    time_filter: last_month
+    sort: revenue DESC
+    limit: 5
+
+- id: 010
+  question: "Show daily order count for the last week"
+  query_plan:
+    intent: trend
+    base_table: orders
+    metric: COUNT(orders.order_id)
+    dimension: day(orders.order_date)
+    time_group: day
+    time_filter: last_7_days

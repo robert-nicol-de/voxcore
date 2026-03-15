@@ -1,0 +1,55 @@
+dataset: voxcore_sql_training
+version: 1.0
+
+examples:
+  - id: 001
+    question: "Show all customers"
+    neutral_query:
+      table: customers
+      select: ["*"]
+    sql:
+      postgres: |
+        SELECT *
+        FROM customers;
+      sqlserver: |
+        SELECT *
+        FROM customers;
+      snowflake: |
+        SELECT *
+        FROM customers;
+
+  - id: 002
+    question: "Show customers from Canada"
+    neutral_query:
+      table: customers
+      filter:
+        country: Canada
+    sql:
+      postgres: |
+        SELECT *
+        FROM customers
+        WHERE country = 'Canada';
+      sqlserver: |
+        SELECT *
+        FROM customers
+        WHERE country = 'Canada';
+      snowflake: |
+        SELECT *
+        FROM customers
+        WHERE country = 'Canada';
+
+  - id: 003
+    question: "Show total revenue"
+    neutral_query:
+      table: orders
+      metric: SUM(order_total)
+    sql:
+      postgres: |
+        SELECT SUM(order_total)
+        FROM orders;
+      sqlserver: |
+        SELECT SUM(order_total)
+        FROM orders;
+      snowflake: |
+        SELECT SUM(order_total)
+        FROM orders;

@@ -3,6 +3,7 @@ import LiveQueryFlow, { type QueryFlowStage } from '../components/LiveQueryFlow'
 import PageHeader from '../components/PageHeader';
 import ChartRenderer from '../components/ChartRenderer';
 import { apiUrl } from '../lib/api';
+import { trackFeatureEvent } from '../lib/telemetry';
 
 type ExecuteResult = {
   status?: string;
@@ -24,7 +25,12 @@ type ExecuteResult = {
   suggested_questions?: string[];
   semantic_context_prompt?: string;
   query_graph?: {
-    nodes?: Array<{ type?: string; name?: string; sql?: string; aggregation?: string; table?: string; column?: string; value?: string | number; time_column?: string; chart_type?: string; title?: string; operator?: string; filter_value?: unknown }>;
+    graph_id?: string;
+    graph_type?: string;
+    nodes?: Array<{ id?: string; type?: string; stage?: string; execution_order?: number; label?: string; purpose?: string; depends_on?: string[]; output_name?: string; output_summary?: string; status?: string; name?: string; sql?: string; aggregation?: string; table?: string; column?: string; value?: string | number; time_column?: string; chart_type?: string; title?: string; operator?: string; filter_value?: unknown }>;
+    execution_trace?: Array<{ node_id?: string; type?: string; stage?: string; execution_order?: number; label?: string; purpose?: string; depends_on?: string[]; output_name?: string; output_summary?: string; status?: string }>;
+    execution_order?: string[];
+    summary?: { node_count?: number; stage_count?: number; stages?: string[]; execution_path?: string[] };
     compiled_sql?: string;
     insight_hints?: string[];
     followup_questions?: string[];
@@ -212,6 +218,10 @@ export default function SqlAssistant() {
         createStage('Sandbox', 'safe', `Previewed ${previewCount} rows`),
         createStage('Database', 'idle', 'Awaiting execution'),
       ];
+      void trackFeatureEvent({
+        event: 'ai_query_executed',
+        metadata: { surface: 'sql_assistant', question: promptToRun.slice(0, 120) },
+      });
       setFlowStages(previewFlow);
       persistFlow(previewFlow);
     } catch {
@@ -527,31 +537,92 @@ export default function SqlAssistant() {
 
         {queryGraph && queryGraph.nodes && queryGraph.nodes.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <h2 style={{ ...sectionTitle, marginBottom: 12 }}>Query Graph</h2>
+            <h2 style={{ ...sectionTitle, marginBottom: 12 }}>Reasoning Graph</h2>
             <div style={{ fontSize: 12, color: 'var(--platform-muted)', marginBottom: 10 }}>
-              One graph — every analytical artifact compiled from a single source of truth.
+              One graph drives SQL, insight hints, drilldowns, and the execution inspector.
             </div>
 
-            {/* Node cards */}
+            {(queryGraph.graph_id || queryGraph.summary) && (
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 8,
+                marginBottom: 12,
+              }}>
+                {queryGraph.graph_id && <span style={graphMetaChip}>{queryGraph.graph_id}</span>}
+                {queryGraph.graph_type && <span style={graphMetaChip}>{queryGraph.graph_type}</span>}
+                {typeof queryGraph.summary?.node_count === 'number' && <span style={graphMetaChip}>{queryGraph.summary.node_count} nodes</span>}
+                {typeof queryGraph.summary?.stage_count === 'number' && <span style={graphMetaChip}>{queryGraph.summary.stage_count} stages</span>}
+                {(queryGraph.summary?.stages || []).map((stage) => <span key={stage} style={graphMetaChip}>{stage}</span>)}
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
               {queryGraph.nodes.map((node, idx) => (
-                <div key={idx} style={graphNodeCard(node.type || '')}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.65, marginBottom: 4 }}>
-                    {node.type}
+                <div key={node.id || idx} style={graphNodeCard(node.type || '')}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.65 }}>
+                      {node.type}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--platform-muted)' }}>
+                      Step {node.execution_order || idx + 1}
+                    </div>
                   </div>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>
                     {graphNodeLabel(node)}
                   </div>
+                  {node.purpose && (
+                    <div style={{ fontSize: 11, opacity: 0.8, marginTop: 6, lineHeight: 1.4 }}>
+                      {node.purpose}
+                    </div>
+                  )}
                   {graphNodeSub(node) && (
                     <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>
                       {graphNodeSub(node)}
+                    </div>
+                  )}
+                  {node.depends_on && node.depends_on.length > 0 && (
+                    <div style={{ fontSize: 10, color: 'var(--platform-muted)', marginTop: 6 }}>
+                      Depends on: {node.depends_on.join(', ')}
                     </div>
                   )}
                 </div>
               ))}
             </div>
 
-            {/* Graph-derived SQL */}
+            {queryGraph.execution_trace && queryGraph.execution_trace.length > 0 && (
+              <div style={{
+                marginBottom: 14,
+                padding: 14,
+                borderRadius: 12,
+                border: '1px solid var(--platform-border)',
+                background: 'rgba(9,14,24,0.72)',
+              }}>
+                <div style={{ color: '#dbe7ff', fontWeight: 700, marginBottom: 10 }}>Execution Trace</div>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {queryGraph.execution_trace.map((step) => (
+                    <div key={step.node_id || `${step.type}-${step.execution_order}`} style={graphTraceRow}>
+                      <div style={graphTraceOrder}>{step.execution_order || '-'}</div>
+                      <div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                          <span style={{ color: '#e6f0ff', fontWeight: 700 }}>{step.label || step.type || 'step'}</span>
+                          {step.stage && <span style={graphTraceTag}>{step.stage}</span>}
+                          {step.status && <span style={graphTraceTag}>{step.status}</span>}
+                        </div>
+                        {step.purpose && <div style={{ color: '#c6daf9', fontSize: 12, marginBottom: 4 }}>{step.purpose}</div>}
+                        {step.output_summary && <div style={{ color: '#9ec2ff', fontSize: 12 }}>Output: {step.output_summary}</div>}
+                        {step.depends_on && step.depends_on.length > 0 && (
+                          <div style={{ color: 'var(--platform-muted)', fontSize: 11, marginTop: 4 }}>
+                            Inputs: {step.depends_on.join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {queryGraph.compiled_sql && (
               <details style={{ marginBottom: 10 }}>
                 <summary style={{ cursor: 'pointer', color: 'var(--platform-muted)', fontSize: 12 }}>Graph-Compiled SQL</summary>
@@ -570,14 +641,12 @@ export default function SqlAssistant() {
               </details>
             )}
 
-            {/* Graph explanation */}
             {queryGraph.explanation && (
               <div style={{ color: '#c8deff', fontSize: 13, marginBottom: 8, fontStyle: 'italic' }}>
                 {queryGraph.explanation}
               </div>
             )}
 
-            {/* Insight hints from graph */}
             {queryGraph.insight_hints && queryGraph.insight_hints.length > 0 && (
               <div style={{ marginBottom: 8 }}>
                 <div style={{ color: 'var(--platform-muted)', fontSize: 12, marginBottom: 4 }}>Analytical Context</div>
@@ -587,7 +656,17 @@ export default function SqlAssistant() {
               </div>
             )}
 
-            {/* Drilldowns from graph */}
+            {queryGraph.followup_questions && queryGraph.followup_questions.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ color: 'var(--platform-muted)', fontSize: 12, marginBottom: 4 }}>Graph Follow-Ups</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {queryGraph.followup_questions.map((item) => (
+                    <span key={item} style={graphMetaChip}>{item}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {queryGraph.drilldowns && queryGraph.drilldowns.length > 0 && (
               <div>
                 <div style={{ color: 'var(--platform-muted)', fontSize: 12, marginBottom: 4 }}>Graph Drilldowns</div>
@@ -975,7 +1054,16 @@ function graphNodeCard(type: string): React.CSSProperties {
 }
 
 type GraphNodeDict = {
+  id?: string;
   type?: string;
+  stage?: string;
+  execution_order?: number;
+  label?: string;
+  purpose?: string;
+  depends_on?: string[];
+  output_name?: string;
+  output_summary?: string;
+  status?: string;
   name?: string;
   sql?: string;
   aggregation?: string;
@@ -989,8 +1077,51 @@ type GraphNodeDict = {
   filter_value?: unknown;
 };
 
+const graphMetaChip: React.CSSProperties = {
+  background: 'rgba(79,140,255,0.12)',
+  color: '#c9ddff',
+  border: '1px solid rgba(79,140,255,0.28)',
+  borderRadius: 999,
+  padding: '4px 10px',
+  fontSize: 11,
+};
+
+const graphTraceRow: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '40px minmax(0, 1fr)',
+  gap: 12,
+  alignItems: 'start',
+  padding: '10px 0',
+  borderBottom: '1px solid rgba(79,140,255,0.1)',
+};
+
+const graphTraceOrder: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  display: 'grid',
+  placeItems: 'center',
+  borderRadius: '50%',
+  background: 'rgba(79,140,255,0.14)',
+  border: '1px solid rgba(79,140,255,0.28)',
+  color: '#e6f0ff',
+  fontWeight: 700,
+  fontSize: 12,
+};
+
+const graphTraceTag: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.06)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: 999,
+  padding: '2px 8px',
+  color: '#b8c7de',
+  fontSize: 10,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+};
+
 function graphNodeLabel(node: GraphNodeDict): string {
   const icon = GRAPH_NODE_COLORS[node.type || '']?.icon || '○';
+  const fallbackLabel = node.label || node.name || node.type || '';
   switch (node.type) {
     case 'metric':       return `${icon} ${node.name || 'metric'}`;
     case 'dimension':    return `${icon} ${node.name || 'dimension'}`;
@@ -999,11 +1130,12 @@ function graphNodeLabel(node: GraphNodeDict): string {
     case 'filter':       return `${icon} ${node.column || ''} ${node.operator || '='} ${String(node.filter_value ?? '')}`;
     case 'limit':        return `${icon} TOP ${node.value ?? 10}`;
     case 'visualization':return `${icon} ${node.chart_type || 'bar_chart'}`;
-    default:             return String(node.name || node.value || node.type || '');
+    default:             return `${icon} ${String(fallbackLabel || node.value || '')}`.trim();
   }
 }
 
 function graphNodeSub(node: GraphNodeDict): string {
+  if (node.output_summary) return node.output_summary;
   switch (node.type) {
     case 'metric':    return node.sql ? node.sql.slice(0, 40) + (node.sql.length > 40 ? '…' : '') : '';
     case 'dimension': return node.column && node.column !== node.name ? node.column : (node.table || '');
