@@ -1,44 +1,106 @@
 """
-backend/db/org_store.py
+SQL Safety Policy (VoxCore Backend)
+-----------------------------------
+All SQL queries in this module must use parameterized statements (no string interpolation).
+Dynamic SQL fragments (e.g., column lists, IN clauses) must be constructed using safe placeholder expansion only.
+If raw SQL fragments are ever required, use the `validate_sql_identifier` utility below to strictly validate user-supplied identifiers.
 
-SQLite-backed store for organizations, workspaces, and users.
-Database file: data/voxcloud.db (at project root).
+Example safe usage:
+    placeholders = ','.join(['?'] * len(ids))
+    query = f"SELECT * FROM table WHERE id IN ({placeholders})"
+    conn.execute(query, ids)
 
-Bootstraps a default org/workspace on first run so the platform works
-out-of-the-box without any setup.
+Never use .format(), f-strings, or % formatting to inject user data into SQL queries.
 """
 
+import re
 import hashlib
-import json
 import secrets
 import sqlite3
-from contextlib import contextmanager
-from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from contextlib import contextmanager
+from typing import List, Dict, Optional
+from pathlib import Path
+
+def validate_sql_identifier(identifier: str) -> str:
+    """
+    Strictly validate a SQL identifier (table/column name) for use in dynamic SQL.
+    Only allows alphanumeric and underscore, must start with a letter.
+    Raises ValueError if invalid.
+    """
+    if not re.match(r"^[A-Za-z][A-Za-z0-9_]*$", identifier):
+        raise ValueError(f"Invalid SQL identifier: {identifier}")
+    return identifier
+
+def validate_api_key(raw_key: str):
+    """
+    Validate an API key: returns org_id if valid and active, else None.
+    """
+    if not raw_key or not raw_key.startswith("vxc_") or len(raw_key) < 20:
+        return None
+    prefix = raw_key[:14]
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    with _get_conn() as conn:
+        row = conn.execute(
+            "SELECT org_id FROM api_keys WHERE key_prefix = ? AND key_hash = ? AND is_active = 1",
+            (prefix, key_hash),
+        ).fetchone()
+    return row["org_id"] if row else None
 
 
-SUPPORTED_ROLES = {
-    "god",
-    "admin",
-    "platform_owner",
-    "workspace_admin",
-    "data_guardian",
-    "ai_analyst",
-    "sandbox_user",
-    "viewer",
-    "developer",
-    "analyst",
-}
+# ── Audit Logging ────────────────────────────────────────────────────────────
 
+def audit_log_permission_failure(user_id: int, org_id: int, workspace_id: int, permission: str, endpoint: str, reason: str, ip_address: str = None):
+    with _get_conn() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS audit_permission_failures (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                org_id INTEGER,
+                workspace_id INTEGER,
+                permission TEXT,
+                endpoint TEXT,
+                reason TEXT,
+                ip_address TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO audit_permission_failures (user_id, org_id, workspace_id, permission, endpoint, reason, ip_address)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, org_id, workspace_id, permission, endpoint, reason, ip_address)
+        )
 
-def _normalize_role(role: str) -> str:
-    value = (role or "viewer").strip().lower()
-    if value == "org_admin":
-        return "admin"
-    if value == "analyst":
-        return "ai_analyst"
-    return value if value in SUPPORTED_ROLES else "viewer"
+def log_security_event(event_type: str, org_id: int = None, user_id: int = None, workspace_id: int = None, details: str = None, ip_address: str = None):
+    """
+    Log a security event (login, API key use, suspicious activity, etc.)
+    """
+    with _get_conn() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS security_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT NOT NULL,
+                org_id INTEGER,
+                user_id INTEGER,
+                workspace_id INTEGER,
+                details TEXT,
+                ip_address TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO security_events (event_type, org_id, user_id, workspace_id, details, ip_address)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (event_type, org_id, user_id, workspace_id, details, ip_address)
+        )
 
 
 # ── Database setup ─────────────────────────────────────────────────────────────
@@ -217,6 +279,20 @@ def init_db():
                 metadata       TEXT,
                 created_at     TEXT NOT NULL DEFAULT (datetime('now'))
             );
+
+                CREATE TABLE IF NOT EXISTS sessions (
+                    session_id    TEXT PRIMARY KEY,
+                    user_id       INTEGER NOT NULL REFERENCES org_users(id) ON DELETE CASCADE,
+                    org_id        INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+                    workspace_id  INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                    issued_at     TEXT NOT NULL,
+                    expires_at    TEXT NOT NULL,
+                    is_active     INTEGER NOT NULL DEFAULT 1,
+                    ip_address    TEXT,
+                    user_agent    TEXT,
+                    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+                    terminated_at TEXT
+                );
         """)
 
         # Lightweight forward-only schema compatibility for already-created DBs
@@ -281,7 +357,10 @@ def list_orgs() -> List[Dict]:
     return [dict(r) for r in rows]
 
 
-def get_org(org_id: int) -> Optional[Dict]:
+def get_org(org_id: int, user_org_id: int) -> Optional[Dict]:
+    """Strict tenant isolation: user_org_id must match org_id."""
+    if org_id != user_org_id:
+        return None
     with _get_conn() as conn:
         row = conn.execute(
             "SELECT * FROM organizations WHERE id = ?", (org_id,)
@@ -321,16 +400,17 @@ def list_workspaces(org_id: int) -> List[Dict]:
     return [dict(r) for r in rows]
 
 
-def get_workspace(workspace_id: int) -> Optional[Dict]:
+def get_workspace(workspace_id: int, org_id: int) -> Optional[Dict]:
+    """Strict tenant isolation: workspace must belong to org_id."""
     with _get_conn() as conn:
         row = conn.execute(
             """
             SELECT w.*, o.name AS org_name, o.slug AS org_slug
             FROM workspaces w
             JOIN organizations o ON o.id = w.org_id
-            WHERE w.id = ?
+            WHERE w.id = ? AND w.org_id = ?
             """,
-            (workspace_id,),
+            (workspace_id, org_id),
         ).fetchone()
     return dict(row) if row else None
 
@@ -553,11 +633,12 @@ def list_data_sources_scoped(org_id: int, workspace_id: int) -> List[Dict]:
     return out
 
 
-def get_data_source(datasource_id: int) -> Optional[Dict]:
+def get_data_source(datasource_id: int, org_id: int, workspace_id: int) -> Optional[Dict]:
+    """Strict tenant isolation: data source must belong to org_id and workspace_id."""
     with _get_conn() as conn:
         row = conn.execute(
-            "SELECT * FROM data_sources WHERE id = ?",
-            (datasource_id,),
+            "SELECT * FROM data_sources WHERE id = ? AND org_id = ? AND workspace_id = ?",
+            (datasource_id, org_id, workspace_id),
         ).fetchone()
     if not row:
         return None

@@ -81,21 +81,21 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => 
   };
 
   return (
-    <div className="login-container">
-      <div className="login-content">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-primary-dark via-primary to-primary-darker">
+      <div className="flex flex-col items-center justify-center gap-12 z-10 animate-fade-in">
         <img 
           src="/assets/VC_full_logo_text.png"
           alt="VoxCore Logo"
-          className="login-image login-image-small"
+          className="w-full max-w-lg mb-6 drop-shadow-xl animate-slide-up"
         />
 
-        <div className="login-form-card">
-          <h3 className="login-form-title">Login to VoxCloud</h3>
-          <p className="login-form-subtitle">Enter your credentials to access the platform</p>
+        <div className="card bg-opacity-90 border border-accent/20 rounded-2xl p-10 max-w-lg w-full backdrop-blur-md">
+          <h3 className="text-2xl font-bold text-center text-primary-content mb-1">Login to VoxCloud</h3>
+          <p className="text-base text-center text-muted mb-7">Enter your credentials to access the platform</p>
 
-          <form onSubmit={handleSubmit} className="login-form">
-            <div className="login-field">
-              <label htmlFor="email">Email Address</label>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="email" className="text-sm font-semibold text-muted">Email Address</label>
               <input
                 id="email"
                 type="email"
@@ -105,11 +105,12 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => 
                 required
                 autoComplete="email"
                 autoFocus
+                className="input px-4 py-3 rounded-lg border border-platform-border bg-platform-input text-primary-content text-base focus:border-accent focus:ring-2 focus:ring-accent/20 placeholder:text-muted"
               />
             </div>
 
-            <div className="login-field">
-              <label htmlFor="password">Password</label>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="password" className="text-sm font-semibold text-muted">Password</label>
               <input
                 id="password"
                 type="password"
@@ -118,16 +119,17 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isDemoMode = false }) => 
                 placeholder="Enter your password"
                 required
                 autoComplete="current-password"
+                className="input px-4 py-3 rounded-lg border border-platform-border bg-platform-input text-primary-content text-base focus:border-accent focus:ring-2 focus:ring-accent/20 placeholder:text-muted"
               />
             </div>
 
             {error && (
-              <div className="login-error">
+              <div className="bg-error/10 border border-error/30 rounded-lg px-4 py-3 text-error text-sm flex items-center gap-2">
                 <span>⚠️</span> {error}
               </div>
             )}
 
-            <button type="submit" className="login-button" disabled={isLoading}>
+            <button type="submit" className="primary-btn w-full py-3 text-lg font-semibold rounded-lg shadow-lg mt-1" disabled={isLoading}>
               {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>

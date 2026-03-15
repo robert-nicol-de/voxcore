@@ -1,0 +1,28 @@
+dataset: sql_aggregation
+version: 1.0
+
+examples:
+
+- id: agg_001
+  question: "What is total revenue?"
+  sql: |
+    SELECT SUM(revenue)
+    FROM sales;
+
+- id: agg_002
+  question: "How many orders were placed?"
+  sql: |
+    SELECT COUNT(*)
+    FROM orders;
+
+- id: agg_003
+  question: "What is the average order value?"
+  sql: |
+    SELECT AVG(order_total)
+    FROM orders;
+
+- id: agg_004
+  question: "What is the maximum sale value?"
+  sql: |
+    SELECT MAX(order_total)
+    FROM orders;

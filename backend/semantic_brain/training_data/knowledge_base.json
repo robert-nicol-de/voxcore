@@ -15,9 +15,9 @@
     "intent_type": "aggregate",
     "sql": "SELECT district,\n       MONTH(order_date) AS time_period,\n       SUM(sales_amount) AS metric_value\nFROM sales\nGROUP BY district, MONTH(order_date)\nORDER BY district, time_period",
     "query_text": "Show revenue for the past 12 months.",
-    "success_count": 91,
+    "success_count": 93,
     "fail_count": 0,
-    "last_seen": "2026-03-15T11:52:50Z"
+    "last_seen": "2026-03-15T17:24:20Z"
   },
   "sales::district": {
     "metric": "sales",

@@ -135,8 +135,8 @@ export default function QuerySandbox() {
   const [generatedSql, setGeneratedSql] = useState('');
   const [riskLevel, setRiskLevel] = useState('LOW');
   const [riskReasons, setRiskReasons] = useState<string[]>([]);
-  const [understanding, setUnderstanding] = useState<RiskPayload['understanding']>(null);
-  const [analysisSession, setAnalysisSession] = useState<RiskPayload['analysis_session']>(null);
+  const [understanding, setUnderstanding] = useState<RiskPayload['understanding']>();
+  const [analysisSession, setAnalysisSession] = useState<RiskPayload['analysis_session']>();
   const [previewRows, setPreviewRows] = useState<Array<Record<string, unknown>>>([]);
   const [previewChart, setPreviewChart] = useState<unknown>(null);
   const [statusMessage, setStatusMessage] = useState('Ask a question to start the VoxCore Playground.');
@@ -245,8 +245,8 @@ export default function QuerySandbox() {
       setGeneratedSql(sql || '-- no SQL returned by semantic layer');
       setRiskLevel(String(riskData.risk_level || 'low').toUpperCase());
       setRiskReasons(Array.isArray(riskData.reasons) ? riskData.reasons : []);
-      setUnderstanding(riskData.understanding || null);
-      setAnalysisSession(riskData.analysis_session || null);
+      setUnderstanding(riskData.understanding || undefined);
+      setAnalysisSession(riskData.analysis_session || undefined);
 
       const queryForSandbox = sql || prompt;
       const sandboxRes = await fetch(apiUrl('/api/v1/query/sandbox'), {
@@ -335,8 +335,8 @@ export default function QuerySandbox() {
 
       setRiskLevel(String(riskData.risk_level || 'low').toUpperCase());
       setRiskReasons(Array.isArray(riskData.reasons) ? riskData.reasons : []);
-      setUnderstanding(riskData.understanding || null);
-      setAnalysisSession(riskData.analysis_session || null);
+      setUnderstanding(riskData.understanding || undefined);
+      setAnalysisSession(riskData.analysis_session || undefined);
 
       const sandboxRes = await fetch(apiUrl('/api/v1/query/sandbox'), {
         method: 'POST',
@@ -446,19 +446,17 @@ export default function QuerySandbox() {
   }
 
   return (
-    <div className="sandbox-container sandbox-watermark">
+    <div className="sandbox-container sandbox-watermark flex flex-col gap-6">
       <PageHeader title="VoxCore Playground" subtitle="Try VoxCore instantly with a demo company: Northwind Retail Group" />
 
-      <div className="card playground-banner">
-        <div>
-          <div className="playground-banner-title">You are using a Demo Sandbox</div>
-          <div className="playground-banner-copy">Your real databases stay protected by VoxCore Guardian.</div>
-        </div>
+      <div className="card playground-banner flex flex-col gap-1">
+        <div className="playground-banner-title">You are using a Demo Sandbox</div>
+        <div className="playground-banner-copy">Your real databases stay protected by VoxCore Guardian.</div>
       </div>
 
-      <div className="card">
+      <div className="card flex flex-col gap-3">
         <h3>Ask a question about the data</h3>
-        <div className="playground-mode-switch" role="tablist" aria-label="Playground mode">
+        <div className="playground-mode-switch flex gap-2" role="tablist" aria-label="Playground mode">
           <button
             className={`playground-mode-btn${mode === 'ask' ? ' active' : ''}`}
             onClick={() => setMode('ask')}
@@ -474,7 +472,7 @@ export default function QuerySandbox() {
             SQL Mode
           </button>
         </div>
-        <div className="sandbox-input-row">
+        <div className="sandbox-input-row flex gap-2">
           {mode === 'ask' ? (
             <input
               type="text"
@@ -503,10 +501,10 @@ export default function QuerySandbox() {
           </button>
         </div>
 
-        {shareMessage ? <div className="results-placeholder" style={{ marginTop: 10 }}>{shareMessage}</div> : null}
+        {shareMessage ? <div className="results-placeholder mt-2">{shareMessage}</div> : null}
 
         {mode === 'ask' ? (
-          <div className="playground-examples">
+          <div className="playground-examples flex gap-2 mt-2">
             {EXAMPLE_QUESTIONS.map((example) => (
               <button
                 key={example}
@@ -519,7 +517,7 @@ export default function QuerySandbox() {
             ))}
           </div>
         ) : (
-          <div className="results-placeholder" style={{ marginTop: 10 }}>
+          <div className="results-placeholder mt-2">
             SQL Mode is for advanced users who want direct query exploration with VoxCore Guardian checks.
           </div>
         )}
@@ -532,10 +530,10 @@ export default function QuerySandbox() {
         </div>
       ) : null}
 
-      <div className="card">
+      <div className="card flex flex-col gap-2">
         <h3>VoxCore Brain Generated SQL</h3>
         <pre className="sql-preview">{generatedSql || '-- SQL will appear here after you ask a question'}</pre>
-        <div className="sandbox-risk-row">
+        <div className="sandbox-risk-row flex justify-between items-center">
           <span>Guardian Risk Analysis</span>
           <span className={`risk-badge ${riskLevel.toLowerCase()}`}>{riskLevel} RISK</span>
         </div>

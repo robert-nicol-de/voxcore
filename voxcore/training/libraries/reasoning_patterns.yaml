@@ -1,0 +1,6 @@
+patterns:
+  - trend_analysis
+  - growth_comparison
+  - ranking_analysis
+  - churn_detection
+  - anomaly_detection

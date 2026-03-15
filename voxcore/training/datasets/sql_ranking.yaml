@@ -1,0 +1,21 @@
+dataset: sql_ranking
+version: 1.0
+
+examples:
+
+- id: rank_001
+  question: "Who are the top 10 customers by revenue?"
+  sql: |
+    SELECT customer_id, SUM(order_total) AS revenue
+    FROM orders
+    GROUP BY customer_id
+    ORDER BY revenue DESC
+    LIMIT 10;
+
+- id: rank_002
+  question: "Which products sold the most units?"
+  sql: |
+    SELECT product_id, SUM(quantity) AS units_sold
+    FROM order_items
+    GROUP BY product_id
+    ORDER BY units_sold DESC;

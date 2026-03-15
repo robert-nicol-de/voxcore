@@ -1,0 +1,43 @@
+entities:
+  customers:
+    type: dimension
+    attributes:
+      - customer_id
+      - name
+      - region_id
+  orders:
+    type: fact
+    metrics:
+      - order_total
+      - quantity
+    time_column: order_date
+  products:
+    type: dimension
+    attributes:
+      - product_id
+      - product_name
+      - category_id
+  regions:
+    type: dimension
+    attributes:
+      - region_id
+      - region_name
+  order_items:
+    type: fact
+    metrics:
+      - item_total
+      - quantity
+    attributes:
+      - order_id
+      - product_id
+relationships:
+  - from: orders.customer_id
+    to: customers.customer_id
+  - from: customers.region_id
+    to: regions.region_id
+  - from: order_items.order_id
+    to: orders.order_id
+  - from: order_items.product_id
+    to: products.product_id
+  - from: products.category_id
+    to: categories.category_id

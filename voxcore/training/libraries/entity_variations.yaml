@@ -1,0 +1,44 @@
+customer:
+  - customer
+  - client
+  - buyer
+  - account_holder
+customers:
+  - customers
+  - clients
+  - buyers
+  - account_holders
+orders:
+  - orders
+  - purchases
+  - transactions
+  - sales_orders
+order_items:
+  - order_items
+  - purchase_items
+  - transaction_items
+products:
+  - products
+  - items
+  - goods
+  - merchandise
+stores:
+  - stores
+  - outlets
+  - branches
+sales:
+  - sales
+  - transactions
+  - receipts
+inventory:
+  - inventory
+  - stock
+  - supplies
+accounts:
+  - accounts
+  - ledgers
+  - profiles
+transactions:
+  - transactions
+  - movements
+  - entries

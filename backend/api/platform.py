@@ -8,12 +8,30 @@ from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
 
 import backend.db.org_store as org_store
-from backend.services.audit_logger import get_recent_audit_events
+
+from backend.services.audit_logger import get_recent_audit_events, rotate_audit_log, purge_old_audit_logs, export_audit_log
 from backend.services.policy_engine import apply_policies, get_company_policies
 from backend.services.rbac import list_role_definitions
 
-
 router = APIRouter(prefix="/api/v1/platform", tags=["platform"])
+
+@router.post("/audit-log/rotate")
+def rotate_audit_log_endpoint(request: Request):
+    _require_platform_owner(request)
+    rotate_audit_log()
+    return {"status": "ok", "message": "Audit log rotated if size exceeded policy."}
+
+@router.post("/audit-log/purge")
+def purge_audit_logs_endpoint(request: Request, retain_days: int = Query(90, ge=7, le=365)):
+    _require_platform_owner(request)
+    purge_old_audit_logs(retain_days=retain_days)
+    return {"status": "ok", "message": f"Old audit log archives purged (retained {retain_days} days)."}
+
+@router.post("/audit-log/export")
+def export_audit_log_endpoint(request: Request, destination: str = Query(..., min_length=5)):
+    _require_platform_owner(request)
+    export_audit_log(destination)
+    return {"status": "ok", "message": f"Audit log exported to {destination}"}
 
 
 SUPPORTED_CONNECTORS = [

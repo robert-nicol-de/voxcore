@@ -48,11 +48,17 @@ import backend.db.org_store as org_store
 logger = logging.getLogger(__name__)
 
 
+
 app = FastAPI(
     title="VoxCore API",
     description="AI Data Governance and SQL Risk Engine",
     version="1.0"
 )
+
+# Allow both trailing and non-trailing slashes
+app.router.redirect_slashes = True
+from fastapi import Depends
+from backend.services.rbac import get_current_user
 
 init_org_db()
 
@@ -96,14 +102,61 @@ async def enforce_jwt_for_api(request: Request, call_next):
     if any(path.startswith(p) for p in _PUBLIC_PREFIXES):
         return await call_next(request)
 
+
     if path.startswith("/api/v1/") and not path.startswith("/api/v1/auth/"):
+        api_key = request.headers.get("X-API-Key")
+        client_ip = request.client.host if request.client else None
+        if api_key:
+            org_id = org_store.validate_api_key(api_key)
+            if not org_id:
+                org_store.log_security_event(
+                    event_type="api_key_auth_failed",
+                    org_id=None,
+                    user_id=None,
+                    details=f"Invalid API key: {api_key[:8]}...",
+                    ip_address=client_ip,
+                )
+                return JSONResponse(status_code=401, content={"detail": "Invalid or inactive API key"})
+            org_store.log_security_event(
+                event_type="api_key_auth_success",
+                org_id=org_id,
+                user_id=None,
+                details=f"API key used: {api_key[:8]}...",
+                ip_address=client_ip,
+            )
+            # API key auth: no user context, only org
+            request.state.user_id = None
+            request.state.user_email = None
+            request.state.org_id = org_id
+            request.state.role = "service"
+            request.state.is_super_admin = False
+            # Default workspace: first for org
+            fallback = org_store.get_default_workspace(org_id)
+            request.state.workspace_id = int((fallback or {}).get("id", 1))
+            request.state.datasource_id = request.headers.get("X-Datasource-ID")
+            return await call_next(request)
+        # Fallback to Bearer JWT
         header = request.headers.get("Authorization", "")
         if not header.startswith("Bearer "):
-            return JSONResponse(status_code=401, content={"detail": "Missing bearer token"})
+            org_store.log_security_event(
+                event_type="jwt_auth_failed",
+                org_id=None,
+                user_id=None,
+                details="Missing bearer token or API key",
+                ip_address=client_ip,
+            )
+            return JSONResponse(status_code=401, content={"detail": "Missing bearer token or API key"})
         token = header.split(" ", 1)[1].strip()
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         except Exception:
+            org_store.log_security_event(
+                event_type="jwt_auth_failed",
+                org_id=None,
+                user_id=None,
+                details="Invalid token",
+                ip_address=client_ip,
+            )
             return JSONResponse(status_code=401, content={"detail": "Invalid token"})
 
         user_id = int(payload.get("user_id", 0) or 0)
@@ -130,6 +183,13 @@ async def enforce_jwt_for_api(request: Request, call_next):
             if user_id and not org_store.user_has_workspace_access(user_id, workspace_id):
                 return JSONResponse(status_code=403, content={"detail": "Workspace access denied"})
 
+        org_store.log_security_event(
+            event_type="jwt_auth_success",
+            org_id=org_id,
+            user_id=user_id,
+            details=f"JWT login for user_id={user_id}, org_id={org_id}",
+            ip_address=client_ip,
+        )
         request.state.user_id = user_id
         request.state.user_email = payload.get("email")
         request.state.org_id = org_id
@@ -152,11 +212,25 @@ def root():
 
 
 # Health check endpoint
+# Health check endpoint
 @app.get("/health")
 def health():
     return {
         "status": "ok",
         "service": "voxcore-api"
+    }
+
+
+# Debug endpoint for current user context
+@app.get("/api/v1/whoami")
+def whoami(user=Depends(get_current_user)):
+    return {
+        "user_id": getattr(user, "id", None),
+        "role": getattr(user, "role", None),
+        "org_id": getattr(user, "org_id", None),
+        "workspace_id": getattr(user, "workspace_id", None),
+        "email": getattr(user, "email", None),
+        "is_super_admin": getattr(user, "is_super_admin", False),
     }
 
 
@@ -184,6 +258,14 @@ app.include_router(datasources_router)
 app.include_router(agents_router)
 app.include_router(platform_router)
 app.include_router(insights_router)
+
+# Register permissions API (Zanzibar-style relationship management)
+try:
+    from voxcore.api.permissions_api import router as permissions_router
+    app.include_router(permissions_router)
+except Exception as e:
+    print(f"[WARN] Could not register permissions API: {e}")
+
 app.include_router(
     __import__('backend.api.agent', fromlist=['router']).router
 )

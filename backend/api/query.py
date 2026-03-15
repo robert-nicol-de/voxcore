@@ -604,6 +604,7 @@ def _add_ai_context(request: Request, payload: QueryRequest, body: dict[str, Any
 
 
 def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, Any]:
+
     start = time.perf_counter()
     query = payload.query
     query_id = create_audit_query_id()
@@ -622,6 +623,70 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     )
     _save_latest_plan(company_id, workspace_id, semantic_payload["analytical_plan"])
     semantic_sql = str(semantic_payload.get("generated_sql") or "")
+
+    # --- Zanzibar-style permission check ---
+    from backend.api.permission_guard import permission_engine
+    required_relation = "query"
+    object_type = "workspace"
+    object_id = workspace_id
+    user_id = actor_user_id
+    def get_user_workspaces(uid):
+        from backend.db.org_store import list_user_workspaces
+        return [str(ws["id"]) for ws in list_user_workspaces(uid, int(company_id))]
+
+    has_permission = False
+    if user_id is not None:
+        has_permission = permission_engine.check_access(
+            user_id, required_relation, object_type, object_id, get_user_workspaces=get_user_workspaces
+        )
+    if not has_permission:
+        from backend.db.org_store import audit_log_permission_failure
+        ip_address = getattr(request.client, "host", None)
+        audit_log_permission_failure(
+            user_id=user_id or -1,
+            org_id=int(company_id) if company_id.isdigit() else -1,
+            workspace_id=int(workspace_id) if workspace_id.isdigit() else -1,
+            permission=f"{required_relation}:{object_type}:{object_id}",
+            endpoint="/query",
+            reason="Zanzibar permission denied",
+            ip_address=ip_address,
+        )
+        return {
+            "status": "blocked",
+            "blocked_by": "permission_engine",
+            "message": "Access denied by permission engine.",
+            "reason": "User does not have permission to execute queries in this workspace.",
+        }
+
+    # --- Data Guard: Sensitive Data Inspection ---
+    from voxcore.security.data_guard import scan_query, scan_results, log_data_guard_event, DataGuardViolation
+    guard_result = scan_query(semantic_sql, user_role=actor_role)
+    if guard_result["action"] == "block":
+        log_data_guard_event(user_id or -1, semantic_sql, "blocked_sensitive_column")
+        return {
+            "status": "blocked",
+            "blocked_by": "data_guard",
+            "message": "Requested data contains restricted fields.",
+            "reason": "Sensitive or restricted columns detected.",
+            "violations": guard_result["violations"],
+        }
+    elif guard_result["action"] == "mask":
+        # Use rewritten SQL with masking
+        semantic_sql = guard_result["rewritten_sql"]
+
+    # ...existing code...
+    # After query execution, scan results for sensitive data
+    # (This should be placed after the DB query, but before returning to user)
+    def _add_ai_context_and_scan_results(request, payload, body):
+        # Scan result set for sensitive data (PII, financial, etc.)
+        if isinstance(body, dict):
+            for k in ["preview_rows", "rows", "result", "data"]:
+                if k in body and isinstance(body[k], list):
+                    body[k] = scan_results(body[k])
+        return _add_ai_context(request, payload, body)
+
+    global _add_ai_context
+    _add_ai_context = _add_ai_context_and_scan_results
 
     def audit_event(
         status: str,

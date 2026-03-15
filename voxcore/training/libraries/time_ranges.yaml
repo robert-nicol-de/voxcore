@@ -1,0 +1,6 @@
+time_ranges:
+  - last_7_days
+  - last_30_days
+  - last_quarter
+  - last_year
+  - last_12_months

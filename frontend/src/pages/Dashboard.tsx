@@ -123,10 +123,10 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="dashboard">
+    <div className="dashboard flex flex-col gap-6 p-0 relative overflow-hidden">
       <PageHeader title="Dashboard" subtitle="AI Database Activity & Risk Monitoring" />
 
-      <div className="dashboard-cards">
+      <div className="dashboard-cards grid grid-cols-4 gap-5">
         <Metric title="Connected Databases" value={stats.databases} />
         <Metric title="Queries Today" value={stats.queriesToday} />
         <Metric title="Blocked Queries" value={stats.blockedQueries} />
@@ -147,9 +147,9 @@ export default function Dashboard() {
 
 function Metric({ title, value, danger = false }: { title: string; value: number; danger?: boolean }) {
   return (
-    <div className="card dashboard-metric-card">
-      <h4>{title}</h4>
-      <span className={`card-number${danger ? ' danger' : ''}`}>{value}</span>
+    <div className="card dashboard-metric-card bg-surface border-default rounded-md p-6 flex flex-col gap-2 shadow-sm">
+      <h4 className="text-muted text-xs uppercase tracking-wide font-semibold mb-1">{title}</h4>
+      <span className={`card-number${danger ? ' danger' : ''} text-2xl font-bold ${danger ? 'text-error' : 'text-accent-primary'}`}>{value}</span>
     </div>
   );
 }

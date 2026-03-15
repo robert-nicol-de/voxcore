@@ -1,3 +1,65 @@
+def get_user_permissions(user) -> list[str]:
+    """Return all permissions for a user object (role-based)."""
+    return get_role_permissions(getattr(user, "role", None))
+def require_permission(permission: str):
+    """FastAPI dependency to enforce a specific permission string."""
+    def permission_checker(user=Depends(get_current_user), request: Request = None):
+        perms = get_role_permissions(user.role)
+        # RBAC check
+        if "*" in perms or permission in perms:
+            return user
+
+        # Relationship-based check (Zanzibar-style)
+        try:
+            from voxcore.security.permission_engine import PermissionEngine
+            from voxcore.security.sqlite_adapter import SQLiteAdapter
+            from backend.db import org_store
+            db_path = org_store._db_path()
+            db = SQLiteAdapter(db_path)
+            engine = PermissionEngine(db)
+            # Try to infer object type/id from request path or context
+            # This is a simple fallback; for production, use explicit context
+            object_type = None
+            object_id = None
+            if request and request.path_params:
+                # Try to extract from path params (e.g., dashboard_id, datasource_id)
+                for k, v in request.path_params.items():
+                    if k.endswith('_id') and v:
+                        object_type = k.replace('_id', '')
+                        object_id = v
+                        break
+            # Fallback to workspace if nothing else
+            if not object_type:
+                object_type = "workspace"
+                object_id = getattr(user, "workspace_id", None)
+            # Only check if we have an object_id
+            if object_id:
+                # Workspace inheritance: get all user workspaces
+                def get_user_workspaces(user_id):
+                    org_id = getattr(user, "org_id", 1)
+                    return [w["id"] for w in org_store.list_user_workspaces(user_id, org_id)]
+                if engine.check_access(user.id, permission, object_type, object_id, get_user_workspaces=get_user_workspaces):
+                    return user
+        except Exception:
+            pass
+
+        # Audit log the permission failure
+        try:
+            from backend.db import org_store
+            endpoint = request.url.path if request else "unknown"
+            org_store.audit_log_permission_failure(
+                user_id=getattr(user, "id", 0),
+                org_id=getattr(user, "org_id", 1),
+                workspace_id=getattr(user, "workspace_id", None),
+                permission=permission,
+                endpoint=endpoint,
+                reason="Permission denied",
+                ip_address=request.client.host if request and request.client else None,
+            )
+        except Exception:
+            pass
+        raise HTTPException(status_code=403, detail=f"Missing permission: {permission}")
+    return permission_checker
 from typing import Any, Dict
 
 from fastapi import Depends, HTTPException, Request
@@ -109,6 +171,25 @@ def get_current_user(request: Request):
         raise HTTPException(status_code=401, detail="Missing or invalid token")
     try:
         payload = jwt.decode(token[7:], SECRET_KEY, algorithms=[ALGORITHM])
+        session_id = payload.get("session_id")
+        if not session_id:
+            raise HTTPException(status_code=401, detail="Session missing in token")
+        # Import here to avoid circular import
+        from backend.db import org_store
+        session = org_store.get_session(session_id)
+        if not session or not session.get("is_active"):
+            raise HTTPException(status_code=401, detail="Session expired or invalid")
+        # Optionally: check session expiry
+        expires_at = session.get("expires_at")
+        if expires_at:
+            dt_exp = expires_at
+            if isinstance(dt_exp, str):
+                try:
+                    dt_exp = datetime.strptime(dt_exp, "%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    pass
+            if dt_exp and dt_exp < datetime.utcnow():
+                raise HTTPException(status_code=401, detail="Session expired")
         return User(
             id=payload["user_id"],
             email=payload.get("email", "admin@voxcore.com"),
@@ -118,8 +199,10 @@ def get_current_user(request: Request):
             org_id=payload.get("org_id", payload.get("company_id", 1)),
             workspace_id=payload.get("workspace_id"),
         )
+    except HTTPException:
+        raise
     except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="Invalid token or session")
 
 
 def require_role(roles: list):

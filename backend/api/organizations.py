@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 import backend.db.org_store as store
-from backend.services.rbac import require_role, get_current_user
+from backend.services.rbac import require_role, get_current_user, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["organizations"])
 
@@ -58,23 +58,26 @@ class CreateApiKeyRequest(BaseModel):
 
 # ── Organization endpoints ─────────────────────────────────────────────────────
 
+
 @router.get("/orgs")
-def get_orgs(user=Depends(require_role(["god", "platform_owner"]))):
+def get_orgs(user=Depends(require_permission("system.manage"))):
     """List all organizations (platform scope)."""
     return {"organizations": store.list_orgs()}
 
 
+
 @router.post("/orgs")
-def post_org(req: CreateOrgRequest, user=Depends(require_role(["god", "platform_owner"]))):
+def post_org(req: CreateOrgRequest, user=Depends(require_permission("system.manage"))):
     """Create a new organization with a default workspace."""
     org = store.create_org(req.name)
     return {"organization": org}
 
 
+
 @router.get("/orgs/{org_id}")
-def get_org_by_id(org_id: int, user=Depends(require_role(["admin", "god", "platform_owner"]))):
+def get_org_by_id(org_id: int, user=Depends(require_permission("users.manage"))):
     _assert_org_access(user, org_id)
-    org = store.get_org(org_id)
+    org = store.get_org(org_id, user.org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
     return {"organization": org}
@@ -82,8 +85,9 @@ def get_org_by_id(org_id: int, user=Depends(require_role(["admin", "god", "platf
 
 # ── Workspace endpoints ────────────────────────────────────────────────────────
 
+
 @router.get("/orgs/{org_id}/workspaces")
-def get_workspaces(org_id: int, user=Depends(require_role(["ai_analyst", "viewer", "developer", "data_guardian", "workspace_admin", "admin", "god", "platform_owner"]))):
+def get_workspaces(org_id: int, user=Depends(require_permission("datasources.view"))):
     """List all workspaces for an org."""
     _assert_org_access(user, org_id)
     return {"workspaces": store.list_workspaces(org_id)}
@@ -98,8 +102,9 @@ def get_my_workspaces(user=Depends(get_current_user)):
     return [{"id": w["id"], "name": w["name"]} for w in items]
 
 
+
 @router.post("/orgs/{org_id}/workspaces")
-def post_workspace(org_id: int, req: CreateWorkspaceRequest, user=Depends(require_role(["admin", "god", "platform_owner"]))):
+def post_workspace(org_id: int, req: CreateWorkspaceRequest, user=Depends(require_permission("workspace.manage"))):
     """Create a new workspace under an org."""
     _assert_org_access(user, org_id)
     ws = store.create_workspace(org_id, req.name, req.environment)
@@ -108,17 +113,18 @@ def post_workspace(org_id: int, req: CreateWorkspaceRequest, user=Depends(requir
 
 @router.get("/workspaces/{workspace_id}")
 def get_workspace_by_id(workspace_id: int, user=Depends(get_current_user)):
-    ws = store.get_workspace(workspace_id)
+    ws = store.get_workspace(workspace_id, user.org_id)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
     return {"workspace": ws}
+
 
 
 @router.patch("/workspaces/{workspace_id}")
 def patch_workspace(
     workspace_id: int,
     req: RenameWorkspaceRequest,
-    user=Depends(require_role(["workspace_admin", "admin", "god", "platform_owner"])),
+    user=Depends(require_permission("workspace.manage")),
 ):
     ws = store.rename_workspace(workspace_id, req.name)
     if not ws:
@@ -126,8 +132,9 @@ def patch_workspace(
     return {"workspace": ws}
 
 
+
 @router.delete("/workspaces/{workspace_id}")
-def del_workspace(workspace_id: int, user=Depends(require_role(["admin", "god", "platform_owner"]))):
+def del_workspace(workspace_id: int, user=Depends(require_permission("workspace.manage"))):
     if not store.delete_workspace(workspace_id):
         raise HTTPException(status_code=404, detail="Workspace not found")
     return {"ok": True}
@@ -135,18 +142,20 @@ def del_workspace(workspace_id: int, user=Depends(require_role(["admin", "god", 
 
 # ── User endpoints ─────────────────────────────────────────────────────────────
 
+
 @router.get("/orgs/{org_id}/users")
-def get_org_users(org_id: int, user=Depends(require_role(["admin", "god", "platform_owner"]))):
+def get_org_users(org_id: int, user=Depends(require_permission("users.manage"))):
     """List all users in an org."""
     _assert_org_access(user, org_id)
     return {"users": store.list_users(org_id)}
+
 
 
 @router.post("/orgs/{org_id}/users")
 def post_org_user(
     org_id: int,
     req: CreateUserRequest,
-    user=Depends(require_role(["admin", "god", "platform_owner"])),
+    user=Depends(require_permission("users.manage")),
 ):
     """Invite a user to an org. Creates their account with a hashed password."""
     _assert_org_access(user, org_id)
@@ -157,12 +166,13 @@ def post_org_user(
     return {"user": new_user}
 
 
+
 @router.patch("/orgs/{org_id}/users/{user_id}/role")
 def patch_user_role(
     org_id: int,
     user_id: int,
     req: UpdateRoleRequest,
-    user=Depends(require_role(["admin", "god", "platform_owner"])),
+    user=Depends(require_permission("users.manage")),
 ):
     """Update a user's role within an org."""
     _assert_org_access(user, org_id)
@@ -171,8 +181,9 @@ def patch_user_role(
     return {"ok": True}
 
 
+
 @router.get("/orgs/{org_id}/datasources")
-def get_org_datasources(org_id: int, user=Depends(require_role(["admin", "god", "platform_owner", "workspace_admin", "developer", "viewer", "data_guardian", "ai_analyst"]))):
+def get_org_datasources(org_id: int, user=Depends(require_permission("datasources.view"))):
     _assert_org_access(user, org_id)
 
     items = []
@@ -193,21 +204,24 @@ def get_org_datasources(org_id: int, user=Depends(require_role(["admin", "god", 
     return {"datasources": items}
 
 
+
 @router.get("/orgs/{org_id}/api-keys")
-def get_org_api_keys(org_id: int, user=Depends(require_role(["admin", "god", "platform_owner"]))):
+def get_org_api_keys(org_id: int, user=Depends(require_permission("system.manage"))):
     _assert_org_access(user, org_id)
     return {"api_keys": store.list_api_keys(org_id)}
 
 
+
 @router.post("/orgs/{org_id}/api-keys")
-def post_org_api_key(org_id: int, req: CreateApiKeyRequest, user=Depends(require_role(["admin", "god", "platform_owner"]))):
+def post_org_api_key(org_id: int, req: CreateApiKeyRequest, user=Depends(require_permission("system.manage"))):
     _assert_org_access(user, org_id)
     created = store.create_api_key(org_id=org_id, name=req.name, created_by=getattr(user, "id", None))
     return {"api_key": created}
 
 
+
 @router.delete("/orgs/{org_id}/api-keys/{api_key_id}")
-def delete_org_api_key(org_id: int, api_key_id: int, user=Depends(require_role(["admin", "god", "platform_owner"]))):
+def delete_org_api_key(org_id: int, api_key_id: int, user=Depends(require_permission("system.manage"))):
     _assert_org_access(user, org_id)
     if not store.revoke_api_key(org_id, api_key_id):
         raise HTTPException(status_code=404, detail="API key not found")
@@ -222,9 +236,9 @@ def get_my_workspace(user=Depends(get_current_user)):
     org_id = getattr(user, "org_id", 1)
     workspace_id = getattr(user, "workspace_id", None)
 
-    org = store.get_org(org_id) or {}
+    org = store.get_org(org_id, user.org_id) or {}
     if workspace_id:
-        ws = store.get_workspace(workspace_id) or {}
+        ws = store.get_workspace(workspace_id, user.org_id) or {}
     else:
         ws = store.get_default_workspace(org_id) or {}
 

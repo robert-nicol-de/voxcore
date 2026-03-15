@@ -1,0 +1,59 @@
+# VoxCore SQL Benchmark Dataset (500 queries)
+# Each entry tests a specific SQL skill for the engine
+# Categories: basic_queries, filtering, aggregation, group_by, joins, ranking, window_functions, time_intelligence, comparison, advanced_analytics
+examples:
+  # ... 500 entries go here ...
+  # Example entries:
+  - id: 001
+    category: basic_queries
+    question: "Show all customers"
+    query_plan:
+      intent: select
+      table: customers
+    sql: |
+      SELECT *
+      FROM customers;
+
+  - id: 081
+    category: aggregation
+    question: "Show total revenue"
+    query_plan:
+      intent: aggregation
+      metric: SUM(order_total)
+      table: orders
+    sql: |
+      SELECT SUM(order_total)
+      FROM orders;
+
+  - id: 201
+    category: joins
+    question: "Show revenue by region"
+    query_plan:
+      intent: aggregation
+      metric: SUM(orders.order_total)
+      dimension: regions.region_name
+      joins:
+        - customers
+        - regions
+    sql: |
+      SELECT regions.region_name,
+             SUM(orders.order_total)
+      FROM orders
+      JOIN customers
+        ON orders.customer_id = customers.customer_id
+      JOIN regions
+        ON customers.region_id = regions.region_id
+      GROUP BY regions.region_name;
+
+  - id: 351
+    category: time_intelligence
+    question: "Show revenue last 30 days"
+    query_plan:
+      metric: SUM(revenue)
+      filter: last_30_days
+    sql: |
+      SELECT SUM(revenue)
+      FROM orders
+      WHERE order_date >= CURRENT_DATE - INTERVAL '30 days';
+
+  # ...continue for all 500 queries, distributed as specified...

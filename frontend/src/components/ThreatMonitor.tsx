@@ -67,127 +67,55 @@ export const ThreatMonitor: React.FC = () => {
   const stats = getTotalEvents();
 
   return (
-    <div className="threat-monitor">
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>
-          📊 Live Threat Monitor
-        </h2>
-        <p style={{ fontSize: '14px', color: '#888', marginBottom: '16px' }}>
-          Real-time security event stream
-        </p>
+    <div className="threat-monitor flex flex-col gap-6 text-primary">
+      <div className="mb-4">
+        <h2 className="text-lg font-bold mb-1">📊 Live Threat Monitor</h2>
+        <p className="text-muted text-sm mb-3">Real-time security event stream</p>
       </div>
 
       {/* Event Statistics */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: '12px',
-        marginBottom: '20px'
-      }}>
-        <div style={{
-          background: 'rgba(34, 197, 94, 0.1)',
-          border: '1px solid rgba(34, 197, 94, 0.2)',
-          borderRadius: '6px',
-          padding: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>Info Events</div>
-          <div style={{ fontSize: '20px', fontWeight: '600', color: '#22c55e' }}>{stats.info}</div>
+      <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+        <div className="bg-success bg-opacity-10 border-success border rounded-sm p-3 text-center">
+          <div className="text-xs text-muted mb-1">Info Events</div>
+          <div className="text-xl font-bold" style={{ color: '#22c55e' }}>{stats.info}</div>
         </div>
-        <div style={{
-          background: 'rgba(245, 158, 11, 0.1)',
-          border: '1px solid rgba(245, 158, 11, 0.2)',
-          borderRadius: '6px',
-          padding: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>Warnings</div>
-          <div style={{ fontSize: '20px', fontWeight: '600', color: '#f59e0b' }}>{stats.warning}</div>
+        <div className="bg-warning bg-opacity-10 border-warning border rounded-sm p-3 text-center">
+          <div className="text-xs text-muted mb-1">Warnings</div>
+          <div className="text-xl font-bold" style={{ color: '#f59e0b' }}>{stats.warning}</div>
         </div>
-        <div style={{
-          background: 'rgba(239, 68, 68, 0.1)',
-          border: '1px solid rgba(239, 68, 68, 0.2)',
-          borderRadius: '6px',
-          padding: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>Critical</div>
-          <div style={{ fontSize: '20px', fontWeight: '600', color: '#ef4444' }}>{stats.critical}</div>
+        <div className="bg-error bg-opacity-10 border-error border rounded-sm p-3 text-center">
+          <div className="text-xs text-muted mb-1">Critical</div>
+          <div className="text-xl font-bold" style={{ color: '#ef4444' }}>{stats.critical}</div>
         </div>
-        <div style={{
-          background: 'rgba(0, 212, 255, 0.1)',
-          border: '1px solid rgba(0, 212, 255, 0.2)',
-          borderRadius: '6px',
-          padding: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>Total Events</div>
-          <div style={{ fontSize: '20px', fontWeight: '600', color: '#00d4ff' }}>{eventCount}</div>
+        <div className="bg-info bg-opacity-10 border-info border rounded-sm p-3 text-center">
+          <div className="text-xs text-muted mb-1">Total Events</div>
+          <div className="text-xl font-bold" style={{ color: '#00d4ff' }}>{eventCount}</div>
         </div>
       </div>
 
       {/* Event Log */}
       <div className="threat-log">
         {events.length === 0 ? (
-          <div style={{
-            padding: '40px',
-            textAlign: 'center',
-            color: '#666',
-            fontSize: '14px'
-          }}>
-            Waiting for security events...
-          </div>
+          <div className="p-10 text-center text-muted text-sm">Waiting for security events...</div>
         ) : (
           events.map((event, idx) => (
             <div
               key={idx}
               className="threat-entry"
-              style={{
-                color: getColor(event.level),
-                animation: idx === 0 ? 'slideIn 0.3s ease-out' : 'none'
-              }}
+              style={{ color: getColor(event.level), animation: idx === 0 ? 'slideIn 0.3s ease-out' : 'none' }}
             >
-              <div style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px',
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
-                paddingBottom: '8px',
-                marginBottom: '8px'
-              }}>
-                <span style={{ minWidth: '16px', marginTop: '2px' }}>
-                  {getIcon(event.level)}
-                </span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span style={{
-                      fontSize: '12px',
-                      color: '#8892b0',
-                      fontFamily: 'monospace',
-                      fontWeight: '600'
-                    }}>
-                      [{event.time}]
-                    </span>
+              <div className="flex items-start gap-3 border-b border-default pb-2 mb-2">
+                <span className="min-w-[16px] mt-0.5">{getIcon(event.level)}</span>
+                <div className="flex-1">
+                  <div className="flex gap-2 items-center">
+                    <span className="text-xs text-muted font-mono font-semibold">[{event.time}]</span>
                     {event.connector && (
-                      <span style={{
-                        fontSize: '11px',
-                        background: 'rgba(0, 212, 255, 0.15)',
-                        color: '#00d4ff',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        fontFamily: 'monospace'
-                      }}>
+                      <span className="text-xs bg-info bg-opacity-20 text-info px-2 py-0.5 rounded font-mono">
                         {event.connector}
                       </span>
                     )}
                   </div>
-                  <div style={{
-                    fontSize: '13px',
-                    marginTop: '4px',
-                    color: 'inherit'
-                  }}>
-                    {event.message}
-                  </div>
+                  <div className="text-sm mt-1" style={{ color: 'inherit' }}>{event.message}</div>
                 </div>
               </div>
             </div>
@@ -196,27 +124,16 @@ export const ThreatMonitor: React.FC = () => {
       </div>
 
       {/* Legend */}
-      <div style={{
-        marginTop: '20px',
-        padding: '12px',
-        background: 'rgba(0, 212, 255, 0.08)',
-        borderRadius: '6px',
-        border: '1px solid rgba(0, 212, 255, 0.2)',
-        fontSize: '11px',
-        color: '#ccc',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: '12px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div className="mt-5 p-3 bg-info bg-opacity-5 rounded-sm border-info border text-xs text-muted grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+        <div className="flex items-center gap-2">
           <span>🟢</span>
           <span><strong>Info:</strong> Normal operations</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="flex items-center gap-2">
           <span>🟡</span>
           <span><strong>Warning:</strong> Policy limits</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="flex items-center gap-2">
           <span>🔴</span>
           <span><strong>Critical:</strong> Threats blocked</span>
         </div>

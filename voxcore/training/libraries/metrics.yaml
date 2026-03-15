@@ -1,0 +1,8 @@
+metrics:
+  - revenue
+  - order_total
+  - quantity
+  - sales
+  - profit
+  - margin
+  - average_order_value

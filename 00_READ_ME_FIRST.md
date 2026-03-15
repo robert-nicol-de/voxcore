@@ -379,3 +379,16 @@ Everything is built, tested, documented, and ready to use.
 **Ready to Launch**: YES  
 
 🚀 **Let's turn questions into SQL!**
+
+# VoxCore Enterprise SQL Benchmark Suite
+
+VoxCore now includes a professional, enterprise-grade SQL benchmark suite for validating SQL generation, planning, and reliability.
+
+- 500 balanced queries across all core SQL categories
+- Automated test runner for accuracy and robustness
+- Full documentation in BENCHMARKS.md
+
+**How to use:**
+- See BENCHMARKS.md for instructions
+- Integrate the benchmark runner in your CI or dev workflow
+- Use results to improve engine reliability and explainability

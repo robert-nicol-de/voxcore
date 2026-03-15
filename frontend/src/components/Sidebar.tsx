@@ -29,41 +29,18 @@ export const Sidebar: React.FC = () => {
     : primaryLinks;
 
   return (
-    <aside
-      style={{
-        width: 264,
-        minHeight: 'calc(100vh - 72px)',
-        background: 'var(--platform-sidebar-bg)',
-        borderRight: '1px solid var(--platform-border)',
-        padding: 24,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+    <aside className="sidebar bg-surface-elevated border-default shadow-md" style={{ width: 'var(--sidebar-desktop)', minHeight: '100vh', padding: 'var(--spacing-3)' }}>
+      <div className="flex items-center gap-2 mb-2">
         <img src="/assets/vc_logo.png" alt="VoxCloud" style={{ width: 30, height: 30, objectFit: 'contain' }} />
-        <div style={{ fontSize: 24, fontWeight: 700, color: '#ffffff' }}>VoxCloud</div>
+        <div className="text-xl font-semibold text-primary">VoxCloud</div>
       </div>
-      <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--platform-muted)', marginBottom: 8 }}>
-        Platform
-      </div>
-      <div style={{ fontSize: 12, color: 'var(--platform-muted)', marginBottom: 16 }}>
-        Org: {org?.name || 'Organization'}
-      </div>
-      <label style={{ fontSize: 11, color: 'var(--platform-muted)', display: 'block', marginBottom: 6 }}>
-        Workspace
-      </label>
+      <div className="text-xs uppercase tracking-wide text-muted mb-2">Platform</div>
+      <div className="text-xs text-muted mb-4">Org: {org?.name || 'Organization'}</div>
+      <label className="text-xs text-muted block mb-1">Workspace</label>
       <select
         value={currentWorkspace?.id ?? ''}
         onChange={(e) => setCurrentWorkspaceId(Number(e.target.value))}
-        style={{
-          width: '100%',
-          marginBottom: 24,
-          borderRadius: 8,
-          border: '1px solid var(--platform-border)',
-          background: 'var(--platform-card-bg)',
-          color: '#e2e8f0',
-          padding: '8px 10px',
-          fontSize: 13,
-        }}
+        className="w-full mb-6 rounded-sm border-default bg-surface text-secondary px-3 py-2 text-sm"
       >
         {workspaces.map((ws) => (
           <option key={ws.id} value={ws.id}>
@@ -71,10 +48,8 @@ export const Sidebar: React.FC = () => {
           </option>
         ))}
       </select>
-      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--platform-muted)', marginBottom: 8 }}>
-        Data
-      </div>
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+      <div className="text-xs uppercase tracking-wide text-muted mb-2">Data</div>
+      <nav className="flex flex-col gap-2 mb-4">
         {dataLinks.map((item) => {
           const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
           return (
@@ -82,24 +57,15 @@ export const Sidebar: React.FC = () => {
               key={item.to}
               to={item.to}
               className={`sidebar-item${active ? ' active' : ''}`}
-              style={{
-                textDecoration: 'none',
-                borderRadius: 10,
-                padding: '10px 12px',
-                fontSize: 14,
-                fontWeight: 600,
-                display: 'block',
-              }}
+              tabIndex={0}
             >
               {item.label}
             </Link>
           );
         })}
       </nav>
-      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--platform-muted)', marginBottom: 8 }}>
-        Platform
-      </div>
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="text-xs uppercase tracking-wide text-muted mb-2">Platform</div>
+      <nav className="flex flex-col gap-2">
         {platformLinks.map((item) => {
           const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
           return (
@@ -107,14 +73,7 @@ export const Sidebar: React.FC = () => {
               key={item.to}
               to={item.to}
               className={`sidebar-item${active ? ' active' : ''}`}
-              style={{
-                textDecoration: 'none',
-                borderRadius: 10,
-                padding: '10px 12px',
-                fontSize: 14,
-                fontWeight: 600,
-                display: 'block',
-              }}
+              tabIndex={0}
             >
               {item.label}
             </Link>

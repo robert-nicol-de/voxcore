@@ -4,6 +4,7 @@ import './App.css';
 import { Login } from './screens/Login';
 import { UserDropdown } from './components/UserDropdown';
 import Dashboard from './pages/Dashboard';
+import PlaygroundPage from './playground/PlaygroundPage';
 import Databases from './pages/Databases';
 import DataSourcesPage from './pages/DataSources';
 import DataSourceNewPage from './pages/DataSourceNew';
@@ -200,6 +201,11 @@ function App() {
 
   if (!token && isProtectedPath) {
     return <Navigate to="/?auth=required" replace />;
+  }
+
+  // VoxCore Playground route (no login required)
+  if (window.location.pathname === '/playground') {
+    return <PlaygroundPage />;
   }
 
   if (!token) {

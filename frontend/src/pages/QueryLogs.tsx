@@ -104,32 +104,13 @@ export default function QueryLogs() {
   }, []);
 
   return (
-    <div style={{ color: '#e8f0ff' }}>
+    <div className="flex flex-col gap-6 text-primary">
       <PageHeader title="Query Logs" subtitle="AI Query Monitoring, Decisions, and Security Forensics" />
 
-      <div
-        style={{
-          marginTop: 16,
-          background: 'var(--platform-card-bg)',
-          border: '1px solid var(--platform-border)',
-          borderRadius: 12,
-          overflow: 'hidden',
-        }}
-      >
+      <div className="mt-4 bg-surface border-default rounded-md overflow-hidden">
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '110px minmax(0, 1fr) 110px 160px',
-            gap: 12,
-            padding: '12px 20px',
-            background: 'rgba(10,16,28,0.9)',
-            borderBottom: '1px solid var(--platform-border)',
-            fontWeight: 700,
-            color: 'var(--platform-muted)',
-            fontSize: 12,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-          }}
+          className="grid gap-3 px-5 py-3 border-b border-default bg-surface-elevated font-semibold text-muted text-xs uppercase tracking-wide"
+          style={{ gridTemplateColumns: '110px minmax(0, 1fr) 110px 160px' }}
         >
           <div>Time</div>
           <div>Query</div>
@@ -158,19 +139,11 @@ export default function QueryLogs() {
                   navigate(`/app/query-logs/${item.id || buildForensicId(item, index)}`);
                 }
               }}
-              className="query-log-row"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '110px minmax(0, 1fr) 110px 160px',
-                gap: 12,
-                padding: '14px 20px',
-                borderBottom: '1px solid rgba(79,140,255,0.12)',
-                alignItems: 'center',
-                cursor: 'pointer',
-              }}
+              className="query-log-row grid items-center cursor-pointer border-b"
+              style={{ gridTemplateColumns: '110px minmax(0, 1fr) 110px 160px', padding: '14px 20px', borderBottom: '1px solid rgba(79,140,255,0.12)' }}
             >
-              <div style={{ opacity: 0.9, color: 'var(--platform-muted)' }}>{item.time}</div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#dce8ff' }}>{item.query}</div>
+              <div className="opacity-90 text-muted">{item.time}</div>
+              <div className="font-mono text-sm text-primary">{item.query}</div>
               <div>
                 <span
                   style={{
@@ -187,7 +160,7 @@ export default function QueryLogs() {
                   {(item.risk || 'low').toString()}
                 </span>
               </div>
-              <div style={{ color: '#dce8ff' }}>{statusLabel(item.status)}</div>
+              <div className="text-primary">{statusLabel(item.status)}</div>
             </div>
           );
         })}

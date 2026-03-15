@@ -1,0 +1,11 @@
+{
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "scripts": {
+    "frontend": "cd frontend && npm run dev",
+    "backend": "python -m uvicorn backend.main:app --reload --port 8000",
+    "worker": "python backend/workers/query_worker.py",
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\" \"npm run worker\""
+  }
+}

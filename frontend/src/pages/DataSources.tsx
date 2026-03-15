@@ -49,14 +49,14 @@ export default function DataSourcesPage() {
   }, [fetchSources]);
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Data Sources"
         subtitle="Manage database and warehouse connections for VoxQuery"
       />
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <button className="secondary-btn" onClick={fetchSources} style={{ marginRight: 10 }}>
+      <div className="flex justify-end mb-4 gap-2">
+        <button className="secondary-btn" onClick={fetchSources}>
           Refresh
         </button>
         <button className="primary-btn" onClick={() => setOpenSelector(true)}>
@@ -64,41 +64,41 @@ export default function DataSourcesPage() {
         </button>
       </div>
 
-      <section className="datasources-panel">
-        <div className="datasources-panel-title">Connected Sources</div>
-        <p className="datasources-panel-subtitle">
+      <section className="datasources-panel card bg-surface border-default rounded-md p-6 shadow-sm">
+        <div className="datasources-panel-title text-lg font-semibold mb-1">Connected Sources</div>
+        <p className="datasources-panel-subtitle text-muted text-sm mb-4">
           Add a source to enable schema discovery, AI SQL assistance, and policy governance.
         </p>
 
-        {loading && <div className="ds-message" style={{ marginTop: 14 }}>Loading data sources...</div>}
-        {error && <div className="ds-message" style={{ marginTop: 14, color: '#ff9a9a' }}>{error}</div>}
+        {loading && <div className="ds-message mt-3 text-secondary">Loading data sources...</div>}
+        {error && <div className="ds-message mt-3 text-error">{error}</div>}
 
         {!loading && !error && sources.length === 0 && (
-          <div className="ds-message" style={{ marginTop: 14 }}>
+          <div className="ds-message mt-3 text-muted">
             No data sources connected yet.
           </div>
         )}
 
         {!loading && !error && sources.length > 0 && (
-          <div style={{ marginTop: 16, overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th style={cellHead}>Name</th>
-                  <th style={cellHead}>Platform</th>
-                  <th style={cellHead}>Status</th>
-                  <th style={cellHead}>Workspace</th>
-                  <th style={cellHead}>Created</th>
+                  <th className="text-left px-3 py-2 text-xs text-accent-primary border-b border-default">Name</th>
+                  <th className="text-left px-3 py-2 text-xs text-accent-primary border-b border-default">Platform</th>
+                  <th className="text-left px-3 py-2 text-xs text-accent-primary border-b border-default">Status</th>
+                  <th className="text-left px-3 py-2 text-xs text-accent-primary border-b border-default">Workspace</th>
+                  <th className="text-left px-3 py-2 text-xs text-accent-primary border-b border-default">Created</th>
                 </tr>
               </thead>
               <tbody>
                 {sources.map((s) => (
                   <tr key={s.id}>
-                    <td style={cellBody}>{s.name}</td>
-                    <td style={cellBody}>{(s.platform || s.type || 'unknown').toUpperCase()}</td>
-                    <td style={cellBody}>{(s.status || 'active').toUpperCase()}</td>
-                    <td style={cellBody}>{String(s.workspace_id || workspaceId)}</td>
-                    <td style={cellBody}>{formatDate(s.created_at)}</td>
+                    <td className="px-3 py-2 text-sm text-primary border-b border-default">{s.name}</td>
+                    <td className="px-3 py-2 text-sm text-secondary border-b border-default">{(s.platform || s.type || 'unknown').toUpperCase()}</td>
+                    <td className="px-3 py-2 text-sm text-secondary border-b border-default">{(s.status || 'active').toUpperCase()}</td>
+                    <td className="px-3 py-2 text-sm text-secondary border-b border-default">{String(s.workspace_id || workspaceId)}</td>
+                    <td className="px-3 py-2 text-sm text-secondary border-b border-default">{formatDate(s.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -118,21 +118,6 @@ export default function DataSourcesPage() {
   );
 }
 
-const cellHead: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '10px 8px',
-  fontSize: 12,
-  color: '#9ec3ff',
-  borderBottom: '1px solid #24344d',
-};
-
-const cellBody: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '10px 8px',
-  fontSize: 13,
-  color: '#d8e5fb',
-  borderBottom: '1px solid #1e2b3f',
-};
 
 function formatDate(value?: string) {
   if (!value) return '-';

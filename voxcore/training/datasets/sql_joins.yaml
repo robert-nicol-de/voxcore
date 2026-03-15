@@ -1,0 +1,20 @@
+dataset: sql_joins
+version: 1.0
+
+examples:
+
+- id: join_001
+  question: "Show customer names and their order totals"
+  sql: |
+    SELECT customers.name, orders.order_total
+    FROM orders
+    JOIN customers
+      ON orders.customer_id = customers.customer_id;
+
+- id: join_002
+  question: "List products and the categories they belong to"
+  sql: |
+    SELECT products.product_name, categories.category_name
+    FROM products
+    JOIN categories
+      ON products.category_id = categories.category_id;

@@ -1,0 +1,29 @@
+# VoxCore Schema Intelligence Model
+# This YAML file defines the tables, columns, relationships, and business roles for the database.
+tables:
+  orders:
+    type: fact
+    primary_key: order_id
+    columns:
+      - order_id
+      - customer_id
+      - order_total
+      - order_date
+    relationships:
+      - customer_id -> customers.customer_id
+  customers:
+    type: dimension
+    primary_key: customer_id
+    columns:
+      - customer_id
+      - name
+      - region_id
+    relationships:
+      - region_id -> regions.region_id
+  regions:
+    type: dimension
+    primary_key: region_id
+    columns:
+      - region_id
+      - region_name
+    relationships: []

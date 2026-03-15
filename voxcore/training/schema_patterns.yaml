@@ -1,0 +1,18 @@
+patterns:
+  ecommerce:
+    tables:
+      - customers
+      - orders
+      - products
+      - order_items
+  retail:
+    tables:
+      - stores
+      - sales
+      - inventory
+      - products
+  finance:
+    tables:
+      - accounts
+      - transactions
+      - customers

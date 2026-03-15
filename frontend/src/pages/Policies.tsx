@@ -38,16 +38,16 @@ export default function Policies() {
 
   if (isLoading) {
     return (
-      <div>
+      <div className="flex flex-col gap-4">
         <PageHeader title="Policies" subtitle="AI Security Rules and Enforcement Controls" />
-        <div style={{ color: 'var(--platform-muted)' }}>Loading policies...</div>
+        <div className="text-muted">Loading policies...</div>
       </div>
     );
   }
 
   if (isEmpty && !showManager) {
     return (
-      <div>
+      <div className="flex flex-col gap-4">
         <PageHeader title="Policies" subtitle="AI Security Rules and Enforcement Controls" />
         <EmptyState
           title="No policies configured"
@@ -60,7 +60,7 @@ export default function Policies() {
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       <PageHeader title="Policies" subtitle="AI Security Rules and Enforcement Controls" />
       <PoliciesManager />
     </div>

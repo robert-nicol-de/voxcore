@@ -1,0 +1,22 @@
+# Demo database schema for VoxCore Playground
+
+sales:
+  columns:
+    - order_id: INTEGER PRIMARY KEY
+    - product: TEXT
+    - category: TEXT
+    - region: TEXT
+    - revenue: INTEGER
+    - order_date: TEXT
+
+customers:
+  columns:
+    - customer_id: INTEGER PRIMARY KEY
+    - name: TEXT
+    - region: TEXT
+
+products:
+  columns:
+    - product_id: INTEGER PRIMARY KEY
+    - product_name: TEXT
+    - category: TEXT

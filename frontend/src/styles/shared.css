@@ -1,13 +1,15 @@
+
 .empty-state {
   text-align: center;
-  padding: 80px 20px;
+  padding: var(--spacing-5) var(--spacing-2);
   max-width: 520px;
   margin: auto;
-  color: #9fb3c8;
+  color: var(--color-text-muted);
 }
 
+
 .empty-state--compact {
-  padding: 36px 16px;
+  padding: var(--spacing-2) var(--spacing-1);
   max-width: 460px;
 }
 
@@ -27,21 +29,24 @@
   justify-content: center;
 }
 
+
 .empty-logo {
   width: 80px;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-2);
   opacity: 0.35;
-  filter: drop-shadow(0 0 12px rgba(79, 140, 255, 0.25));
+  filter: drop-shadow(0 0 12px var(--accent-glow, rgba(79, 140, 255, 0.25)));
 }
+
 
 .empty-state h2 {
-  font-size: 20px;
-  color: #ffffff;
-  margin-bottom: 10px;
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-1);
 }
 
+
 .empty-state p {
-  font-size: 14px;
+  font-size: var(--text-sm);
   line-height: 1.6;
 }
 
@@ -73,48 +78,51 @@
   margin-top: 8px;
 }
 
+
 .primary-btn {
-  background: #4f8cff;
+  background: var(--color-button-primary);
   border: none;
-  padding: 10px 18px;
-  border-radius: 8px;
-  color: white;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
   font-weight: 500;
   cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease;
+  transition: transform var(--transition-fast), background var(--transition-fast);
 }
 
 .primary-btn:hover {
-  background: #3c74e6;
+  background: var(--color-button-primary-hover);
   transform: translateY(-1px);
 }
 
+
 .secondary-btn {
-  background: #1b2a42;
-  border: 1px solid #2d4a78;
-  color: white;
-  padding: 10px 16px;
-  border-radius: 8px;
+  background: var(--color-button-secondary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition: background var(--transition-fast), transform var(--transition-fast);
 }
 
 .secondary-btn:hover {
-  background: #223554;
+  background: var(--color-surface-elevated);
   transform: translateY(-1px);
 }
 
+
 .card {
-  background: #101826;
-  border: 1px solid #24344d;
-  border-radius: 12px;
-  padding: 24px;
-  transition: all 0.2s ease;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  transition: all var(--transition-fast);
 }
 
 .card:hover {
   transform: translateY(-2px);
-  border-color: #4f8cff;
+  border-color: var(--color-accent-primary);
 }
 
 .card h3 {

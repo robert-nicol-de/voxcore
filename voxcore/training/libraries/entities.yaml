@@ -1,0 +1,7 @@
+entities:
+  - products
+  - customers
+  - regions
+  - salespeople
+  - categories
+  - stores

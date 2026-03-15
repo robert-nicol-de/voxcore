@@ -1,0 +1,145 @@
+dataset: voxcore_sql_reasoning
+version: 1.0
+
+categories:
+  - trend_analysis
+  - growth_comparison
+  - ranking_analysis
+  - churn_detection
+  - anomaly_detection
+  - cohort_analysis
+  - segmentation_analysis
+  - forecasting_prep
+
+examples:
+  # Example 001 — Trend Analysis
+  - id: 001
+    category: trend_analysis
+    question: "Which regions had declining revenue trends over the last 6 months?"
+    reasoning_type: trend_detection
+    reasoning_steps:
+      - step: monthly_revenue
+        description: calculate monthly revenue per region
+      - step: trend_change
+        description: compute month-over-month revenue change
+      - step: detect_decline
+        description: identify regions where revenue change is negative
+    sql_workflow:
+      step_1: |
+        SELECT
+        region,
+        DATE_TRUNC('month', order_date) AS month,
+        SUM(revenue) AS revenue
+        FROM sales
+        GROUP BY region, month;
+      step_2: |
+        SELECT
+        region,
+        month,
+        revenue,
+        revenue - LAG(revenue)
+        OVER (PARTITION BY region ORDER BY month) AS change
+        FROM region_monthly_revenue;
+      step_3: |
+        SELECT region
+        FROM revenue_trends
+        WHERE change < 0;
+  # Example 034 — Growth Comparison
+  - id: 034
+    category: growth_comparison
+    question: "Which products grew the fastest quarter over quarter?"
+    reasoning_type: growth_analysis
+    reasoning_steps:
+      - aggregate_product_revenue
+      - calculate_qoq_growth
+      - rank_growth
+    sql_workflow:
+      step_1: |
+        SELECT
+        product_id,
+        DATE_TRUNC('quarter', order_date) AS quarter,
+        SUM(revenue) AS revenue
+        FROM sales
+        GROUP BY product_id, quarter;
+      step_2: |
+        SELECT
+        product_id,
+        quarter,
+        revenue,
+        revenue - LAG(revenue)
+        OVER (PARTITION BY product_id ORDER BY quarter) AS growth
+        FROM product_quarter_revenue;
+      step_3: |
+        SELECT product_id, growth
+        FROM product_growth
+        ORDER BY growth DESC
+        LIMIT 10;
+  # Example 112 — Churn Detection
+  - id: 112
+    category: churn_detection
+    question: "Which customers are at risk of churn?"
+    reasoning_type: inactivity_detection
+    reasoning_steps:
+      - last_purchase
+      - inactivity_window
+      - churn_filter
+    sql_workflow:
+      step_1: |
+        SELECT
+        customer_id,
+        MAX(order_date) AS last_purchase
+        FROM orders
+        GROUP BY customer_id;
+      step_2: |
+        SELECT customer_id
+        FROM customer_last_purchase
+        WHERE last_purchase <
+        CURRENT_DATE - INTERVAL '90 days';
+  # Example 221 — Ranking Analysis
+  - id: 221
+    category: ranking_analysis
+    question: "Who are the top 10 customers by lifetime revenue?"
+    reasoning_type: ranking
+    reasoning_steps:
+      - aggregate_customer_revenue
+      - rank_customers
+    sql_workflow:
+      step_1: |
+        SELECT
+        customer_id,
+        SUM(order_total) AS revenue
+        FROM orders
+        GROUP BY customer_id;
+      step_2: |
+        SELECT
+        customer_id,
+        revenue
+        FROM customer_revenue
+        ORDER BY revenue DESC
+        LIMIT 10;
+  # Example 310 — Anomaly Detection
+  - id: 310
+    category: anomaly_detection
+    question: "Which days had unusually high sales spikes?"
+    reasoning_type: anomaly_detection
+    reasoning_steps:
+      - daily_sales
+      - calculate_average
+      - detect_spike
+    sql_workflow:
+      step_1: |
+        SELECT
+        DATE_TRUNC('day', order_date) AS day,
+        SUM(revenue) AS revenue
+        FROM sales
+        GROUP BY day;
+      step_2: |
+        SELECT
+        day,
+        revenue,
+        AVG(revenue) OVER () AS avg_sales
+        FROM daily_sales;
+      step_3: |
+        SELECT day
+        FROM sales_stats
+        WHERE revenue > avg_sales * 2;

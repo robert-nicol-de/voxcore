@@ -1,0 +1,33 @@
+patterns:
+  top_k:
+    question_pattern:
+      - "top"
+      - "highest"
+      - "largest"
+    sql_template: |
+      SELECT {dimension},
+      SUM({metric}) AS value
+      FROM {table}
+      GROUP BY {dimension}
+      ORDER BY value DESC
+      LIMIT {k}
+  trend_analysis:
+    question_pattern:
+      - "trend"
+      - "over time"
+    sql_template: |
+      SELECT
+      DATE_TRUNC('month', {time_column}) AS month,
+      SUM({metric}) AS value
+      FROM {table}
+      GROUP BY month
+      ORDER BY month
+  aggregation:
+    question_pattern:
+      - "total"
+      - "sum"
+      - "average"
+      - "count"
+    sql_template: |
+      SELECT {agg_func}({metric})
+      FROM {table}

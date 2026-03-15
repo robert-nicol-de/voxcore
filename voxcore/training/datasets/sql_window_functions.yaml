@@ -1,0 +1,24 @@
+dataset: sql_window_functions
+version: 1.0
+
+examples:
+
+- id: win_001
+  question: "Calculate month-over-month revenue growth"
+  sql: |
+    SELECT
+      month,
+      revenue,
+      revenue - LAG(revenue)
+      OVER (ORDER BY month) AS growth
+    FROM monthly_revenue;
+
+- id: win_002
+  question: "Rank customers by revenue"
+  sql: |
+    SELECT
+      customer_id,
+      SUM(order_total) AS revenue,
+      RANK() OVER (ORDER BY SUM(order_total) DESC) AS rank
+    FROM orders
+    GROUP BY customer_id;

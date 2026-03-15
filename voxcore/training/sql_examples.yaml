@@ -1,0 +1,59 @@
+examples:
+  - id: ex_001
+    question: "Top 10 products by revenue"
+    sql: |
+      SELECT product_name,
+             SUM(revenue) AS revenue
+      FROM sales
+      GROUP BY product_name
+      ORDER BY revenue DESC
+      LIMIT 10;
+    pattern: top_k
+    metric: revenue
+    dimension: product
+
+  - id: ex_002
+    question: "Revenue by region last month"
+    sql: |
+      SELECT region,
+             SUM(revenue)
+      FROM sales
+      WHERE order_date >= DATE_TRUNC('month', CURRENT_DATE)
+      GROUP BY region;
+    pattern: aggregation
+    metric: revenue
+    dimension: region
+
+  - id: ex_003
+    question: "Top customers by sales"
+    sql: |
+      SELECT customer_id, SUM(order_total) AS total
+      FROM orders
+      GROUP BY customer_id
+      ORDER BY total DESC
+      LIMIT 10;
+    pattern: top_k
+    metric: order_total
+    dimension: customer
+
+  - id: ex_004
+    question: "Revenue by product category"
+    sql: |
+      SELECT category, SUM(revenue)
+      FROM sales
+      GROUP BY category;
+    pattern: aggregation
+    metric: revenue
+    dimension: category
+
+  - id: ex_005
+    question: "Revenue trend over time"
+    sql: |
+      SELECT DATE_TRUNC('month', order_date) AS month,
+             SUM(revenue) AS revenue
+      FROM sales
+      GROUP BY month
+      ORDER BY month;
+    pattern: time_series
+    metric: revenue
+    dimension: month

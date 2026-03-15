@@ -251,10 +251,20 @@ def _login(user: LoginRequest):
         if not workspace_id:
             ws = org_store.get_default_workspace(org_id)
             workspace_id = ws["id"] if ws else None
-        org = org_store.get_org(org_id) or {}
-        ws_detail = org_store.get_workspace(workspace_id) if workspace_id else {}
+        org = org_store.get_org(org_id, org_id) or {}
+        ws_detail = org_store.get_workspace(workspace_id, org_id) if workspace_id else {}
 
         token_expires_hours = None if login_email == PRIMARY_GOD_EMAIL.lower() else 8
+        # Create session and include session_id in JWT
+        session = org_store.create_session(
+            user_id=org_user["id"],
+            org_id=org_id,
+            workspace_id=workspace_id,
+            expires_hours=token_expires_hours or 8,
+        )
+        # Get permissions for this user
+        from backend.services.rbac import get_user_permissions
+        permissions = get_user_permissions(org_user)
         token = create_token(
             {
                 "user_id": org_user["id"],
@@ -264,6 +274,8 @@ def _login(user: LoginRequest):
                 "org_id": org_id,
                 "workspace_id": workspace_id,
                 "is_super_admin": is_super_admin,
+                "session_id": session["session_id"],
+                "permissions": permissions,
             },
             expires_hours=token_expires_hours,
         )
@@ -280,6 +292,9 @@ def _login(user: LoginRequest):
             "workspace_id": workspace_id,
             "workspace_name": (ws_detail or {}).get("name", "Default"),
             "is_super_admin": is_super_admin,
+            "session_id": session["session_id"],
+            "session_expires_at": session["expires_at"].strftime("%Y-%m-%d %H:%M:%S"),
+            "permissions": permissions,
         }
 
     db_user = get_user_by_email(login_email)
@@ -293,11 +308,20 @@ def _login(user: LoginRequest):
     default_org_id = 1
     ws_default = org_store.get_default_workspace(default_org_id)
     default_ws_id = ws_default["id"] if ws_default else None
-    org_detail = org_store.get_org(default_org_id) or {}
+    org_detail = org_store.get_org(default_org_id, default_org_id) or {}
     org_name = org_detail.get("name", "VoxCore Demo")
     ws_name = ws_default.get("name", "Default") if ws_default else "Default"
 
     token_expires_hours = None if login_email == PRIMARY_GOD_EMAIL.lower() else 8
+    # Create session and include session_id in JWT
+    session = org_store.create_session(
+        user_id=db_user["id"],
+        org_id=default_org_id,
+        workspace_id=default_ws_id,
+        expires_hours=token_expires_hours or 8,
+    )
+    from backend.services.rbac import get_user_permissions
+    permissions = get_user_permissions(db_user)
     token = create_token(
         {
             "user_id": db_user["id"],
@@ -307,6 +331,8 @@ def _login(user: LoginRequest):
             "org_id": default_org_id,
             "workspace_id": default_ws_id,
             "is_super_admin": is_super_admin,
+            "session_id": session["session_id"],
+            "permissions": permissions,
         },
         expires_hours=token_expires_hours,
     )
@@ -323,6 +349,9 @@ def _login(user: LoginRequest):
         "workspace_id": default_ws_id,
         "workspace_name": ws_name,
         "is_super_admin": is_super_admin,
+        "session_id": session["session_id"],
+        "session_expires_at": session["expires_at"].strftime("%Y-%m-%d %H:%M:%S"),
+        "permissions": permissions,
     }
 
 
@@ -331,13 +360,22 @@ def login(user: LoginRequest):
     return _login(user)
 
 
+
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request
+from backend.services.rate_limiter import limiter
+
 @router.post("/api/v1/auth/login")
-def login_v1(user: LoginRequest):
+@limiter.limit("10/minute")
+def login_v1(request: Request, user: LoginRequest):
     return _login(user)
 
 
 @router.post("/api/v1/auth/playground")
-def bootstrap_playground(req: PlaygroundBootstrapRequest):
+@limiter.limit("5/minute")
+def bootstrap_playground(request: Request, req: PlaygroundBootstrapRequest):
     session = org_store.create_playground_session(duration_hours=req.expires_hours or 24)
     token = create_token(
         {
@@ -373,14 +411,42 @@ def bootstrap_playground(req: PlaygroundBootstrapRequest):
     }
 
 
+
+from fastapi import Depends
+from backend.services.rbac import get_current_user
+from fastapi import Request
+
 @router.post("/api/logout")
-def logout():
-    return {"message": "Logged out"}
+def logout(request: Request):
+    token = request.headers.get("Authorization")
+    if not token or not token.startswith("Bearer "):
+        return {"message": "No session found"}
+    try:
+        from backend.db import org_store
+        payload = jwt.decode(token[7:], SECRET_KEY, algorithms=[ALGORITHM])
+        session_id = payload.get("session_id")
+        if session_id:
+            org_store.terminate_session(session_id)
+        return {"message": "Logged out"}
+    except Exception:
+        return {"message": "Logged out (session not found)"}
+
 
 
 @router.post("/api/v1/auth/logout")
-def logout_v1():
-    return {"message": "Logged out"}
+def logout_v1(request: Request):
+    token = request.headers.get("Authorization")
+    if not token or not token.startswith("Bearer "):
+        return {"message": "No session found"}
+    try:
+        from backend.db import org_store
+        payload = jwt.decode(token[7:], SECRET_KEY, algorithms=[ALGORITHM])
+        session_id = payload.get("session_id")
+        if session_id:
+            org_store.terminate_session(session_id)
+        return {"message": "Logged out"}
+    except Exception:
+        return {"message": "Logged out (session not found)"}
 
 
 @router.api_route("/api/v1/auth/load-ini-credentials/{db_type}", methods=["GET", "POST"])
@@ -409,8 +475,9 @@ def load_ini_credentials(db_type: str):
 
 
 @router.post("/api/v1/auth/test-connection")
-def test_connection(request: ConnectRequest):
-    config = _resolve_connection_config(request)
+@limiter.limit("10/minute")
+def test_connection(request: Request, req: ConnectRequest):
+    config = _resolve_connection_config(req)
     _validate_connection_config(config)
 
     try:
@@ -533,8 +600,8 @@ def get_me(request: Request):
 
     org_id = int(payload.get("org_id", payload.get("company_id", 1)))
     workspace_id = payload.get("workspace_id")
-    org = org_store.get_org(org_id) or {}
-    workspace = org_store.get_workspace(int(workspace_id)) if workspace_id else None
+    org = org_store.get_org(org_id, org_id) or {}
+    workspace = org_store.get_workspace(int(workspace_id), org_id) if workspace_id else None
 
     return {
         "user_id": payload.get("user_id"),
@@ -559,7 +626,7 @@ def switch_workspace(req: SwitchWorkspaceRequest, request: Request):
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    workspace = org_store.get_workspace(req.workspace_id)
+    workspace = org_store.get_workspace(req.workspace_id, payload.get("org_id"))
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
