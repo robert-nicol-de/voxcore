@@ -1,6 +1,7 @@
 ﻿import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
+import './styles/brand.css';
 import { Login } from './screens/Login';
 import { UserDropdown } from './components/UserDropdown';
 import Dashboard from './pages/Dashboard';
@@ -22,6 +23,8 @@ import AgentInsightsPage from './pages/AgentInsights';
 import RequireAuth from './components/auth/RequireAuth';
 import WorkspaceSwitcher from './components/WorkspaceSwitcher';
 import { apiUrl } from './lib/api';
+
+import Home from './pages/Home';
 
 const ControlCenter = lazy(() => import('./pages/ControlCenter'));
 
@@ -244,72 +247,38 @@ function App() {
               <button
                 key={item.label}
                 style={{
-                  background: 'transparent',
-                  color: '#bfdbfe',
-                  border: 'none',
-                  borderRadius: 999,
-                  padding: '8px 10px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontSize: 14,
-                }}
-                onClick={item.onClick}
-              >
-                {item.label}
-              </button>
-            ))}
-            <button
-              style={{
-                background: 'transparent',
-                color: '#e2e8f0',
-                border: '1px solid rgba(148,163,184,0.35)',
-                borderRadius: 999,
-                padding: '8px 14px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                fontSize: 14,
-              }}
-              onClick={() => setShowLoginPage(true)}
-            >
-              Login
-            </button>
-            <button
-              style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)', color: '#fff', border: 'none', borderRadius: '999px', padding: '10px 18px', fontWeight: 800, cursor: 'pointer', boxShadow: '0 10px 30px rgba(14,165,233,0.35)' }}
-              onClick={() => navigateToPlatform('/app/dashboard')}
-            >
-              Launch VoxCloud Platform
-            </button>
-          </nav>
-        </header>
-
-        <main>
-          {showAuthRequiredBanner && (
-            <div
-              style={{
-                margin: '14px auto 0',
-                maxWidth: 1160,
-                borderRadius: 10,
-                padding: '10px 14px',
-                border: '1px solid rgba(251,191,36,0.35)',
-                color: '#fef3c7',
-                background: 'rgba(120,53,15,0.35)',
-                fontSize: 13,
-              }}
-            >
-              You’re not signed in. Please log in to access VoxCore workspace routes.
-            </div>
-          )}
-          <section
-            id="platform-section"
-            style={{
-              color: '#fff',
-              padding: '72px 28px 120px',
-              maxWidth: 1280,
-              margin: '0 auto',
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1.15fr) minmax(320px, 0.85fr)',
-              gap: 28,
-              alignItems: 'center',
+                  return (
+                    <EnterpriseLayout>
+                      <Routes>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/app/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+                        <Route path="/app/databases" element={<RequireAuth><Databases /></RequireAuth>} />
+                        <Route path="/app/datasources" element={<RequireAuth><DataSourcesPage /></RequireAuth>} />
+                        <Route path="/app/datasources/new/:platform" element={<RequireAuth><DataSourceNewPage /></RequireAuth>} />
+                        <Route path="/app/semantic-models" element={<RequireAuth><SemanticModelsPage /></RequireAuth>} />
+                        <Route path="/app/semantic-models/new" element={<RequireAuth><SemanticModelsPage /></RequireAuth>} />
+                        <Route path="/datasources/new/:platform" element={<RequireAuth><DataSourceNewPage /></RequireAuth>} />
+                        <Route path="/app/policies" element={<RequireAuth><Policies /></RequireAuth>} />
+                        <Route path="/app/query-logs" element={<RequireAuth><QueryLogs /></RequireAuth>} />
+                        <Route path="/app/query-logs/:id" element={<RequireAuth><QueryInvestigation /></RequireAuth>} />
+                        <Route path="/app/sandbox" element={<RequireAuth><Sandbox /></RequireAuth>} />
+                        <Route path="/app/schema" element={<RequireAuth><SchemaExplorerPage /></RequireAuth>} />
+                        <Route path="/app/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+                        <Route path="/app/architecture" element={<RequireAuth><ArchitecturePage /></RequireAuth>} />
+                        <Route path="/app/agents" element={<RequireAuth><AgentInsightsPage /></RequireAuth>} />
+                        <Route path="/app/control-center" element={<RequireAuth><Suspense fallback={<div style={{ color: '#cbd5e1', padding: 24 }}>Loading control center...</div>}><ControlCenter /></Suspense></RequireAuth>} />
+                        <Route path="/app" element={<RequireAuth><SqlAssistant /></RequireAuth>} />
+                        <Route path="/dashboard" element={<RequireAuth><Navigate to="/app/dashboard" replace /></RequireAuth>} />
+                        <Route path="/datasources" element={<RequireAuth><Navigate to="/app/datasources" replace /></RequireAuth>} />
+                        <Route path="/sql" element={<RequireAuth><Navigate to="/app" replace /></RequireAuth>} />
+                        <Route path="/schema" element={<RequireAuth><Navigate to="/app/schema" replace /></RequireAuth>} />
+                        <Route path="/governance" element={<RequireAuth><Navigate to="/app/policies" replace /></RequireAuth>} />
+                        <Route path="/workspaces" element={<RequireAuth><Navigate to="/app/settings" replace /></RequireAuth>} />
+                        <Route path="/login" element={<Login onLogin={handleLogin} />} />
+                        <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
+                      </Routes>
+                    </EnterpriseLayout>
+                  );
             }}
           >
             <div>
@@ -583,6 +552,7 @@ function App() {
         <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
           <div className="page-container">
             <Routes>
+                <Route path="/" element={<Home />} />
               <Route path="/app/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
               <Route path="/app/databases" element={<RequireAuth><Databases /></RequireAuth>} />
               <Route path="/app/datasources" element={<RequireAuth><DataSourcesPage /></RequireAuth>} />

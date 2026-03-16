@@ -1,5 +1,5 @@
 import React from 'react';
-import PageHeader from '../components/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
 import SchemaExplorer from '../components/schema/SchemaExplorer';
 
 export default function SchemaExplorerPage() {

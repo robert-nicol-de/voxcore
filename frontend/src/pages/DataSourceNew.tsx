@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import PageHeader from '../components/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
 import SnowflakeConnectionForm from '../components/datasources/SnowflakeConnectionForm';
 import SQLServerConnectionForm from '../components/datasources/SQLServerConnectionForm';
 

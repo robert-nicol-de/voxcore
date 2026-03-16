@@ -1,0 +1,16 @@
+/* Standard animation timing for enterprise UI */
+:root {
+  --motion-fast: 120ms;
+  --motion-hover: 200ms;
+  --motion-panel: 300ms;
+  --motion-chart: 600ms;
+}
+.card, .btn-primary, .activity-table tr {
+  transition: box-shadow var(--motion-hover), background var(--motion-hover), transform var(--motion-hover);
+}
+.panel {
+  transition: opacity var(--motion-panel), transform var(--motion-panel);
+}
+.chart-bar, .chart-line {
+  transition: all var(--motion-chart);
+}

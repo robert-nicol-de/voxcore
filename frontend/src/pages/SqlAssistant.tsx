@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import LiveQueryFlow, { type QueryFlowStage } from '../components/LiveQueryFlow';
-import PageHeader from '../components/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
 import ChartRenderer from '../components/ChartRenderer';
 import { apiUrl } from '../lib/api';
 import { trackFeatureEvent } from '../lib/telemetry';

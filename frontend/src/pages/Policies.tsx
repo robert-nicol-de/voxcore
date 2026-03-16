@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PoliciesManager } from '../components/PoliciesManager';
 import EmptyState from '../components/EmptyState';
-import PageHeader from '../components/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
 import { apiUrl, isApiNotFound } from '../lib/api';
 
 export default function Policies() {

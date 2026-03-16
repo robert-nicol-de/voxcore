@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { apiUrl } from '../lib/api';
 import EmptyState from '../components/EmptyState';
-import PageHeader from '../components/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
 import SchemaExplorer from '../components/SchemaExplorer';
 import DataSourceSelector, { type PlatformOption } from '../components/DataSourceSelector';
 import SQLServerConnectionForm from '../components/datasources/SQLServerConnectionForm';

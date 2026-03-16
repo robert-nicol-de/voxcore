@@ -1,0 +1,14 @@
+.card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 6px 24px #1F6FEB33;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-primary:hover {
+  background: #1746a0;
+  box-shadow: 0 0 8px #1F6FEB66;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.activity-table tr:hover {
+  background: #1F6FEB22;
+  transition: background 0.2s;
+}

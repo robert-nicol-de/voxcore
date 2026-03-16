@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
-import FirewallStats from '../components/FirewallStats';
-import LiveActivity from '../components/LiveActivity';
-import LiveQueryFlow, { type QueryFlowStage } from '../components/LiveQueryFlow';
-import PageHeader from '../components/PageHeader';
+import FirewallStats from '@/components/FirewallStats';
+import LiveActivity from '@/components/LiveActivity';
+import LiveQueryFlow, { type QueryFlowStage } from '@/components/LiveQueryFlow';
+import PageHeader from '@/components/layout/PageHeader';
 import { apiUrl } from '../lib/api';
 import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from '../lib/polling';
+import PipelineAnimation from '@/components/governance/PipelineAnimation';
+import AnimatedKPI from '@/components/data/AnimatedKPI';
+import InsightCard from '@/components/feedback/InsightCard';
+import SmartLoading from '@/components/feedback/SmartLoading';
+import ErrorFeedback from '@/components/feedback/ErrorFeedback';
+import SignatureApproval from '@/components/feedback/SignatureApproval';
+import '@/components/motion/HoverMotion.css';
+import '@/components/motion/MotionSystem.css';
 
 type QueryActivity = {
   time: string;
@@ -126,19 +134,50 @@ export default function Dashboard() {
     <div className="dashboard flex flex-col gap-6 p-0 relative overflow-hidden">
       <PageHeader title="Dashboard" subtitle="AI Database Activity & Risk Monitoring" />
 
-      <div className="dashboard-cards grid grid-cols-4 gap-5">
-        <Metric title="Connected Databases" value={stats.databases} />
-        <Metric title="Queries Today" value={stats.queriesToday} />
-        <Metric title="Blocked Queries" value={stats.blockedQueries} />
-        <Metric title="Risk Alerts" value={stats.riskAlerts} danger />
+      {/* Demo: Smart Loading State */}
+      <SmartLoading />
+
+      {/* Demo: Animated Governance Pipeline */}
+      <div style={{ margin: '32px 0' }}>
+        <PipelineAnimation activeStep={2} />
       </div>
 
+      {/* Demo: Animated KPI Cards */}
+      <div className="dashboard-cards grid grid-cols-4 gap-5">
+        <div className="card dashboard-metric-card">
+          <h4 className="text-muted text-xs uppercase tracking-wide font-semibold mb-1">Connected Databases</h4>
+          <AnimatedKPI value={stats.databases} />
+        </div>
+        <div className="card dashboard-metric-card">
+          <h4 className="text-muted text-xs uppercase tracking-wide font-semibold mb-1">Queries Today</h4>
+          <AnimatedKPI value={stats.queriesToday} />
+        </div>
+        <div className="card dashboard-metric-card">
+          <h4 className="text-muted text-xs uppercase tracking-wide font-semibold mb-1">Blocked Queries</h4>
+          <AnimatedKPI value={stats.blockedQueries} />
+        </div>
+        <div className="card dashboard-metric-card">
+          <h4 className="text-muted text-xs uppercase tracking-wide font-semibold mb-1">Risk Alerts</h4>
+          <AnimatedKPI value={stats.riskAlerts} />
+        </div>
+      </div>
+
+      {/* Demo: AI Insight Highlights */}
+      <InsightCard type="risk" title="High Risk Query Detected" message="DROP TABLE orders\nBlocked by policy" />
+      <InsightCard type="success" title="Query Approved" message="Policy checks passed. Safe for production." />
+
+      {/* Demo: Error Feedback */}
+      <ErrorFeedback reason="Destructive SQL detected" />
+
+      {/* Demo: Signature Approval Animation */}
+      <SignatureApproval />
+
+      {/* Original components */}
       <LiveQueryFlow
         title="AI Query Flow"
         subtitle="Latest query moving through the VoxCore security pipeline."
         stages={latestFlow}
       />
-
       <FirewallStats />
       <LiveActivity />
     </div>

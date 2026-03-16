@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiUrl } from '../lib/api';
-import PageHeader from '../components/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
 import { useWorkspace } from '../context/WorkspaceContext';
 
 type OrgUser = {

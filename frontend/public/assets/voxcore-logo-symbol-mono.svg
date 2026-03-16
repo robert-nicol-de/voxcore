@@ -1,0 +1,7 @@
+<svg width="128" height="128" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <path d="M12 52 L32 12 L52 52 Z" fill="#fff"/>
+    <path d="M32 12 Q36 28 52 52" stroke="#fff" stroke-width="3" fill="none"/>
+    <text x="18" y="48" font-family="Inter, sans-serif" font-size="24" fill="#fff" font-weight="bold">VC</text>
+  </g>
+</svg>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../hooks/useTheme';
-import { Card } from '../components/Card';
+import { Card } from '@/components/core/Card';
 import { Badge } from '../components/Badge';
 import { BarChart, AlertCircle, Shield, TrendingUp, Clock, CheckCircle, XCircle } from 'lucide-react';
 import './GovernanceDashboard.css';

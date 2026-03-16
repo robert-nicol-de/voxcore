@@ -1,0 +1,70 @@
+:root {
+  --vc-blue: #1F6FEB;
+  --vc-navy: #0B1F33;
+  --vc-cyan: #22C1F1;
+  --vc-gray: #6B7280;
+  --vc-light: #F5F7FA;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--vc-navy);
+  color: var(--vc-gray);
+}
+
+.hero-title {
+  font-size: 64px;
+  font-weight: bold;
+  color: var(--vc-blue);
+}
+
+.section-title {
+  font-size: 40px;
+  font-weight: 600;
+  color: var(--vc-blue);
+}
+
+.body-text {
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--vc-gray);
+}
+
+.label-text {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--vc-gray);
+}
+
+.card {
+  background: var(--vc-light);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(31,111,235,0.06);
+  border: 1px solid #e5e7eb;
+  padding: 24px;
+}
+
+.btn-primary {
+  background: var(--vc-blue);
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 700;
+  border: none;
+  padding: 12px 24px;
+  box-shadow: 0 2px 8px rgba(31,111,235,0.12);
+}
+
+.btn-outline {
+  background: #fff;
+  color: var(--vc-blue);
+  border: 2px solid var(--vc-blue);
+  border-radius: 8px;
+  font-weight: 700;
+  padding: 12px 24px;
+}
+
+.icon {
+  stroke: var(--vc-blue);
+  stroke-width: 2;
+  fill: none;
+}

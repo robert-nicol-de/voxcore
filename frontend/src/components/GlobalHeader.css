@@ -1,0 +1,55 @@
+.global-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  background: #0B1F33;
+  color: #fff;
+  border-bottom: 1px solid #2AC3FF;
+  padding: 0 32px;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.logo {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1F6FEB;
+}
+.powered {
+  font-size: 1rem;
+  color: #2AC3FF;
+}
+.workspace-dropdown {
+  background: #1F6FEB;
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 1rem;
+  margin-left: 12px;
+}
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+.search-bar {
+  width: 320px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #2AC3FF;
+  background: #12263A;
+  color: #fff;
+  font-size: 1rem;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.icon {
+  font-size: 1.4rem;
+  cursor: pointer;
+}

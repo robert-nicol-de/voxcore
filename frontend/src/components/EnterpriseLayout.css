@@ -1,0 +1,19 @@
+.enterprise-layout {
+  min-height: 100vh;
+  background: #0B1F33;
+  display: flex;
+  flex-direction: column;
+}
+.layout-main {
+  display: flex;
+  flex: 1;
+}
+.main-workspace {
+  flex: 1;
+  padding: 40px 48px 0 48px;
+  background: #12263A;
+  min-height: calc(100vh - 64px - 48px);
+  border-radius: 8px;
+  box-shadow: 0 2px 16px #0B1F3322;
+  margin: 24px 0 0 0;
+}
