@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Badge } from '../components';
-import FirewallMonitor from '../components/FirewallMonitor';
+import { Card } from '@/components/core/Card';
+import { Badge } from '@/components/Badge';
+import FirewallMonitor from '@/components/FirewallMonitor';
 import { apiUrl } from '../lib/api';
 import './GovernanceDashboard.css';
 

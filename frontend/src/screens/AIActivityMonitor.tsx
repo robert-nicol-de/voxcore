@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Badge, Input, Button } from '../components';
+import { Card } from '@/components/core/Card';
+import { Badge } from '@/components/Badge';
+import { Input } from '@/components/core/Input';
+import { Button } from '@/components/core/Button';
 import './AIActivityMonitor.css';
 
 interface Activity {

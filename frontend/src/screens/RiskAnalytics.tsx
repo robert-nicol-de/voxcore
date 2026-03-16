@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Badge } from '../components';
+import { Card } from '@/components/core/Card';
+import { Badge } from '@/components/Badge';
 import './RiskAnalytics.css';
 import { apiUrl } from '../lib/api';
 

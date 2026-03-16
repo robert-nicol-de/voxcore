@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import ChartRenderer from '../components/ChartRenderer';
-import PageHeader from '../components/PageHeader';
+import ChartRenderer from '@/components/ChartRenderer';
+import PageHeader from '@/components/layout/PageHeader';
 import { apiUrl } from '../lib/api';
 import { trackFeatureEvent } from '../lib/telemetry';
 

@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Badge } from '../components';
+import { Card } from '@/components/core/Card';
+import { Button } from '@/components/core/Button';
+import { Input } from '@/components/core/Input';
+import { Badge } from '@/components/Badge';
 import './PolicyEngineManager.css';
 import { apiUrl } from '../lib/api';
 
