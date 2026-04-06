@@ -3,7 +3,7 @@ services:
   - type: web
     name: voxcore
     runtime: python
-    buildCommand: pip install -r voxcore/voxquery/requirements.txt && cd frontend && npm ci && npm run build
+    buildCommand: pip install -r voxcore/voxquery/requirements.txt && cd frontend && npm ci && chmod +x node_modules/.bin/vite && npm run build
     startCommand: uvicorn backend.voxcore.main:app --host 0.0.0.0 --port ${PORT:-10000}
     envVars:
       - key: PYTHONUNBUFFERED
