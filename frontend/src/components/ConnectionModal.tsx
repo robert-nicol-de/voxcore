@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import './ConnectionModal.css';
-import { apiUrl } from '../lib/api';
+import React, { useState, useEffect } from "react";
+import "./ConnectionModal.css";
+import { apiUrl } from "../lib/api";
 
 interface ConnectionModalProps {
   isOpen: boolean;
@@ -23,66 +23,66 @@ interface Credentials {
 // Test credentials for development
 const testCredentials: Record<string, Credentials> = {
   sqlserver: {
-    host: 'localhost',
-    username: 'sa',
-    password: 'YourPassword123!',
-    database: 'AdventureWorks2022',
-    port: '1433',
-    auth_type: 'sql'
+    host: "localhost",
+    username: "sa",
+    password: "YourPassword123!",
+    database: "AdventureWorks2022",
+    port: "1433",
+    auth_type: "sql"
   },
   snowflake: {
-    host: 'ko05278.af-south-1.aws',
-    username: 'VoxQuery',
-    password: 'Robert210680!@#$',
-    database: 'VOXQUERYTRAININGPIN2025',
-    warehouse: 'VOXQUERY_WH',
-    role: 'ACCOUNTADMIN',
-    schema_name: 'PUBLIC'
+    host: "ko05278.af-south-1.aws",
+    username: "VoxQuery",
+    password: "Robert210680!@#$",
+    database: "VOXQUERYTRAININGPIN2025",
+    warehouse: "VOXQUERY_WH",
+    role: "ACCOUNTADMIN",
+    schema_name: "PUBLIC"
   }
 };
 
 const databases = [
   {
-    id: 'snowflake',
-    name: 'Snowflake',
-    description: 'Cloud Data Warehouse',
-    icon: '❄️',
-    status: 'active'
+    id: "snowflake",
+    name: "Snowflake",
+    description: "Cloud Data Warehouse",
+    icon: "❄️",
+    status: "active"
   },
   {
-    id: 'semantic',
-    name: 'Semantic Model',
-    description: 'AI-Enhanced Semantic Layer',
-    icon: '🧠',
-    status: 'active'
+    id: "semantic",
+    name: "Semantic Model",
+    description: "AI-Enhanced Semantic Layer",
+    icon: "🧠",
+    status: "active"
   },
   {
-    id: 'sqlserver',
-    name: 'SQL Server',
-    description: 'Microsoft SQL Server',
-    icon: '◆',
-    status: 'active'
+    id: "sqlserver",
+    name: "SQL Server",
+    description: "Microsoft SQL Server",
+    icon: "◆",
+    status: "active"
   },
   {
-    id: 'postgres',
-    name: 'PostgreSQL',
-    description: 'Open Source Database',
-    icon: '🐘',
-    status: 'coming'
+    id: "postgres",
+    name: "PostgreSQL",
+    description: "Open Source Database",
+    icon: "🐘",
+    status: "coming"
   },
   {
-    id: 'redshift',
-    name: 'Redshift',
-    description: 'AWS Data Warehouse',
-    icon: '●',
-    status: 'coming'
+    id: "redshift",
+    name: "Redshift",
+    description: "AWS Data Warehouse",
+    icon: "●",
+    status: "coming"
   },
   {
-    id: 'bigquery',
-    name: 'BigQuery',
-    description: 'Google Cloud Data Warehouse',
-    icon: '📊',
-    status: 'coming'
+    id: "bigquery",
+    name: "BigQuery",
+    description: "Google Cloud Data Warehouse",
+    icon: "📊",
+    status: "coming"
   }
 ];
 
@@ -91,21 +91,21 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
   onClose,
   onConnect
 }) => {
-  const [step, setStep] = useState<'select' | 'credentials'>('select');
+  const [step, setStep] = useState<"select" | "credentials">("select");
   const [selectedDb, setSelectedDb] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Credentials>({
-    host: '',
-    username: '',
-    password: '',
-    database: '',
-    port: '',
-    warehouse: 'VOXQUERY_WH',
-    role: 'ACCOUNTADMIN',
-    schema_name: 'PUBLIC',
-    auth_type: 'sql'  // Default to SQL auth
+    host: "",
+    username: "",
+    password: "",
+    database: "",
+    port: "",
+    warehouse: "VOXQUERY_WH",
+    role: "ACCOUNTADMIN",
+    schema_name: "PUBLIC",
+    auth_type: "sql"  // Default to SQL auth
   });
 
   // Load saved credentials when modal opens
@@ -118,12 +118,12 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
   const loadSavedCredentials = async (dbType: string) => {
     try {
       const response = await fetch(apiUrl(`/api/v1/auth/load-ini-credentials/${dbType}`), {
-        method: 'POST'
+        method: "POST"
       });
       if (response.ok) {
         const data = await response.json();
         if (data.credentials) {
-          console.log(`[ConnectionModal] Loaded credentials for ${dbType}:`, data.credentials);
+          // console.log(`[ConnectionModal] Loaded credentials for ${dbType}:`, data.credentials);
           setCredentials(prev => ({
             ...prev,
             ...data.credentials
@@ -132,7 +132,7 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
         }
       }
     } catch (err) {
-      console.log(`[ConnectionModal] No saved credentials for ${dbType}`);
+      // console.log(`[ConnectionModal] No saved credentials for ${dbType}`);
       // Silently fail - no saved credentials
     }
   };
@@ -140,9 +140,9 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
   if (!isOpen) return null;
 
   const handleSelectDb = async (dbId: string, status: string) => {
-    if (status === 'active') {
+    if (status === "active") {
       setSelectedDb(dbId);
-      setStep('credentials');
+      setStep("credentials");
       setError(null);
       
       // Pre-fill with test credentials if available
@@ -167,19 +167,19 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
 
     // Validate required fields
     if (!credentials.host || !credentials.database) {
-      setError('Host and Database are required');
+      setError("Host and Database are required");
       return;
     }
 
-    if (selectedDb === 'snowflake' || selectedDb === 'semantic') {
+    if (selectedDb === "snowflake" || selectedDb === "semantic") {
       if (!credentials.username || !credentials.password) {
-        setError('Username and Password are required');
+        setError("Username and Password are required");
         return;
       }
-    } else if (selectedDb === 'sqlserver') {
+    } else if (selectedDb === "sqlserver") {
       // For SQL Server, username/password only required for SQL auth
-      if (credentials.auth_type === 'sql' && (!credentials.username || !credentials.password)) {
-        setError('Username and Password are required for SQL Authentication');
+      if (credentials.auth_type === "sql" && (!credentials.username || !credentials.password)) {
+        setError("Username and Password are required for SQL Authentication");
         return;
       }
     }
@@ -188,10 +188,10 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
     setError(null);
 
     try {
-      const response = await fetch(apiUrl('/api/v1/auth/connect'), {
-        method: 'POST',
+      const response = await fetch(apiUrl("/api/v1/auth/connect"), {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           database: selectedDb,
@@ -202,18 +202,18 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Connection failed');
+        throw new Error(errorData.detail || "Connection failed");
       }
 
       // Success! Store connection info in localStorage
-      localStorage.setItem('selectedDatabase', selectedDb);
-      localStorage.setItem('dbHost', credentials.host);
-      localStorage.setItem('dbDatabase', credentials.database);
-      localStorage.setItem('dbSchema', credentials.schema_name || 'PUBLIC');
-      localStorage.setItem('dbConnectionStatus', 'connected');
+      localStorage.setItem("selectedDatabase", selectedDb);
+      localStorage.setItem("dbHost", credentials.host);
+      localStorage.setItem("dbDatabase", credentials.database);
+      localStorage.setItem("dbSchema", credentials.schema_name || "PUBLIC");
+      localStorage.setItem("dbConnectionStatus", "connected");
       
       // Dispatch custom event with connection details
-      const event = new CustomEvent('connectionStatusChanged', {
+      const event = new CustomEvent("connectionStatusChanged", {
         detail: { connected: true, database: selectedDb }
       });
       window.dispatchEvent(event);
@@ -221,29 +221,29 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
       // Call the callback
       onConnect(selectedDb);
       onClose();
-      setStep('select');
+      setStep("select");
       setSelectedDb(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Connection failed');
+      setError(err instanceof Error ? err.message : "Connection failed");
     } finally {
       setLoading(false);
     }
   };
 
   const handleBack = () => {
-    setStep('select');
+    setStep("select");
     setSelectedDb(null);
     setError(null);
     setCredentials({
-      host: '',
-      username: '',
-      password: '',
-      database: '',
-      port: '',
-      warehouse: 'VOXQUERY_WH',
-      role: 'ACCOUNTADMIN',
-      schema_name: 'PUBLIC',
-      auth_type: 'sql'
+      host: "",
+      username: "",
+      password: "",
+      database: "",
+      port: "",
+      warehouse: "VOXQUERY_WH",
+      role: "ACCOUNTADMIN",
+      schema_name: "PUBLIC",
+      auth_type: "sql"
     });
   };
 
@@ -257,12 +257,12 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
     <div className="connection-modal-overlay">
       <div className="connection-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{step === 'select' ? 'Connect to Database' : `Connect to ${selectedDb?.toUpperCase()}`}</h2>
+          <h2>{step === "select" ? "Connect to Database" : `Connect to ${selectedDb?.toUpperCase()}`}</h2>
           <button className="modal-close" onClick={handleCancel}>✕</button>
         </div>
 
         <div className="modal-content">
-          {step === 'select' ? (
+          {step === "select" ? (
             <>
               <p className="modal-subtitle">Select your data warehouse</p>
               
@@ -270,13 +270,13 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                 {databases.map((db) => (
                   <div
                     key={db.id}
-                    className={`database-card ${db.status === 'coming' ? 'disabled' : ''} ${selectedDb === db.id ? 'selected' : ''}`}
+                    className={`database-card ${db.status === "coming" ? "disabled" : ""} ${selectedDb === db.id ? "selected" : ""}`}
                     onClick={() => handleSelectDb(db.id, db.status)}
                   >
                     <div className="card-icon">{db.icon}</div>
                     <h3 className="card-title">{db.name}</h3>
                     <p className="card-description">{db.description}</p>
-                    {db.status === 'coming' && (
+                    {db.status === "coming" && (
                       <div className="coming-soon-badge">COMING SOON</div>
                     )}
                   </div>
@@ -290,9 +290,9 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                   <label>Host / Account</label>
                   <input
                     type="text"
-                    placeholder={selectedDb === 'snowflake' ? 'e.g., ko05278.af-south-1.aws' : 'e.g., localhost'}
+                    placeholder={selectedDb === "snowflake" ? "e.g., ko05278.af-south-1.aws" : "e.g., localhost"}
                     value={credentials.host}
-                    onChange={(e) => handleCredentialChange('host', e.target.value)}
+                    onChange={(e) => handleCredentialChange("host", e.target.value)}
                   />
                 </div>
 
@@ -300,9 +300,9 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                   <label>Database</label>
                   <input
                     type="text"
-                    placeholder={selectedDb === 'snowflake' ? 'e.g., VOXQUERYTRAININGPIN2025' : 'e.g., mydb'}
+                    placeholder={selectedDb === "snowflake" ? "e.g., VOXQUERYTRAININGPIN2025" : "e.g., mydb"}
                     value={credentials.database}
-                    onChange={(e) => handleCredentialChange('database', e.target.value)}
+                    onChange={(e) => handleCredentialChange("database", e.target.value)}
                   />
                 </div>
 
@@ -312,8 +312,8 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                     type="text"
                     placeholder="Username"
                     value={credentials.username}
-                    onChange={(e) => handleCredentialChange('username', e.target.value)}
-                    disabled={selectedDb === 'sqlserver' && credentials.auth_type === 'windows'}
+                    onChange={(e) => handleCredentialChange("username", e.target.value)}
+                    disabled={selectedDb === "sqlserver" && credentials.auth_type === "windows"}
                   />
                 </div>
 
@@ -323,20 +323,20 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                     type="password"
                     placeholder="Password"
                     value={credentials.password}
-                    onChange={(e) => handleCredentialChange('password', e.target.value)}
-                    disabled={selectedDb === 'sqlserver' && credentials.auth_type === 'windows'}
+                    onChange={(e) => handleCredentialChange("password", e.target.value)}
+                    disabled={selectedDb === "sqlserver" && credentials.auth_type === "windows"}
                   />
                 </div>
 
-                {selectedDb === 'snowflake' && (
+                {selectedDb === "snowflake" && (
                   <>
                     <div className="form-group">
                       <label>Warehouse</label>
                       <input
                         type="text"
                         placeholder="e.g., COMPUTE_WH"
-                        value={credentials.warehouse || ''}
-                        onChange={(e) => handleCredentialChange('warehouse', e.target.value)}
+                        value={credentials.warehouse || ""}
+                        onChange={(e) => handleCredentialChange("warehouse", e.target.value)}
                       />
                     </div>
 
@@ -345,8 +345,8 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                       <input
                         type="text"
                         placeholder="e.g., ACCOUNTADMIN"
-                        value={credentials.role || ''}
-                        onChange={(e) => handleCredentialChange('role', e.target.value)}
+                        value={credentials.role || ""}
+                        onChange={(e) => handleCredentialChange("role", e.target.value)}
                       />
                     </div>
 
@@ -355,14 +355,14 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                       <input
                         type="text"
                         placeholder="e.g., PUBLIC"
-                        value={credentials.schema_name || ''}
-                        onChange={(e) => handleCredentialChange('schema_name', e.target.value)}
+                        value={credentials.schema_name || ""}
+                        onChange={(e) => handleCredentialChange("schema_name", e.target.value)}
                       />
                     </div>
                   </>
                 )}
 
-                {selectedDb === 'semantic' && (
+                {selectedDb === "semantic" && (
                   <>
                     <div className="form-group">
                       <label htmlFor="conn-warehouse-sem">Warehouse</label>
@@ -371,8 +371,8 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                         name="warehouse"
                         type="text"
                         placeholder="e.g., COMPUTE_WH"
-                        value={credentials.warehouse || ''}
-                        onChange={(e) => handleCredentialChange('warehouse', e.target.value)}
+                        value={credentials.warehouse || ""}
+                        onChange={(e) => handleCredentialChange("warehouse", e.target.value)}
                       />
                     </div>
 
@@ -383,8 +383,8 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                         name="role"
                         type="text"
                         placeholder="e.g., ACCOUNTADMIN"
-                        value={credentials.role || ''}
-                        onChange={(e) => handleCredentialChange('role', e.target.value)}
+                        value={credentials.role || ""}
+                        onChange={(e) => handleCredentialChange("role", e.target.value)}
                       />
                     </div>
 
@@ -395,21 +395,21 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                         name="schema_name"
                         type="text"
                         placeholder="e.g., PUBLIC"
-                        value={credentials.schema_name || ''}
-                        onChange={(e) => handleCredentialChange('schema_name', e.target.value)}
+                        value={credentials.schema_name || ""}
+                        onChange={(e) => handleCredentialChange("schema_name", e.target.value)}
                       />
                     </div>
                   </>
                 )}
 
-                {selectedDb === 'sqlserver' && (
+                {selectedDb === "sqlserver" && (
                   <div className="form-group">
                     <label htmlFor="conn-auth-type">Auth Type</label>
                     <select
                       id="conn-auth-type"
                       name="auth_type"
-                      value={credentials.auth_type || 'sql'}
-                      onChange={(e) => handleCredentialChange('auth_type', e.target.value)}
+                      value={credentials.auth_type || "sql"}
+                      onChange={(e) => handleCredentialChange("auth_type", e.target.value)}
                     >
                       <option value="sql">SQL Authentication</option>
                       <option value="windows">Windows Authentication</option>
@@ -436,21 +436,21 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
         </div>
 
         <div className="modal-footer">
-          {step === 'credentials' && (
+          {step === "credentials" && (
             <button className="btn-cancel" onClick={handleBack} disabled={loading}>
               Back
             </button>
           )}
-          {step === 'select' && (
+          {step === "select" && (
             <button className="btn-cancel" onClick={handleCancel}>Cancel</button>
           )}
-          {step === 'credentials' && (
+          {step === "credentials" && (
             <button 
               className="btn-connect" 
               onClick={handleConnect}
               disabled={loading}
             >
-              {loading ? 'Connecting...' : 'Connect'}
+              {loading ? "Connecting..." : "Connect"}
             </button>
           )}
         </div>

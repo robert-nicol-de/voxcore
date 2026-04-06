@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import './SensitivityScanner.css';
-import { apiUrl } from '../../lib/api';
+import React, { useState, useEffect } from "react";
+import "./SensitivityScanner.css";
+import { apiUrl } from "../../lib/api";
 
 /**
  * SensitivityScanner Component
@@ -16,14 +16,14 @@ import { apiUrl } from '../../lib/api';
  * - Policy preview and application
  */
 
-const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
+const SensitivityScanner = ({ connectorName = "Unknown", schemaInfo = [] }) => {
   const [scanResults, setScanResults] = useState(null);
   const [generatedPolicy, setGeneratedPolicy] = useState(null);
   const [maskMap, setMaskMap] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState('findings');
-  const [filterType, setFilterType] = useState('all');
+  const [activeTab, setActiveTab] = useState("findings");
+  const [filterType, setFilterType] = useState("all");
   const [patterns, setPatterns] = useState(null);
 
   // Fetch available patterns on mount
@@ -33,32 +33,32 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
 
   const fetchPatterns = async () => {
     try {
-      const response = await fetch(apiUrl('/api/scanner/patterns'));
+      const response = await fetch(apiUrl("/api/scanner/patterns"));
       const data = await response.json();
       setPatterns(data);
     } catch (error) {
-      console.error('Failed to fetch patterns:', error);
+      console.error("Failed to fetch patterns:", error);
     }
   };
 
   const runScan = async () => {
     if (!schemaInfo || schemaInfo.length === 0) {
-      alert('No schema information available');
+      alert("No schema information available");
       return;
     }
 
     setScanning(true);
     try {
-      const response = await fetch(apiUrl('/api/scanner/scan'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(apiUrl("/api/scanner/scan"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           connector_name: connectorName,
           schema_info: schemaInfo,
         }),
       });
 
-      if (!response.ok) throw new Error('Scan failed');
+      if (!response.ok) throw new Error("Scan failed");
 
       const results = await response.json();
       setScanResults(results);
@@ -73,30 +73,30 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
 
   const generatePolicy = async () => {
     if (!scanResults) {
-      alert('Please run a scan first');
+      alert("Please run a scan first");
       return;
     }
 
     setGenerating(true);
     try {
-      const response = await fetch(apiUrl('/api/scanner/generate-policy'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(apiUrl("/api/scanner/generate-policy"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           connector_name: connectorName,
           scan_results: scanResults,
         }),
       });
 
-      if (!response.ok) throw new Error('Policy generation failed');
+      if (!response.ok) throw new Error("Policy generation failed");
 
       const policy = await response.json();
       setGeneratedPolicy(policy);
 
       // Also generate mask map
-      const maskResponse = await fetch(apiUrl('/api/scanner/generate-mask-map'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const maskResponse = await fetch(apiUrl("/api/scanner/generate-mask-map"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           connector_name: connectorName,
           scan_results: scanResults,
@@ -119,9 +119,9 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
 
     try {
       // Save policy to backend
-      const response = await fetch(apiUrl('/api/connectors/apply-policy'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(apiUrl("/api/connectors/apply-policy"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           connector_name: connectorName,
           policy: generatedPolicy,
@@ -129,38 +129,38 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
       });
 
       if (response.ok) {
-        alert('✅ Security policy applied successfully!');
+        alert("✅ Security policy applied successfully!");
       } else {
-        alert('⚠️ Policy saved but application may require manual steps');
+        alert("⚠️ Policy saved but application may require manual steps");
       }
     } catch (error) {
-      console.log('Note: Policy endpoint may not be fully integrated yet');
-      alert('✅ Policy preview ready - copy the INI format below to apply');
+      // console.log("Note: Policy endpoint may not be fully integrated yet");
+      alert("✅ Policy preview ready - copy the INI format below to apply");
     }
   };
 
   const getRiskColor = (type) => {
     switch (type) {
-      case 'secret': return '#ef4444';
-      case 'pii': return '#f59e0b';
-      case 'financial': return '#f59e0b';
-      case 'health': return '#ec4899';
-      default: return '#8892b0';
+      case "secret": return "#ef4444";
+      case "pii": return "#f59e0b";
+      case "financial": return "#f59e0b";
+      case "health": return "#ec4899";
+      default: return "#8892b0";
     }
   };
 
   const getRiskIcon = (type) => {
     switch (type) {
-      case 'secret': return '🔴';
-      case 'pii': return '👤';
-      case 'financial': return '💳';
-      case 'health': return '🏥';
-      default: return '📋';
+      case "secret": return "🔴";
+      case "pii": return "👤";
+      case "financial": return "💳";
+      case "health": return "🏥";
+      default: return "📋";
     }
   };
 
   const filteredFindings =
-    filterType === 'all'
+    filterType === "all"
       ? scanResults?.by_type
       : { [filterType]: scanResults?.by_type?.[filterType] || [] };
 
@@ -185,7 +185,7 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
               disabled={scanning || !schemaInfo || schemaInfo.length === 0}
               className="btn btn-primary"
             >
-              {scanning ? '⏳ Scanning...' : '🔍 Scan Schema'}
+              {scanning ? "⏳ Scanning..." : "🔍 Scan Schema"}
             </button>
             {scanResults && (
               <button
@@ -193,7 +193,7 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
                 disabled={generating}
                 className="btn btn-success"
               >
-                {generating ? '⏳ Generating...' : '⚙️ Generate Policy'}
+                {generating ? "⏳ Generating..." : "⚙️ Generate Policy"}
               </button>
             )}
             {generatedPolicy && (
@@ -212,34 +212,34 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
             <label>Filter by Type</label>
             <div className="filter-buttons">
               <button
-                onClick={() => setFilterType('all')}
-                className={filterType === 'all' ? 'active' : ''}
+                onClick={() => setFilterType("all")}
+                className={filterType === "all" ? "active" : ""}
               >
                 All ({scanResults.total_findings})
               </button>
               <button
-                onClick={() => setFilterType('secret')}
-                className={filterType === 'secret' ? 'active' : ''}
+                onClick={() => setFilterType("secret")}
+                className={filterType === "secret" ? "active" : ""}
               >
-                🔴 Secrets ({getTotalByType('secret')})
+                🔴 Secrets ({getTotalByType("secret")})
               </button>
               <button
-                onClick={() => setFilterType('pii')}
-                className={filterType === 'pii' ? 'active' : ''}
+                onClick={() => setFilterType("pii")}
+                className={filterType === "pii" ? "active" : ""}
               >
-                👤 PII ({getTotalByType('pii')})
+                👤 PII ({getTotalByType("pii")})
               </button>
               <button
-                onClick={() => setFilterType('financial')}
-                className={filterType === 'financial' ? 'active' : ''}
+                onClick={() => setFilterType("financial")}
+                className={filterType === "financial" ? "active" : ""}
               >
-                💳 Financial ({getTotalByType('financial')})
+                💳 Financial ({getTotalByType("financial")})
               </button>
               <button
-                onClick={() => setFilterType('health')}
-                className={filterType === 'health' ? 'active' : ''}
+                onClick={() => setFilterType("health")}
+                className={filterType === "health" ? "active" : ""}
               >
-                🏥 Health ({getTotalByType('health')})
+                🏥 Health ({getTotalByType("health")})
               </button>
             </div>
           </div>
@@ -250,28 +250,28 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
       {(scanResults || generatedPolicy) && (
         <div className="scanner-tabs">
           <button
-            onClick={() => setActiveTab('findings')}
-            className={`tab ${activeTab === 'findings' ? 'active' : ''}`}
+            onClick={() => setActiveTab("findings")}
+            className={`tab ${activeTab === "findings" ? "active" : ""}`}
           >
             📋 Findings ({scanResults?.total_findings || 0})
           </button>
           <button
-            onClick={() => setActiveTab('risk')}
-            className={`tab ${activeTab === 'risk' ? 'active' : ''}`}
+            onClick={() => setActiveTab("risk")}
+            className={`tab ${activeTab === "risk" ? "active" : ""}`}
           >
             ⚠️ Risk Summary
           </button>
           {generatedPolicy && (
             <>
               <button
-                onClick={() => setActiveTab('policy')}
-                className={`tab ${activeTab === 'policy' ? 'active' : ''}`}
+                onClick={() => setActiveTab("policy")}
+                className={`tab ${activeTab === "policy" ? "active" : ""}`}
               >
                 🛡️ Generated Policy
               </button>
               <button
-                onClick={() => setActiveTab('recommendations')}
-                className={`tab ${activeTab === 'recommendations' ? 'active' : ''}`}
+                onClick={() => setActiveTab("recommendations")}
+                className={`tab ${activeTab === "recommendations" ? "active" : ""}`}
               >
                 💡 Recommendations
               </button>
@@ -289,7 +289,7 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
         </div>
       )}
 
-      {scanResults && activeTab === 'findings' && (
+      {scanResults && activeTab === "findings" && (
         <div className="findings-panel">
           <div className="findings-grid">
             {Object.entries(filteredFindings || {}).map(([type, columns]) => (
@@ -318,7 +318,7 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
                           </span>
                           {col.detected_patterns.length > 0 && (
                             <span className="patterns">
-                              Patterns: {col.detected_patterns.join(', ')}
+                              Patterns: {col.detected_patterns.join(", ")}
                             </span>
                           )}
                         </div>
@@ -332,7 +332,7 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
         </div>
       )}
 
-      {scanResults && activeTab === 'risk' && (
+      {scanResults && activeTab === "risk" && (
         <div className="risk-panel">
           <div className="risk-summary">
             <div className="risk-stat critical">
@@ -366,7 +366,7 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
         </div>
       )}
 
-      {generatedPolicy && activeTab === 'policy' && (
+      {generatedPolicy && activeTab === "policy" && (
         <div className="policy-panel">
           <div className="policy-info">
             <h3>{generatedPolicy.policy_name}</h3>
@@ -422,20 +422,20 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
                 </div>
                 <div className="setting">
                   <span className="setting-name">AI Access</span>
-                  <span className={`setting-value ${generatedPolicy.allow_ai_access ? 'allowed' : 'denied'}`}>
-                    {generatedPolicy.allow_ai_access ? '✅ Allowed' : '❌ Denied'}
+                  <span className={`setting-value ${generatedPolicy.allow_ai_access ? "allowed" : "denied"}`}>
+                    {generatedPolicy.allow_ai_access ? "✅ Allowed" : "❌ Denied"}
                   </span>
                 </div>
                 <div className="setting">
                   <span className="setting-name">Require Approval</span>
-                  <span className={`setting-value ${generatedPolicy.require_approval ? 'yes' : 'no'}`}>
-                    {generatedPolicy.require_approval ? '✅ Yes' : '❌ No'}
+                  <span className={`setting-value ${generatedPolicy.require_approval ? "yes" : "no"}`}>
+                    {generatedPolicy.require_approval ? "✅ Yes" : "❌ No"}
                   </span>
                 </div>
                 <div className="setting">
                   <span className="setting-name">Audit All</span>
-                  <span className={`setting-value ${generatedPolicy.audit_all ? 'yes' : 'no'}`}>
-                    {generatedPolicy.audit_all ? '✅ Yes' : '❌ No'}
+                  <span className={`setting-value ${generatedPolicy.audit_all ? "yes" : "no"}`}>
+                    {generatedPolicy.audit_all ? "✅ Yes" : "❌ No"}
                   </span>
                 </div>
               </div>
@@ -447,9 +447,9 @@ const SensitivityScanner = ({ connectorName = 'Unknown', schemaInfo = [] }) => {
             <pre className="ini-format">
 {`[policy_${generatedPolicy.policy_name}]
 description = ${generatedPolicy.description}
-${generatedPolicy.mask_columns.length > 0 ? `mask_columns = ${generatedPolicy.mask_columns.join(',')}` : ''}
-${generatedPolicy.deny_tables.length > 0 ? `deny_tables = ${generatedPolicy.deny_tables.join(',')}` : ''}
-${generatedPolicy.deny_columns.length > 0 ? `deny_columns = ${generatedPolicy.deny_columns.join(',')}` : ''}
+${generatedPolicy.mask_columns.length > 0 ? `mask_columns = ${generatedPolicy.mask_columns.join(",")}` : ""}
+${generatedPolicy.deny_tables.length > 0 ? `deny_tables = ${generatedPolicy.deny_tables.join(",")}` : ""}
+${generatedPolicy.deny_columns.length > 0 ? `deny_columns = ${generatedPolicy.deny_columns.join(",")}` : ""}
 max_rows = ${generatedPolicy.max_rows}
 allow_ai_access = ${generatedPolicy.allow_ai_access}
 require_approval = ${generatedPolicy.require_approval}
@@ -459,7 +459,7 @@ audit_all = ${generatedPolicy.audit_all}`}
         </div>
       )}
 
-      {generatedPolicy && activeTab === 'recommendations' && (
+      {generatedPolicy && activeTab === "recommendations" && (
         <div className="recommendations-panel">
           <h3>💡 Security Recommendations</h3>
           <div className="recommendations-list">
