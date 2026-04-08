@@ -319,6 +319,13 @@ async def test_query(message: str, org_id: str):
 # SPA FALLBACK (MUST BE LAST ROUTE)
 # This always serves React app for unknown routes
 if FRONTEND_DIST:
+    # Root route - explicit handler for /
+    @app.get("/")
+    async def serve_root():
+        """Serve root path - returns index.html for React SPA"""
+        return FileResponse(FRONTEND_DIST / "index.html")
+    
+    # Generic path handler for everything else
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str):
         """
