@@ -90,7 +90,7 @@ app.add_middleware(
 
 # ============= STATIC FILES =============
 # Determine frontend dist path - works on both local and Render
-frontend_dist_path = None
+FRONTEND_DIST = None
 possible_paths = [
     "/opt/render/project/src/frontend/dist",  # Render production
     os.path.join(os.path.dirname(__file__), "../../frontend/dist"),  # Local dev
@@ -99,40 +99,22 @@ possible_paths = [
 
 for path in possible_paths:
     if os.path.exists(path):
-        frontend_dist_path = Path(path).resolve()
-        logger.info(f"✅ Found frontend dist at {frontend_dist_path}")
+        FRONTEND_DIST = Path(path).resolve()
+        logger.info(f"✅ Found frontend dist at {FRONTEND_DIST}")
         break
 
-if not frontend_dist_path:
-    logger.warning(f"⚠️  Frontend dist not found in any of {possible_paths} - serving API only")
-    frontend_dist_path = None
+if not FRONTEND_DIST:
+    logger.warning(f"⚠️  Frontend dist not found in any of {possible_paths}")
+    FRONTEND_DIST = None
 
 # Serve static assets explicitly
-if frontend_dist_path and (frontend_dist_path / "assets").exists():
+if FRONTEND_DIST and (FRONTEND_DIST / "assets").exists():
     app.mount(
         "/assets",
-        StaticFiles(directory=str(frontend_dist_path / "assets")),
+        StaticFiles(directory=str(FRONTEND_DIST / "assets")),
         name="assets"
     )
     logger.info("✅ Mounted /assets from dist")
-
-# SPA fallback: serve index.html for unknown routes
-if frontend_dist_path and (frontend_dist_path / "index.html").exists():
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
-        """Serve Vite SPA - routes unknown paths to index.html"""
-        # Don't intercept API routes
-        if full_path.startswith("api/"):
-            return {"error": "Not Found"}, 404
-        
-        target = frontend_dist_path / full_path
-        
-        # Serve exact file if it exists
-        if full_path and target.exists() and target.is_file():
-            return FileResponse(target)
-        
-        # Otherwise serve index.html (SPA routing)
-        return FileResponse(frontend_dist_path / "index.html")
 
 
 # Global request/response middleware for the 14-step pipeline
@@ -333,6 +315,33 @@ async def test_query(message: str, org_id: str):
 
 
 # ============= MAIN =============
+
+# SPA FALLBACK (MUST BE LAST ROUTE)
+# This always serves React app for unknown routes
+if FRONTEND_DIST:
+    @app.get("/{full_path:path}")
+    async def spa_fallback(full_path: str):
+        """
+        Serve Vite SPA for all routes not matched above.
+        Routes unknown paths to index.html for React Router to handle.
+        """
+        # Don't intercept API routes that weren't caught above
+        if full_path.startswith("api/") or full_path.startswith("test/"):
+            return {"error": "Not found"}, 404
+        
+        target = FRONTEND_DIST / full_path
+        
+        # Serve exact file if it exists (CSS, JS, images, etc)
+        if full_path and target.exists() and target.is_file():
+            logger.info(f"📄 Serving file: {full_path}")
+            return FileResponse(target)
+        
+        # Default: serve index.html for SPA routing
+        logger.info(f"🔀 SPA fallback: {full_path} → index.html")
+        return FileResponse(FRONTEND_DIST / "index.html")
+else:
+    logger.error("⚠️  Frontend dist not found - SPA fallback disabled")
+
 
 if __name__ == "__main__":
     import uvicorn
