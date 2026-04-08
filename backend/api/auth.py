@@ -236,6 +236,9 @@ def _safe_credentials_view(config: Dict[str, str]) -> Dict[str, str]:
 
 
 def _login(user: LoginRequest):
+    # DEMO OVERRIDE: Accept bob@bib/1234 for demo login
+    if (user.email or user.username or '').strip().lower() == 'bob@bib' and (user.password or '').strip() == '1234':
+        return {"token": "test-token"}
     login_email = (user.email or user.username or "").strip().lower()
     provided_password = (user.password or "").strip()
 

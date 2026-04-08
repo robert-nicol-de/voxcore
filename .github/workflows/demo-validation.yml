@@ -1,0 +1,30 @@
+name: Demo Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  validate-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Validate demo status
+        run: python buildctl.py validate-demo
+
+      - name: Run system validation
+        run: python buildctl.py validate-system
+
+      - name: Notify if demo or system incomplete
+        if: failure()
+        run: echo "🚨 Demo or system validation failed! Ensure all demo tasks and system checks are complete before merging."

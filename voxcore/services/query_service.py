@@ -1,0 +1,475 @@
+"""
+Query Service - SQL generation, routing, and execution.
+
+Responsibility: Transform intent/state into SQL and execute
+- Route to appropriate query engine (aggregate, ranking, trend, etc.)
+- Generate SQL from intent
+- Apply governance (cost validation, RBAC, policies)
+- Execute query
+- Handle errors and timeouts
+
+Does NOT: Detect intent, manage state, format responses
+"""
+from collections.abc import Sequence
+from typing import Dict, Any, Optional
+import logging
+import time
+
+logger = logging.getLogger(__name__)
+
+
+class QueryService:
+    """Handles query generation, routing, and execution."""
+    
+    def __init__(self, voxcore_engine=None):
+        """
+        Initialize query service.
+        
+        Args:
+            voxcore_engine: VoxCoreEngine for governance
+        """
+        self.voxcore_engine = voxcore_engine
+    
+    def build_and_execute_query(
+        self,
+        intent: Dict[str, Any],
+        context: Dict[str, Any],
+        session_id: str,
+        db_connection: Any,
+        user_id: str,
+        workspace_id: Optional[str] = None,
+        timeout: int = 30
+    ) -> Dict[str, Any]:
+        """
+        Build SQL query from intent and execute it.
+        
+        Args:
+            intent: Intent analysis output {intent_type, metrics, dimensions, ...}
+            context: Conversation context {metrics, dimensions, filters, tables, ...}
+            session_id: Session identifier
+            db_connection: Database connection object
+            user_id: User identifier for RBAC
+            workspace_id: Optional workspace identifier
+            timeout: Query timeout in seconds
+            
+        Returns:
+            {
+                "success": bool,
+                "sql": str,
+                "data": list or None,
+                "row_count": int,
+                "execution_time_ms": float,
+                "cost_score": 0-100,
+                "cost_level": "safe|warning|blocked",
+                "error": str or None
+            }
+        """
+        try:
+            # 1. Route to appropriate query builder
+            sql = self._build_sql(intent, context)
+            logger.info(f"Generated SQL: {sql}")
+            
+            # 2. Apply governance (STEP 1)
+            governance_result = self._apply_governance(
+                sql=sql,
+                question=intent.get("question", ""),
+                platform=context.get("platform", "postgres"),
+                user_id=user_id,
+                session_id=session_id,
+                workspace_id=workspace_id
+            )
+            
+            if not governance_result["success"]:
+                return {
+                    "success": False,
+                    "sql": sql,
+                    "data": None,
+                    "row_count": 0,
+                    "execution_time_ms": 0,
+                    "cost_score": governance_result.get("cost_score", 0),
+                    "cost_level": governance_result.get("cost_level", "blocked"),
+                    "error": governance_result.get("error")
+                }
+            
+            # 3. Execute query
+            execution_result = self._execute_sql(
+                sql=governance_result.get("final_sql", sql),
+                connection=db_connection,
+                timeout=timeout,
+                user_id=user_id,
+                session_id=session_id
+            )
+            
+            return {
+                "success": execution_result["success"],
+                "sql": sql,
+                "data": execution_result.get("data"),
+                "row_count": execution_result.get("row_count", 0),
+                "execution_time_ms": execution_result.get("execution_time_ms", 0),
+                "cost_score": governance_result.get("cost_score", 0),
+                "cost_level": governance_result.get("cost_level", "safe"),
+                "error": execution_result.get("error")
+            }
+        
+        except Exception as e:
+            logger.error(f"Query execution error: {e}")
+            return {
+                "success": False,
+                "sql": "",
+                "data": None,
+                "row_count": 0,
+                "execution_time_ms": 0,
+                "cost_score": 0,
+                "cost_level": "blocked",
+                "error": str(e)
+            }
+
+    def execute_governed_sql(
+        self,
+        *,
+        question: str,
+        sql: str,
+        params: Optional[Sequence[Any]] = None,
+        session_id: str,
+        db_connection: Any,
+        user_id: str,
+        workspace_id: Optional[str] = None,
+        timeout: int = 15,
+        row_limit: int = 25,
+        platform: str = "postgres",
+    ) -> Dict[str, Any]:
+        """
+        Execute explicitly constructed SQL through the governed service path.
+
+        This is used for curated analytics endpoints where the SQL shape is
+        generated by application logic, but execution still must respect
+        governance, row limits, and timeouts.
+        """
+        try:
+            safe_sql = self._enforce_sql_safety(sql, row_limit=row_limit)
+        except ValueError as exc:
+            return {
+                "success": False,
+                "sql": sql,
+                "final_sql": sql,
+                "data": None,
+                "row_count": 0,
+                "execution_time_ms": 0,
+                "cost_score": 100,
+                "cost_level": "blocked",
+                "error": str(exc),
+                "warnings": [],
+            }
+
+        governance_result = self._apply_governance(
+            sql=safe_sql,
+            question=question,
+            platform=platform,
+            user_id=user_id,
+            session_id=session_id,
+            workspace_id=workspace_id,
+        )
+
+        if not governance_result["success"]:
+            return {
+                "success": False,
+                "sql": safe_sql,
+                "final_sql": governance_result.get("final_sql", safe_sql),
+                "data": None,
+                "row_count": 0,
+                "execution_time_ms": 0,
+                "cost_score": governance_result.get("cost_score", 100),
+                "cost_level": governance_result.get("cost_level", "blocked"),
+                "error": governance_result.get("error"),
+                "warnings": governance_result.get("warnings", []),
+            }
+
+        execution_result = self._execute_sql(
+            sql=governance_result.get("final_sql", safe_sql),
+            params=params,
+            connection=db_connection,
+            timeout=timeout,
+            user_id=user_id,
+            session_id=session_id,
+        )
+
+        return {
+            "success": execution_result["success"],
+            "sql": safe_sql,
+            "final_sql": governance_result.get("final_sql", safe_sql),
+            "data": execution_result.get("data"),
+            "row_count": execution_result.get("row_count", 0),
+            "execution_time_ms": execution_result.get("execution_time_ms", 0),
+            "cost_score": governance_result.get("cost_score", 0),
+            "cost_level": governance_result.get("cost_level", "safe"),
+            "error": execution_result.get("error"),
+            "warnings": governance_result.get("warnings", []),
+        }
+    
+    def _build_sql(self, intent: Dict[str, Any], context: Dict[str, Any]) -> str:
+        """
+        Build SQL query from intent and context.
+        
+        Routes to appropriate builder based on intent_type.
+        
+        Args:
+            intent: Intent analysis
+            context: Conversation context
+            
+        Returns:
+            SQL query string
+        """
+        intent_type = intent.get("intent_type", "aggregate")
+        metrics = intent.get("metrics", []) or context.get("metrics", ["sales"])
+        dimensions = intent.get("dimensions", []) or context.get("dimensions", [])
+        filters = context.get("filters", {})
+        
+        metric = metrics[0] if metrics else "sales"
+        dimension = dimensions[0] if dimensions else None
+        
+        # Route to builder based on intent type
+        if intent_type == "ranking":
+            return self._build_ranking_query(metric, dimension, filters)
+        elif intent_type == "trend":
+            return self._build_trend_query(metric, dimension, filters)
+        elif intent_type == "comparison":
+            return self._build_comparison_query(metric, dimension, filters)
+        elif intent_type == "diagnostic":
+            return self._build_diagnostic_query(metric, dimension, filters)
+        else:  # aggregate
+            return self._build_aggregate_query(metric, dimension, filters)
+    
+    def _build_aggregate_query(
+        self,
+        metric: str,
+        dimension: Optional[str],
+        filters: Dict[str, Any]
+    ) -> str:
+        """Build aggregate query (SUM, AVG, COUNT)."""
+        # Placeholder - would build real query from schema
+        if dimension:
+            return f"SELECT {dimension}, SUM({metric}) FROM sales GROUP BY {dimension}"
+        return f"SELECT SUM({metric}) FROM sales"
+    
+    def _build_ranking_query(
+        self,
+        metric: str,
+        dimension: Optional[str],
+        filters: Dict[str, Any]
+    ) -> str:
+        """Build ranking query (TOP/BOTTOM)."""
+        if dimension:
+            return f"SELECT {dimension}, SUM({metric}) FROM sales GROUP BY {dimension} ORDER BY SUM({metric}) DESC LIMIT 10"
+        return f"SELECT {metric} FROM sales ORDER BY {metric} DESC LIMIT 10"
+    
+    def _build_trend_query(
+        self,
+        metric: str,
+        dimension: Optional[str],
+        filters: Dict[str, Any]
+    ) -> str:
+        """Build trend query (time series)."""
+        if dimension and dimension != "time":
+            return f"SELECT DATE_TRUNC('month', date), {dimension}, SUM({metric}) FROM sales GROUP BY DATE_TRUNC('month', date), {dimension} ORDER BY DATE_TRUNC('month', date)"
+        return f"SELECT DATE_TRUNC('month', date), SUM({metric}) FROM sales GROUP BY DATE_TRUNC('month', date) ORDER BY DATE_TRUNC('month', date)"
+    
+    def _build_comparison_query(
+        self,
+        metric: str,
+        dimension: Optional[str],
+        filters: Dict[str, Any]
+    ) -> str:
+        """Build comparison query (YoY, MoM, etc.)."""
+        return f"SELECT YEAR(date) as year, SUM({metric}) FROM sales GROUP BY YEAR(date)"
+    
+    def _build_diagnostic_query(
+        self,
+        metric: str,
+        dimension: Optional[str],
+        filters: Dict[str, Any]
+    ) -> str:
+        """Build diagnostic query ('why' question)."""
+        if dimension:
+            return f"SELECT {dimension}, SUM({metric}), COUNT(*) FROM sales GROUP BY {dimension} ORDER BY SUM({metric}) DESC"
+        return f"SELECT SUM({metric}), COUNT(*) FROM sales"
+    
+    def _apply_governance(
+        self,
+        sql: str,
+        question: str = "",
+        platform: str = "postgres",
+        user_id: str = "anonymous",
+        session_id: str = "",
+        workspace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Apply governance checks (STEP 1 - VoxCoreEngine).
+        
+        Returns:
+            {
+                "success": bool,
+                "final_sql": str,
+                "cost_score": 0-100,
+                "cost_level": "safe|warning|blocked",
+                "error": str or None
+            }
+        """
+        if not self.voxcore_engine:
+            # No governance, allow all
+            return {
+                "success": True,
+                "final_sql": sql,
+                "cost_score": 35,
+                "cost_level": "safe"
+            }
+        
+        try:
+            engine = self.voxcore_engine
+            if engine is None:
+                from voxcore.engine.core import get_voxcore
+                engine = get_voxcore()
+
+            result = engine.preflight_query(
+                question=question,
+                generated_sql=sql,
+                platform=platform,
+                user_id=user_id,
+                session_id=session_id,
+                workspace_id=workspace_id
+            )
+            
+            return {
+                "success": result.success,
+                "final_sql": result.final_sql or sql,
+                "cost_score": result.cost_score,
+                "cost_level": result.cost_level,
+                "error": result.error,
+                "warnings": result.warnings or [],
+            }
+        
+        except Exception as e:
+            logger.error(f"Governance error: {e}")
+            return {
+                "success": False,
+                "final_sql": sql,
+                "cost_score": 100,
+                "cost_level": "blocked",
+                "error": str(e),
+                "warnings": [],
+            }
+    
+    def _execute_sql(
+        self,
+        sql: str,
+        connection: Any,
+        timeout: int,
+        params: Optional[Sequence[Any]] = None,
+        user_id: str = "anonymous",
+        session_id: str = "",
+    ) -> Dict[str, Any]:
+        """
+        Execute SQL query.
+        
+        Returns:
+            {
+                "success": bool,
+                "data": list or None,
+                "row_count": int,
+                "execution_time_ms": float,
+                "error": str or None
+            }
+        """
+        try:
+            if not connection:
+                return {
+                    "success": False,
+                    "data": None,
+                    "row_count": 0,
+                    "execution_time_ms": 0,
+                    "error": "No database connection available"
+                }
+            
+            start = time.time()
+            cursor = connection.cursor()
+            timeout_ms = max(int(timeout * 1000), 1000)
+
+            # Apply a bounded execution window for Postgres-compatible drivers.
+            try:
+                cursor.execute("SET statement_timeout = %s", (timeout_ms,))
+            except Exception:
+                logger.debug("statement_timeout not supported for this connection")
+
+            if params:
+                cursor.execute(sql, tuple(params))
+            else:
+                cursor.execute(sql)
+            rows = cursor.fetchall()
+            columns = [description[0] for description in cursor.description] if cursor.description else []
+
+            try:
+                cursor.execute("SET statement_timeout = 0")
+            except Exception:
+                logger.debug("statement_timeout reset not supported for this connection")
+
+            cursor.close()
+            
+            elapsed_ms = (time.time() - start) * 1000
+            
+            return {
+                "success": True,
+                "data": self._normalize_rows(rows, columns),
+                "row_count": len(rows),
+                "execution_time_ms": elapsed_ms
+            }
+        
+        except Exception as e:
+            logger.error(f"SQL execution error: {e}")
+            return {
+                "success": False,
+                "data": None,
+                "row_count": 0,
+                "execution_time_ms": 0,
+                "error": str(e)
+            }
+
+    def _normalize_rows(self, rows: Any, columns: list[str]) -> list[Dict[str, Any]]:
+        """Convert driver-specific row objects into JSON-safe dictionaries."""
+        normalized = []
+        for row in rows or []:
+            if isinstance(row, dict):
+                normalized.append(dict(row))
+            elif hasattr(row, "keys"):
+                normalized.append({key: row[key] for key in row.keys()})
+            elif columns:
+                normalized.append({
+                    column: row[index] if index < len(row) else None
+                    for index, column in enumerate(columns)
+                })
+            else:
+                normalized.append({"value": row})
+        return normalized
+
+    def _enforce_sql_safety(self, sql: str, row_limit: int) -> str:
+        """Apply endpoint-level safety rules before governance preflight."""
+        destructive_keywords = ("DROP", "DELETE", "TRUNCATE", "ALTER", "UPDATE", "INSERT")
+        upper_sql = sql.upper()
+        if any(keyword in upper_sql for keyword in destructive_keywords):
+            raise ValueError("Destructive or mutating SQL is not allowed")
+
+        trimmed = sql.strip().rstrip(";")
+        if "LIMIT" in upper_sql:
+            return trimmed
+        return f"{trimmed} LIMIT {max(row_limit, 1)}"
+
+
+# Singleton instance
+_query_service = None
+
+def get_query_service(voxcore_engine=None) -> QueryService:
+    """Get or create query service singleton."""
+    global _query_service
+    if _query_service is None:
+        _query_service = QueryService(voxcore_engine=voxcore_engine)
+    elif voxcore_engine is not None and _query_service.voxcore_engine is None:
+        _query_service.voxcore_engine = voxcore_engine
+    return _query_service

@@ -1,0 +1,29 @@
+patterns:
+
+  rolling_growth:
+    description: Month-over-month growth using window functions
+    risk_adjustment: -10
+    required:
+      - window_function
+      - time_grain_month
+      - bounded_time_range
+    forbidden:
+      - full_table_scan
+    confidence: 0.9
+
+  simple_aggregation:
+    description: Basic aggregation with grouping
+    risk_adjustment: -5
+    required:
+      - aggregation
+      - group_by
+    forbidden: []
+    confidence: 0.8
+
+  period_comparison:
+    description: Block comparison between time periods
+    risk_adjustment: -3
+    required:
+      - join_comparison
+    forbidden: []
+    confidence: 0.75

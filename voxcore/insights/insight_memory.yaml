@@ -1,27 +1,30 @@
-- insight_id: insight_001
-  insight_type: revenue_decline
-  entity: region
-  entity_value: South
-  metric: revenue
-  change: -18%
-  time_period: last_month
-  possible_driver:
-    category: Outdoor
-  generated_at: 2026-03-15
-- insight_id: insight_002
-  insight_type: category_decline
-  entity: category
-  entity_value: Outdoor
-  metric: sales
-  change: -32%
-  time_period: last_month
-  possible_driver:
-    customers:
-      - RetailCorp
-      - Summit Stores
-      - GreenTrail
-  generated_at: 2026-03-15
+insights:
+  - insight_id: insight_001
+    insight_type: revenue_decline
+    entity: region
+    entity_value: South
+    metric: revenue
+    change: -18%
+    time_period: last_month
+    possible_driver:
+      category: Outdoor
+    generated_at: 2026-03-15
+
+  - insight_id: insight_002
+    insight_type: category_decline
+    entity: category
+    entity_value: Outdoor
+    metric: sales
+    change: -32%
+    time_period: last_month
+    possible_driver:
+      customers:
+        - RetailCorp
+        - Summit Stores
+        - GreenTrail
+    generated_at: 2026-03-15
+
 relationships:
-- from: insight_001
-  to: insight_002
-  relationship: caused_by
+  - from: insight_001
+    to: insight_002
+    relationship: caused_by

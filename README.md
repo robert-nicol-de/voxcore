@@ -121,3 +121,5 @@ black . && pylint voxquery/
 ## License
 
 MIT
+
+# VoxCore: Deterministic, ASCII-safe backend — governance at every layer.

@@ -1,0 +1,29 @@
+name: Phase Enforcement
+
+on: [pull_request]
+
+jobs:
+  check-phase:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Run phase enforcement
+        run: python buildctl.py enforce
+
+      - name: Run system validation
+        run: python buildctl.py validate-system
+
+      - name: Notify if blocked
+        if: failure()
+        run: echo "🚨 Phase blocked or system validation failed! Fix tasks before merging."

@@ -1,0 +1,44 @@
+{
+  "metadata": {
+    "name": "Sample AdventureWorks Query",
+    "source": "SQL Server 2019",
+    "description": "Example dataset showing quarterly sales trends"
+  },
+  "rows": [
+    {
+      "quarter": "Q1 2024",
+      "revenue": 125000,
+      "orders": 342,
+      "customers": 89,
+      "avgOrderValue": 365.50
+    },
+    {
+      "quarter": "Q2 2024",
+      "revenue": 189450,
+      "orders": 512,
+      "customers": 156,
+      "avgOrderValue": 370.00
+    },
+    {
+      "quarter": "Q3 2024",
+      "revenue": 245000,
+      "orders": 678,
+      "customers": 201,
+      "avgOrderValue": 361.00
+    },
+    {
+      "quarter": "Q4 2024",
+      "revenue": 367800,
+      "orders": 1001,
+      "customers": 298,
+      "avgOrderValue": 367.50
+    }
+  ],
+  "columns": [
+    "quarter",
+    "revenue",
+    "orders",
+    "customers",
+    "avgOrderValue"
+  ]
+}

@@ -52,6 +52,7 @@ class User(Base):
     status = Column(String(50), default="active")  # active, disabled, invited
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
+    onboarded = Column(Boolean, default=False)
 
     company = relationship("Company", back_populates="users")
 
@@ -90,6 +91,7 @@ class User(Base):
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "last_login": self.last_login.isoformat() if self.last_login else None,
+            "onboarded": self.onboarded,
         }
 
 

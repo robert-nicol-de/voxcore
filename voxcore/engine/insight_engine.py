@@ -76,15 +76,9 @@ def generate_insights(insight_type: str, data: List[Dict[str, Any]], *args) -> L
     Returns a list of structured insight dicts with narrative, score, and chart suggestion.
     """
     insights = []
-    value_key = None
-    label_key = None
     # Heuristic: try to infer keys
-    if data and isinstance(data[0], dict):
-        keys = list(data[0].keys())
-        if len(keys) >= 2:
-            label_key, value_key = keys[0], keys[1]
-        elif len(keys) == 1:
-            value_key = keys[0]
+    value_key = None  # Ensure all metric names come from semantic registry only
+    label_key = None  # Ensure all dimension names come from semantic registry only
 
     # Example: growth trend
     if insight_type == "growth_trend" and value_key:

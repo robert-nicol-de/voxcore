@@ -13,6 +13,7 @@ from ..formatting.formatter import ResultsFormatter
 from ..formatting.charts import ChartGenerator
 from ..core.sql_safety import is_read_only
 from ..core.query_monitor import log_query
+from ..core.schema_analyzer import TableSchema, Column as SchemaColumn
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +155,7 @@ class QueryRequest(BaseModel):
     execute: bool = False
     dry_run: bool = True
     format: str = "table"
+    schema: Optional[Dict[str, Any]] = None
 
 
 class QueryResponse(BaseModel):
@@ -305,11 +307,38 @@ async def ask_question(request: QueryRequest) -> QueryResponse:
         logger.info(f"  Dry run: {request.dry_run}")
         logger.info(f"{'='*80}\n")
         
+        # Inject schema from request into engine-level schema analyzer (schema-aware generation/validation)
+        if request.schema:
+            try:
+                injected_cache = {}
+                tables_input = request.schema.get('tables') if isinstance(request.schema, dict) else None
+                if tables_input and isinstance(tables_input, list):
+                    for table_info in tables_input:
+                        table_name = table_info.get('table') or table_info.get('name')
+                        if not table_name:
+                            continue
+                        columns_data = table_info.get('columns', [])
+                        columns_dict = {}
+                        if isinstance(columns_data, list):
+                            for col in columns_data:
+                                col_name = col.get('name')
+                                if not col_name:
+                                    continue
+                                col_type = col.get('type', 'string')
+                                columns_dict[col_name] = SchemaColumn(name=col_name, type=col_type)
+                        injected_cache[table_name] = TableSchema(name=table_name, columns=columns_dict)
+                if injected_cache:
+                    engine.schema_analyzer.schema_cache = injected_cache
+                    logger.info('Injected request schema into schema analyzer: %d tables', len(injected_cache))
+            except Exception as e:
+                logger.warning('Failed to inject request schema: %s', e)
+
         t_ask_start = time.time()
         result = engine.ask(
             question=request.question,
             execute=request.execute,
             dry_run=request.dry_run,
+            schema=request.schema if hasattr(request, 'schema') else None,
         )
         t_ask_end = time.time()
         

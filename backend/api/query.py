@@ -2,7 +2,10 @@ import time
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Depends
+from backend.core.auth import verify_api_key
+from backend.core.usage import track_usage, check_rate_limit
+from backend.core.logger import log_query as core_log_query
 from pydantic import BaseModel
 from backend.control_plane import get_control_plane
 from backend.services.risk_engine import calculate_risk
@@ -17,12 +20,8 @@ from backend.services.audit_logger import create_audit_query_id, log_audit_event
 from backend.services.data_policy_engine import find_sensitive_columns_in_query, get_sensitive_columns
 from backend.services.query_job_queue import enqueue_query_job, get_job, get_worker_stats
 from backend.services.ai_context_builder import build_ai_query_context_with_runtime
-from backend.event_bus import (
-    POLICY_VIOLATION,
-    QUERY_BLOCKED,
-    QUERY_EXECUTED,
-    publish_event,
-)
+from backend.event_bus import POLICY_VIOLATION, QUERY_BLOCKED, QUERY_EXECUTED, publish_event
+from backend.schemas.query_response import QueryResponse
 from backend.semantic_brain import (
     AnalysisSessionStore,
     build_preview_chart,
@@ -252,7 +251,10 @@ def _risk_threshold_requires_approval(
     return risk_score >= int(threshold * 100), threshold
 
 
-def _analyze_query_risk(query: str) -> dict[str, Any]:
+
+from voxcore.guardian.pattern_engine import apply_pattern_scoring
+
+def _analyze_query_risk(query: str, metadata: dict = None) -> dict[str, Any]:
     risk_score = 0
     reasons: list[str] = []
     q = (query or "").upper()
@@ -282,6 +284,14 @@ def _analyze_query_risk(query: str) -> dict[str, Any]:
             "Sensitive column access detected: " + ", ".join(matched_sensitive_columns)
         )
 
+    # --- Pattern scoring integration ---
+    pattern_info = None
+    flags = []
+    if metadata is not None:
+        risk_score, flags, pattern_info = apply_pattern_scoring(query, metadata, risk_score, [])
+        if flags:
+            reasons.extend(flags)
+
     if risk_score == 0:
         level = "low"
     elif risk_score < 70:
@@ -295,6 +305,8 @@ def _analyze_query_risk(query: str) -> dict[str, Any]:
         "risk_score": risk_score,
         "risk_level": level,
         "reasons": reasons,
+        "pattern_detected": pattern_info["pattern"] if pattern_info else None,
+        "pattern_confidence": pattern_info["confidence"] if pattern_info else None,
         **cost_estimate,
     }
 
@@ -557,11 +569,12 @@ def inspect_query(request: Request, payload: InspectRequest):
 
 
 @router.post("/api/v1/query/risk")
+
 def analyze_query_risk(request: Request, payload: RiskRequest):
     query_text = (payload.query or "").strip()
     if not query_text:
         raise HTTPException(status_code=400, detail="query is required")
-    risk = _analyze_query_risk(query_text)
+    # Build semantic payload to get metadata
     company_id, workspace = _resolve_tenant_context(request, "default", payload.workspace_id)
     previous_plan = _get_previous_plan(company_id, workspace)
     semantic_payload = _build_semantic_payload(
@@ -570,6 +583,8 @@ def analyze_query_risk(request: Request, payload: RiskRequest):
         workspace,
         previous_plan=previous_plan,
     )
+    metadata = semantic_payload.get("metadata", {})
+    risk = _analyze_query_risk(query_text, metadata)
     policy_result = apply_policies(company_id, query_text)
     risk_requires_approval, approval_threshold = _risk_threshold_requires_approval(
         int(risk.get("risk_score", 0) or 0),
@@ -578,8 +593,12 @@ def analyze_query_risk(request: Request, payload: RiskRequest):
     risk["requires_approval"] = bool(policy_result.get("requires_approval")) or risk_requires_approval
     risk["approval_threshold"] = approval_threshold
     _save_latest_plan(company_id, workspace, semantic_payload["analytical_plan"])
-    risk |= semantic_payload
-    return risk
+    response = {
+        "risk": risk or {},
+        "semantic": semantic_payload or {}
+    }
+    print("FINAL RESPONSE:", response)
+    return response
 
 
 class QueryRequest(BaseModel):
@@ -623,6 +642,110 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     )
     _save_latest_plan(company_id, workspace_id, semantic_payload["analytical_plan"])
     semantic_sql = str(semantic_payload.get("generated_sql") or "")
+
+        if policy_result.get("requires_approval"):
+            _append_activity(request, query, "blocked", "high", company_id, workspace_id)
+            execution_time = time.perf_counter() - start
+            cost_usd = float(cost_estimate.get("estimated_rows_scanned", 0)) * 0.000001
+            lineage_id = None
+            log_query(
+                company_id=1,
+                user_id=1,
+                query=query,
+                execution_time=execution_time,
+                risk_level="APPROVAL_REQUIRED",
+                blocked=False,
+                cost_usd=cost_usd,
+                lineage_id=lineage_id,
+            )
+            queued_id: int | None = None
+            approval_reasons = policy_result.get("approval_reasons", [])
+            try:
+                from backend.services import approval_queue as queue
+                queued_id = queue.enqueue_query_for_approval(
+                    company_id=company_id,
+                    workspace_id=workspace_id,
+                    user_id=actor_user_id,
+                    query=query,
+                    reasons=approval_reasons,
+                    analysis=analysis,
+                )
+            except Exception:
+                queued_id = None
+            audit_event(
+                "approval_required",
+                "policy_engine",
+                approval_reasons,
+                analysis=analysis,
+                risk_level="medium",
+                guardian_validation="approval_required",
+                execution_time_ms=round(execution_time * 1000, 2),
+                extra={
+                    "policy_decision": policy_result.get("policy_decision"),
+                    "policy_rule": policy_result.get("policy_rule"),
+                    "policy_version": policy_result.get("policy_version"),
+                }
+            )
+            return {
+                "status": "approval_required",
+                "approval_reasons": approval_reasons,
+                "queued_id": queued_id,
+                "analysis": analysis,
+                "original_query": policy_result["original_query"],
+                "effective_query": policy_result["rewritten_query"],
+                "generated_sql": semantic_sql,
+                "policy_decision": policy_result.get("policy_decision"),
+                "policy_rule": policy_result.get("policy_rule"),
+                "policy_version": policy_result.get("policy_version"),
+            } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
+        else:
+            error_report.suggested_action = "CLARIFY"
+
+    # 3. Clarification
+    if error_report.error_detected and error_report.suggested_action == "CLARIFY":
+        clarification_system = ClarificationSystem()
+        clarification_input = ClarificationInput(
+            semantic_plan=semantic_payload.get("analytical_plan", {}),
+            error_report=error_report.dict(),
+            clarification_context=ClarificationContext()
+        )
+        clarification_result = clarification_system.clarify(clarification_input)
+        FailureIntelligenceLogger().log_event(FailureIntelligenceInput(
+            event_type=EventType.CLARIFICATION,
+            event_payload=clarification_result.dict(),
+            timestamp=datetime.utcnow(),
+            user_id=actor_user_id,
+        ))
+        if clarification_result.clarification_needed:
+            return {
+                "status": "clarification_required",
+                "clarification_prompt": clarification_result.clarification_prompt,
+                "clarification_type": clarification_result.clarification_type,
+                "clarification_options": clarification_result.clarification_options,
+                "log": clarification_result.log_entry,
+            }
+
+    # 4. Fallback
+    if error_report.error_detected and error_report.suggested_action == "FALLBACK":
+        fallback_manager = FallbackManager()
+        fallback_input = FallbackInput(
+            semantic_plan=semantic_payload.get("analytical_plan", {}),
+            error_report=error_report.dict(),
+        )
+        fallback_result = fallback_manager.fallback(fallback_input)
+        FailureIntelligenceLogger().log_event(FailureIntelligenceInput(
+            event_type=EventType.FALLBACK,
+            event_payload=fallback_result.dict(),
+            timestamp=datetime.utcnow(),
+            user_id=actor_user_id,
+        ))
+        return {
+            "status": "fallback",
+            "fallback_mode": fallback_result.fallback_mode,
+            "fallback_result": fallback_result.fallback_result,
+            "fallback_details": fallback_result.fallback_details,
+            "log": fallback_result.log_entry,
+        }
 
     # --- Zanzibar-style permission check ---
     from backend.api.permission_guard import permission_engine
@@ -734,6 +857,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     if matched_sensitive_columns:
         _append_activity(request, query, "blocked_sensitive", "high", company_id, workspace_id)
         execution_time = time.perf_counter() - start
+        cost_usd = float(cost_estimate.get("estimated_rows_scanned", 0)) * 0.000001
+        lineage_id = None
         log_query(
             company_id=1,
             user_id=1,
@@ -741,6 +866,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             execution_time=execution_time,
             risk_level="SENSITIVE_COLUMN_BLOCK",
             blocked=True,
+            cost_usd=cost_usd,
+            lineage_id=lineage_id,
         )
         log_audit_event(
             {
@@ -780,6 +907,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     if policy_result["blocked"]:
         _append_activity(request, query, "blocked", "high", company_id, workspace_id)
         execution_time = time.perf_counter() - start
+        cost_usd = float(cost_estimate.get("estimated_rows_scanned", 0)) * 0.000001
+        lineage_id = None
         log_query(
             company_id=1,
             user_id=1,
@@ -787,6 +916,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             execution_time=execution_time,
             risk_level="POLICY_BLOCK",
             blocked=True,
+            cost_usd=cost_usd,
+            lineage_id=lineage_id,
         )
         audit_event(
             "blocked",
@@ -796,6 +927,11 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             risk_level="high",
             guardian_validation="blocked",
             execution_time_ms=round(execution_time * 1000, 2),
+            extra={
+                "policy_decision": policy_result.get("policy_decision"),
+                "policy_rule": policy_result.get("policy_rule"),
+                "policy_version": policy_result.get("policy_version"),
+            }
         )
         _publish_policy_violation(
             company_id,
@@ -813,6 +949,9 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             "original_query": policy_result["original_query"],
             "effective_query": policy_result["rewritten_query"],
             "generated_sql": semantic_sql,
+            "policy_decision": policy_result.get("policy_decision"),
+            "policy_rule": policy_result.get("policy_rule"),
+            "policy_version": policy_result.get("policy_version"),
         } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
 
     query = policy_result["rewritten_query"]
@@ -822,6 +961,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     if not safety["safe"]:
         _append_activity(request, query, "blocked", "high", company_id, workspace_id)
         execution_time = time.perf_counter() - start
+        cost_usd = float(cost_estimate.get("estimated_rows_scanned", 0)) * 0.000001
+        lineage_id = None
         log_query(
             company_id=1,
             user_id=1,
@@ -829,6 +970,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             execution_time=execution_time,
             risk_level="SAFETY_BLOCK",
             blocked=True,
+            cost_usd=cost_usd,
+            lineage_id=lineage_id,
         )
         audit_event(
             "blocked",
@@ -861,6 +1004,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     if policy_result.get("requires_approval"):
         _append_activity(request, query, "blocked", "high", company_id, workspace_id)
         execution_time = time.perf_counter() - start
+        cost_usd = float(cost_estimate.get("estimated_rows_scanned", 0)) * 0.000001
+        lineage_id = None
         log_query(
             company_id=1,
             user_id=1,
@@ -868,6 +1013,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             execution_time=execution_time,
             risk_level="APPROVAL_REQUIRED",
             blocked=False,
+            cost_usd=cost_usd,
+            lineage_id=lineage_id,
         )
         queued_id: int | None = None
         approval_reasons = policy_result.get("approval_reasons", [])
@@ -912,6 +1059,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     except HTTPException:
         _append_activity(request, query, "blocked", "high", company_id, workspace_id)
         execution_time = time.perf_counter() - start
+        cost_usd = float(cost_estimate.get("estimated_rows_scanned", 0)) * 0.000001
+        lineage_id = None
         log_query(
             company_id=1,
             user_id=1,
@@ -919,6 +1068,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             execution_time=execution_time,
             risk_level="CRITICAL",
             blocked=True,
+            cost_usd=cost_usd,
+            lineage_id=lineage_id,
         )
         audit_event(
             "blocked",
@@ -1003,6 +1154,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     # 6) Database execution simulation/risk stage.
     risk = calculate_risk(query)
     execution_time = time.perf_counter() - start
+    cost_usd = float(cost_estimate.get("estimated_rows_scanned", 0)) * 0.000001
+    lineage_id = None
     log_query(
         company_id=1,
         user_id=1,
@@ -1010,6 +1163,8 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
         execution_time=execution_time,
         risk_level=risk_level,
         blocked=risk.get("status") == "BLOCKED",
+        cost_usd=cost_usd,
+        lineage_id=lineage_id,
     )
 
     if risk.get("status") == "BLOCKED":
@@ -1042,7 +1197,7 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
         execution_time_ms=round(execution_time * 1000, 2),
     )
 
-    return _add_ai_context(request, payload, {
+    semantic = _add_ai_context(request, payload, {
         "query_id": query_id,
         "status": "allowed",
         "company_id": company_id,
@@ -1060,6 +1215,63 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
         **cost_estimate,
     })
 
+    # --- Historical Comparison Explainability ---
+    historical_comparison = None
+    try:
+        previous_plan = _get_previous_plan(company_id, workspace_id)
+        prev_rows = None
+        prev_cost = None
+        if previous_plan:
+            prev_rows = previous_plan.get("estimated_rows_scanned")
+            prev_cost = previous_plan.get("estimated_cost_tier")
+        curr_rows = cost_estimate.get("estimated_rows_scanned")
+        if prev_rows and curr_rows and prev_rows > 0:
+            ratio = curr_rows / prev_rows
+            if ratio >= 2:
+                times = int(round(ratio))
+                historical_comparison = f"This query is {times}x heavier than your last query"
+            elif ratio <= 0.5:
+                times = int(round(1/ratio))
+                historical_comparison = f"This query is {times}x lighter than your last query"
+    except Exception:
+        pass
+
+    response = {
+        "intent": semantic.get("intent") or semantic.get("understanding"),
+        "plan": semantic.get("analysis_plan") or semantic.get("query_graph"),
+        "sql": {
+            "query": semantic.get("generated_sql"),
+            "structured": semantic.get("structured_sql")
+        },
+        "metadata": {
+            "pattern": (semantic.get("metadata") or {}).get("pattern"),
+            "pattern_confidence": (semantic.get("metadata") or {}).get("pattern_confidence"),
+            "validation": semantic.get("sql_validation")
+        },
+        "risk": {
+            "status": risk.get("status"),
+            "score": risk.get("risk_score"),
+            "flags": risk.get("risk_flags")
+        },
+        "risk_score": risk.get("risk_score"),
+        "status": risk.get("status"),
+    }
+    # Always attach 'insight' with default fallback if missing
+    default_insight = {
+        "insights": [],
+        "trend": {"direction": "flat", "strength": 0},
+        "anomalies": [],
+        "summary": {"headline": "", "key_takeaway": ""}
+    }
+    insight = semantic.get("insight")
+    if not insight:
+        insight = default_insight
+    response["insight"] = insight
+    if historical_comparison:
+        response["historical_comparison"] = historical_comparison
+    print("FINAL RESPONSE:", response)
+    return response
+
 
 @router.post("/query")
 @limiter.limit("100/minute")
@@ -1067,10 +1279,30 @@ def run_query(request: Request, payload: QueryRequest):
     return get_control_plane().handle_query(request, payload)
 
 
-@router.post("/api/v1/query")
+@router.post("/api/v1/query", response_model=QueryResponse)
 @limiter.limit("100/minute")
-def run_query_v1(request: Request, payload: QueryRequest):
-    return get_control_plane().enqueue_query(request, payload)
+def run_query_v1(request: Request, payload: QueryRequest, api_key=Depends(verify_api_key)):
+    # Usage tracking and rate limiting
+    track_usage(api_key)
+    check_rate_limit(api_key)
+
+    # Call the main logic
+    result = get_control_plane().enqueue_query(request, payload)
+
+    # Logging (query, sql, risk, top_insight)
+    user_query = getattr(payload, 'query', None)
+    sql = result.get('sql', {}).get('query') if isinstance(result, dict) else None
+    risk = result.get('risk', {}) if isinstance(result, dict) else None
+    insight = result.get('insight', {}) if isinstance(result, dict) else {}
+    top_insight = insight.get('top_insight') if isinstance(insight, dict) else None
+    core_log_query({
+        "query": user_query,
+        "sql": sql,
+        "risk": risk,
+        "top_insight": top_insight
+    })
+
+    return result
 
 
 @router.get("/api/v1/query/jobs/{job_id}")

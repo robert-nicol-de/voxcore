@@ -401,7 +401,7 @@ class SemanticBrainService:
         preview = preview_rows or []
         insights = self.detect_insights(plan, preview)
         hypotheses = self.hypothesis_engine.generate_hypotheses(plan)
-        patterns = self.pattern_engine.detect_patterns(preview)
+        patterns = self.pattern_engine.detect_patterns(preview, plan=plan)
         auto_drill = self.auto_drill_engine.suggest_drills(
             plan,
             top_focus=str(insights.get("top_performer") or ""),
@@ -481,7 +481,7 @@ class SemanticBrainService:
                 difficulty_level = int(query_difficulty.get("level") or 1),
             )
 
-        return {
+        result = {
             "query_id": query_id,
             "ai_context": ai_context,
             "schema_summary": self.extract_schema_summary(ai_context),
@@ -532,6 +532,20 @@ class SemanticBrainService:
             "related_metrics": related_metrics,
             "suggested_questions": self.generate_suggested_questions(plan, insights),
         }
+
+        # Ensure metadata exists (do NOT overwrite)
+        result["metadata"] = result.get("metadata", {})
+
+        # Normalize pattern into metadata
+        patterns = result.get("patterns")
+        if isinstance(patterns, dict):
+            main_pattern = patterns.get("main_pattern")
+            if main_pattern:
+                result["metadata"]["pattern"] = main_pattern
+                result["metadata"]["pattern_confidence"] = patterns.get("confidence", 0.9)
+                result["metadata"]["pattern_source"] = "semantic_engine"
+
+        return result
 
     def attempt_sql_correction(
         self,

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoxCore Demo</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: #020617;
+      color: white;
+      font-family: system-ui;
+      margin: 0;
+    }
+    .hero {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .hero h1 {
+      font-size: 42px;
+      margin-bottom: 10px;
+    }
+    .hero p {
+      color: #94a3b8;
+      font-size: 18px;
+    }
+    .pipeline {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      margin: 60px 0 40px 0;
+      flex-wrap: wrap;
+    }
+    .step {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      padding: 14px 20px;
+      border-radius: 8px;
+      font-weight: 500;
+    }
+    .arrow {
+      color: #64748b;
+      font-size: 28px;
+    }
+    .sql-box {
+      background: #020617;
+      border: 1px solid #1e293b;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 30px;
+      font-family: monospace;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .sql-box pre {
+      background: #0f172a;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 0 0 10px 0;
+      color: #e0e7ef;
+      font-size: 15px;
+      overflow-x: auto;
+    }
+    .sql-box p {
+      margin: 0 0 6px 0;
+    }
+    .blocked {
+      color: #ef4444;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .allowed {
+      color: #22c55e;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .cta {
+      text-align: center;
+      margin-top: 80px;
+    }
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+      padding: 14px 28px;
+      border-radius: 7px;
+      text-decoration: none;
+      font-size: 18px;
+      font-weight: 600;
+      display: inline-block;
+      margin-top: 20px;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <img src="images/voxcore-icon.png" alt="VoxCore Logo" class="logo" style="height:60px;margin-bottom:10px;" />
+    <h1>VoxCore AI Query Governance Demo</h1>
+    <p>See how VoxCore inspects and governs AI-generated SQL before it reaches your database.</p>
+  </header>
+  <main>
+    <section class="pipeline">
+      <div class="step">User Prompt</div>
+      <div class="arrow">↓</div>
+      <div class="step">AI SQL</div>
+      <div class="arrow">↓</div>
+      <div class="step">Policy Engine</div>
+      <div class="arrow">↓</div>
+      <div class="step">Data Guard</div>
+      <div class="arrow">↓</div>
+      <div class="step">Database</div>
+    </section>
+
+    <div class="sql-box">
+      <p><strong>Prompt</strong></p>
+      <pre>Show me all customer SSNs</pre>
+      <p><strong>Generated SQL</strong></p>
+      <pre>SELECT name, email, ssn FROM customers;</pre>
+      <p class="blocked">⚠ Query blocked – sensitive column detected</p>
+    </div>
+
+    <div class="sql-box">
+      <p><strong>Prompt</strong></p>
+      <pre>Show customer emails</pre>
+      <p><strong>Generated SQL</strong></p>
+      <pre>SELECT name, email FROM customers;</pre>
+      <p class="allowed">✓ Query approved</p>
+    </div>
+
+    <section class="cta">
+      <h2>Try VoxCore Yourself</h2>
+      <p>Launch the playground and see how VoxCore inspects AI-generated SQL queries in real time.</p>
+      <a href="https://app.voxcore.org/playground" class="btn-primary">Open the VoxCore Playground →</a>
+    </section>
+  </main>
+</body>
+</html>

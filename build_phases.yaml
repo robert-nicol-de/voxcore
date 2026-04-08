@@ -1,0 +1,180 @@
+project: VoxCore
+version: 1.0
+
+phases:
+  - id: phase_1
+    name: Real Data Layer
+    status: in-progress
+    code_paths:
+      - backend/db/
+      - backend/schema/
+    tasks:
+      - id: P1-1
+        description: Implement PostgreSQL connector
+        definition_of_done:
+          - Can connect to DB
+          - Can run SELECT query
+          - Returns results in API
+          - Covered by test
+        status: not-started
+        owner: backend@voxcore
+        reviewer: techlead@voxcore
+        sla_days: 2
+        created_at: 2026-03-30
+        affects:
+          - query_engine
+        demo: null
+
+      - id: P1-2
+        description: Implement schema introspection
+        definition_of_done:
+          - Can extract table/column metadata
+          - Handles edge cases (empty schema, reserved words)
+          - Returns metadata in API
+          - Covered by test
+        status: not-started
+        owner: backend@voxcore
+        reviewer: techlead@voxcore
+        sla_days: 2
+        created_at: 2026-03-30
+        affects:
+          - query_engine
+        demo: null
+
+      - id: P1-3
+        description: Replace mock SQL execution with real DB execution
+        definition_of_done:
+          - Real DB queries executed
+          - Handles errors/timeouts
+          - Returns real results in API
+          - Covered by test
+        status: not-started
+        owner: backend@voxcore
+        reviewer: techlead@voxcore
+        sla_days: 2
+        created_at: 2026-03-30
+        affects:
+          - query_engine
+        demo: null
+
+      - id: P1-4
+        description: Add row limits + timeout enforcement
+        definition_of_done:
+          - Row limits enforced
+          - Timeout enforced
+          - Returns error on violation
+          - Covered by test
+        status: not-started
+        owner: backend@voxcore
+        reviewer: techlead@voxcore
+        sla_days: 2
+        created_at: 2026-03-30
+        affects:
+          - query_engine
+        demo: null
+
+      - id: P1-5
+        description: Build SQL execution service
+        depends_on:
+          - P1-1
+        definition_of_done:
+          - Executes SELECT queries
+          - Returns JSON results
+          - Handles DB errors
+        status: not-started
+        owner: backend@voxcore
+        reviewer: techlead@voxcore
+        sla_days: 2
+        created_at: 2026-03-30
+        affects:
+          - query_engine
+        demo: null
+
+      - id: P1-6
+        description: Integrate query execution into API
+        depends_on:
+          - P1-5
+        definition_of_done:
+          - /api/playground/query uses real DB
+          - Returns actual data
+        status: not-started
+        owner: backend@voxcore
+        reviewer: techlead@voxcore
+        sla_days: 2
+        created_at: 2026-03-30
+        affects:
+          - query_engine
+          - api
+        demo: null
+
+  - id: phase_2
+    name: Control Plane
+    status: locked
+    depends_on: phase_1
+    code_paths:
+      - backend/engine/
+      - backend/rbac/
+    tasks:
+      - id: P2-1
+        description: Route all queries through VoxCoreEngine
+        depends_on:
+          - P1-3
+          - P1-4
+        definition_of_done:
+          - All queries pass through engine
+          - No bypass possible
+          - Covered by test
+        status: not-started
+        owner: backend@voxcore
+        reviewer: techlead@voxcore
+        sla_days: 2
+        created_at: 2026-03-30
+        affects:
+          - query_engine
+          - frontend_dashboard
+        demo: null
+
+      - id: P2-2
+        description: Implement RBAC policy enforcement
+        definition_of_done:
+          - RBAC rules enforced
+          - Unauthorized queries blocked
+          - Covered by test
+        status: not-started
+        owner: backend@voxcore
+        reviewer: techlead@voxcore
+        sla_days: 2
+        created_at: 2026-03-30
+        affects:
+          - query_engine
+        demo: null
+
+      - id: P2-3
+        description: Implement query risk scoring system
+        definition_of_done:
+          - Risk score calculated for each query
+          - High-risk queries flagged
+          - Covered by test
+        status: not-started
+        owner: backend@voxcore
+        reviewer: techlead@voxcore
+        sla_days: 2
+        created_at: 2026-03-30
+        affects:
+          - query_engine
+        demo: null
+
+      - id: P2-4
+        description: Implement execution logging
+        definition_of_done:
+          - All executions logged
+          - Log includes query, user, timestamp
+          - Covered by test
+        status: not-started
+        owner: backend@voxcore
+        reviewer: techlead@voxcore
+        sla_days: 2
+        created_at: 2026-03-30
+        affects:
+          - query_engine
+        demo: null

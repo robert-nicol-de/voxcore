@@ -7,11 +7,13 @@ from fastapi.responses import JSONResponse
 from voxcore.engine.insight_memory import InsightMemory
 from voxcore.engine.timeline_engine import TimelineEngine
 
-app = FastAPI()
+
+from fastapi import APIRouter
+router = APIRouter()
 insight_memory = InsightMemory()
 timeline_engine = TimelineEngine(insight_memory)
 
-@app.get("/api/timeline")
+@router.get("/api/timeline")
 async def get_timeline(
     days: int = Query(None),
     entity: str = Query(None),

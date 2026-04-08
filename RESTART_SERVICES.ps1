@@ -36,21 +36,21 @@ Write-Host ""
 
 # Start backend first
 Write-Host "Starting Backend API (port 8000)..." -ForegroundColor Cyan
-Start-Process -NoNewWindow -FilePath "python" -ArgumentList "backend/main.py" -WorkingDirectory $rootDir
+Start-Process -NoNewWindow -FilePath "python" -ArgumentList "-m", "uvicorn", "backend.main:app", "--host", "127.0.0.1", "--port", "8000", "--reload" -WorkingDirectory $rootDir
 Write-Host "  Backend started" -ForegroundColor Green
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 5
 
 # Start frontend
-Write-Host "Starting Frontend (port 3000)..." -ForegroundColor Cyan
-Start-Process -NoNewWindow -FilePath "npm" -ArgumentList "run", "dev" -WorkingDirectory "$rootDir\frontend"
+Write-Host "Starting Frontend (port 5173)..." -ForegroundColor Cyan
+Start-Process -NoNewWindow -FilePath "cmd.exe" -ArgumentList "/c", "npm run dev -- --host 0.0.0.0 --port 5173" -WorkingDirectory "$rootDir\frontend"
 Write-Host "  Frontend started" -ForegroundColor Green
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 5
 
 Write-Host ""
 Write-Host "All services restarted successfully!" -ForegroundColor Green
 Write-Host ""
 Write-Host "Service Status:" -ForegroundColor Cyan
-Write-Host "  Frontend:  http://localhost:3000" -ForegroundColor Yellow
+Write-Host "  Frontend:  http://localhost:5173" -ForegroundColor Yellow
 Write-Host "  Backend:   http://localhost:8000" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Tip: Hard refresh browser with Ctrl+Shift+R to clear cache" -ForegroundColor Magenta

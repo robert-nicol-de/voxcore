@@ -1,3 +1,13 @@
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from pydantic import BaseModel
+from typing import List, Optional
+from backend.services.rbac import require_permission
+from voxcore.security.permission_engine import PermissionEngine
+from voxcore.security.sqlite_adapter import SQLiteAdapter
+from backend.db import org_store
+
+router = APIRouter(prefix="/permissions", tags=["permissions"])
+
 @router.get("/debug")
 def debug_permissions(user=Depends(require_permission("system.manage"))):
     user_id = getattr(user, "id", None)

@@ -7,8 +7,9 @@ from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 from enum import Enum
 
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
+## LangChain dependencies removed for production minimalism
+## from langchain_core.prompts import ChatPromptTemplate
+## from langchain_openai import ChatOpenAI
 from sqlalchemy.engine import Engine
 
 from .schema_analyzer import SchemaAnalyzer
@@ -263,21 +264,9 @@ HIGHEST PRIORITY FINANCE QUESTION RULES – OVERRIDE EVERYTHING ELSE:
         self.schema_analyzer = SchemaAnalyzer(engine)
         
         # Initialize LLM based on provider
-        if settings.llm_provider == "ollama":
-            from langchain_community.llms import Ollama
-            self.llm = Ollama(
-                model=settings.llm_model,
-                temperature=settings.llm_temperature,
-            )
-        else:
-            # Default to Groq
-            from langchain_groq import ChatGroq
-            self.llm = ChatGroq(
-                model=settings.llm_model,
-                temperature=settings.llm_temperature,
-                max_tokens=settings.llm_max_tokens,
-                api_key=settings.groq_api_key,
-            )
+        # LLM provider logic removed: LangChain dependencies are not available in production
+        # If LLM integration is needed, implement a minimal direct API client here.
+        raise NotImplementedError("LLM integration removed: implement direct API call if needed.")
     
     def _score_table_for_question(self, table: str, question: str) -> float:
         """Score how relevant a table is for the given question (0.0 to 1.0)"""

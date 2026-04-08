@@ -17,7 +17,7 @@ from sqlalchemy.engine import Engine
 import pyodbc
 
 from .sql_generator import SQLGenerator, GeneratedSQL
-from .schema_analyzer import SchemaAnalyzer
+from .schema_analyzer import SchemaAnalyzer, TableSchema, Column
 from .conversation import ConversationManager
 from .sql_safety import inspect_and_repair, validate_sql
 from ..settings import settings
@@ -346,6 +346,7 @@ class VoxQueryEngine:
         question: str,
         execute: bool = False,
         dry_run: bool = True,
+        schema: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Ask a question and optionally execute the generated SQL
@@ -361,6 +362,29 @@ class VoxQueryEngine:
         try:
             # Add to conversation for audit trail only
             self.conversation.add_user_message(question)
+            
+            # Inject schema into engine-level schema analyzer if provided
+            if schema and isinstance(schema, dict) and schema.get('tables'):
+                try:
+                    injected_cache = {}
+                    for table_info in schema.get('tables', []):
+                        table_name = table_info.get('table') or table_info.get('name')
+                        if not table_name:
+                            continue
+                        columns_data = table_info.get('columns', [])
+                        columns_dict = {}
+                        for col in columns_data:
+                            col_name = col.get('name')
+                            if not col_name:
+                                continue
+                            col_type = col.get('type', 'string')
+                            columns_dict[col_name] = Column(name=col_name, type=col_type)
+                        injected_cache[table_name] = TableSchema(name=table_name, columns=columns_dict)
+                    if injected_cache:
+                        self.schema_analyzer.schema_cache = injected_cache
+                        logger.info('Engine schema analyzer injected from request schema (%d tables)', len(injected_cache))
+                except Exception as e:
+                    logger.warning('Could not inject schema into engine: %s', e)
             
             # DO NOT pass conversation context to SQL generator
             # This prevents token bloat and Groq degradation

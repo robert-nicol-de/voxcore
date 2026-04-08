@@ -91,6 +91,8 @@ def ensure_query_logs_table() -> bool:
                         execution_time FLOAT,
                         risk_level TEXT,
                         blocked BOOLEAN,
+                        cost_usd FLOAT DEFAULT 0.0,
+                        lineage_id INT,
                         created_at TIMESTAMP DEFAULT NOW()
                     )
                     """
@@ -107,6 +109,8 @@ def log_query(
     execution_time: float,
     risk_level: str,
     blocked: bool,
+    cost_usd: float = 0.0,
+    lineage_id: int | None = None,
 ) -> bool:
     try:
         if not ensure_query_logs_table():
@@ -120,10 +124,10 @@ def log_query(
                     cur.execute(
                         """
                         INSERT INTO query_logs
-                        (company_id, user_id, query, execution_time, risk_level, blocked, created_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                        (company_id, user_id, query, execution_time, risk_level, blocked, cost_usd, lineage_id, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
                         """,
-                        (company_id, user_id, query, execution_time, risk_level, blocked),
+                        (company_id, user_id, query, execution_time, risk_level, blocked, cost_usd, lineage_id),
                     )
         finally:
             _put_connection(conn)

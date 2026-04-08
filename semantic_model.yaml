@@ -1,0 +1,40 @@
+metrics:
+  - name: revenue
+    description: Total sales value
+    logic: sum(order_amount)
+    aggregation: sum
+    sourceFields: [orders.order_amount]
+
+  - name: orders
+    description: Total number of orders
+    logic: count(order_id)
+    aggregation: count
+    sourceFields: [orders.order_id]
+
+dimensions:
+  - name: region
+    type: categorical
+    sourceField: customers.region
+
+  - name: product
+    type: categorical
+    sourceField: products.product_name
+
+relationships:
+  - from: customers.customer_id
+    to: orders.customer_id
+    type: one_to_many
+
+  - from: orders.product_id
+    to: products.product_id
+    type: many_to_one
+
+time:
+  defaultField: orders.order_date
+  supportedGranularity: [day, week, month, quarter, year]
+  relativePeriods:
+    - last_7_days
+    - last_30_days
+    - this_month
+    - last_month
+    - year_to_date

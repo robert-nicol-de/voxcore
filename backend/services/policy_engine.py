@@ -157,6 +157,34 @@ def apply_policies(
     blocked = len(reasons) > 0
     rewritten_query = sql
 
+    # --- Policy explainability ---
+    policy_decision = "allow"
+    policy_rule = None
+    if blocked:
+        policy_decision = "blocked"
+        # Pick first reason as rule, or use a code
+        if reasons:
+            if "Sensitive field detected" in reasons[0]:
+                policy_rule = "SENSITIVE_DATA_RULE_V2"
+            elif "Destructive operation detected" in reasons[0]:
+                policy_rule = "DESTRUCTIVE_QUERY_RULE_V1"
+            elif "Read-only mode blocks" in reasons[0]:
+                policy_rule = "READ_ONLY_RULE_V1"
+            elif "Role" in reasons[0]:
+                policy_rule = "ROLE_BASED_ACCESS_RULE_V1"
+            else:
+                policy_rule = "GENERIC_BLOCK_RULE"
+        else:
+            policy_rule = "GENERIC_BLOCK_RULE"
+    elif requires_approval:
+        policy_decision = "require_approval"
+        policy_rule = "APPROVAL_REQUIRED_RULE_V1"
+    elif rewritten_query != sql:
+        policy_decision = "rewrite"
+        policy_rule = "QUERY_REWRITE_RULE_V1"
+
+    policy_version = "2026-03-30"
+
     row_limit = policies.get("query_result_limits", {})
     if not blocked and row_limit.get("enabled", False):
         max_rows = int(row_limit.get("max_rows", 1000) or 1000)
@@ -217,6 +245,23 @@ def apply_policies(
         risk_threshold = 0.7
     risk_threshold = max(0.0, min(1.0, risk_threshold))
 
+    # Determine columns to mask for this user/query
+    columns_to_mask = set()
+    # Blocked columns from role-based access
+    for rule in role_access.get("rules", []):
+        if normalize_role(str(rule.get("role", ""))) != normalized_role:
+            continue
+        blocked_columns = [str(x).lower() for x in rule.get("blocked_columns", [])]
+        for col in analyzed_columns:
+            if col in blocked_columns:
+                columns_to_mask.add(col)
+    # Sensitive columns for non-admins
+    if sensitive.get("enabled", False) and normalized_role != "admin":
+        blocked_cols = [str(x).lower() for x in sensitive.get("blocked_columns", [])]
+        for col in analyzed_columns:
+            if col in blocked_cols:
+                columns_to_mask.add(col)
+
     return {
         "blocked": blocked,
         "reasons": reasons,
@@ -235,6 +280,10 @@ def apply_policies(
             "threshold": risk_threshold,
         },
         "policies": policies,
+        "columns_to_mask": sorted(columns_to_mask),
+        "policy_decision": policy_decision,
+        "policy_rule": policy_rule,
+        "policy_version": policy_version,
     }
 
 

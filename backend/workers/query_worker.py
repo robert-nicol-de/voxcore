@@ -1,10 +1,13 @@
-import os
+
+import os, sys
+print(f"[DEBUG] CWD: {os.getcwd()}", file=sys.stderr)
+print(f"[DEBUG] sys.path: {sys.path}", file=sys.stderr)
 import time
 from threading import Thread
 
-from backend.api.query import QueryRequest, process_query_payload
-from backend.control_plane import build_worker_request_context, get_control_plane
-from backend.services.query_job_queue import (
+from ..api.query import QueryRequest, process_query_payload
+from ..control_plane import build_worker_request_context, get_control_plane
+from ..services.query_job_queue import (
     get_job,
     mark_job_blocked,
     mark_job_completed,
@@ -12,7 +15,7 @@ from backend.services.query_job_queue import (
     mark_job_running,
     pop_query_job,
 )
-from backend.services.security_redaction import sanitize_exception_message
+from ..services.security_redaction import sanitize_exception_message
 
 
 _WORKER_THREAD: Thread | None = None

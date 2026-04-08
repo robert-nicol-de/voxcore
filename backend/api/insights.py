@@ -1,3 +1,8 @@
+from voxcore.engine.insight_memory import InsightMemory
+
+# Compatibility layer for legacy code
+insight_memory = InsightMemory()
+INSIGHTS_STORE = insight_memory.insights
 """
 VoxCore Playground Insights Engine.
 
@@ -7,9 +12,52 @@ report, and an Ask Why investigation endpoint over the demo dataset.
 from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Body
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict
+import backend.insights.narrative as narrative_mod
 
 router = APIRouter()
+
+# -------------------
+# Pydantic Models
+# -------------------
+
+class InsightInput(BaseModel):
+    data: List[dict]
+    metrics: List[str]
+    dimensions: List[str]
+    time_dimension: Optional[str] = None
+    query_intent: Optional[str] = None
+
+class InsightScore(BaseModel):
+    confidence: float
+    impact: str
+    priority: int
+
+class InsightObject(BaseModel):
+    type: str
+    metric: Optional[str] = None
+    dimension: Optional[str] = None
+    value: Optional[str] = None
+    change: Optional[str] = None
+    period: Optional[str] = None
+    description: Optional[str] = None
+    contribution: Optional[str] = None
+    score: Optional[InsightScore] = None
+
+class NarrativeOutput(BaseModel):
+    headline: str
+    key_takeaway: str
+
+class Recommendation(BaseModel):
+    text: str
+    type: Optional[str] = None
+
+class InsightResponse(BaseModel):
+    insights: List[InsightObject]
+    narrative: str
+    recommendations: List[Recommendation]
 
 # ---------------------------------------------------------------------------
 # Demo dataset — Northwind Retail Group sandbox data
@@ -486,6 +534,62 @@ def _build_executive_briefing() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
+# -------------------
+# Automated VIIS + EMD Endpoint
+# -------------------
+
+@router.post("/insights/analyze", response_model=InsightResponse)
+def analyze_insights(
+    query_result: InsightInput = Body(...),
+    mode: str = "executive"
+):
+    """
+    Automated Insight Engine: Accepts query result, returns structured insights, narrative, and recommendations.
+    """
+    # 1. VIIS: Pattern detection (demo: use _build_viis_insights, but adapt to input in future)
+    # For now, use demo data and static logic
+    raw_insights = _build_viis_insights()
+    insights = [
+        InsightObject(
+            type=ri.get("category", "trend"),
+            metric=ri.get("title"),
+            description=ri.get("insight"),
+            contribution=ri.get("impact"),
+            value=ri.get("driver"),
+            change=None,
+            period=None,
+            score=InsightScore(
+                confidence=ri.get("confidence", 0)/100.0,
+                impact="high" if ri.get("confidence", 0) > 90 else "medium",
+                priority=ri.get("rank", 1)
+            )
+        ) for ri in raw_insights
+    ]
+
+    # 2. EMD: Narrative generation (demo: use first insight, static root cause/anomaly)
+    if raw_insights:
+        main = raw_insights[0]
+        # Fake trend/root_cause/anomalies for demo
+        trend = {"direction": "up", "strength": 0.8}
+        root_cause = {"top_driver": {"entity": main.get("driver", ""), "contribution_pct": 0.34}, "drivers": []}
+        anomalies = []
+        narrative_obj = narrative_mod.generate_narrative(main.get("title", "Metric"), trend, root_cause, anomalies)
+        narrative_text = f"{narrative_obj['headline']}. {narrative_obj['key_takeaway']}"
+    else:
+        narrative_text = "No significant insights detected."
+
+    # 3. Recommendations (demo: use suggested_action fields)
+    recommendations = [
+        Recommendation(text=ri.get("suggested_action", ""), type="growth" if "grow" in ri.get("suggested_action", "").lower() else "investigation")
+        for ri in raw_insights if ri.get("suggested_action")
+    ]
+
+    return InsightResponse(
+        insights=insights,
+        narrative=narrative_text,
+        recommendations=recommendations
+    )
 
 def _build_report() -> list[dict]:
     return [

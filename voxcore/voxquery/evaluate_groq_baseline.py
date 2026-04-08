@@ -13,30 +13,18 @@ from dotenv import load_dotenv
 # Load environment
 load_dotenv()
 
-# Import Groq directly
-from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+
+# LangChain and Groq dependencies removed for production minimalism
+# from langchain_groq import ChatGroq
+# from langchain_core.prompts import ChatPromptTemplate
+# from langchain_core.output_parsers import StrOutputParser
 
 class GroqSQLEvaluator:
     """Evaluate Groq SQL generation without database."""
     
     def __init__(self):
-        """Initialize Groq LLM."""
-        groq_api_key = os.getenv("GROQ_API_KEY")
-        if not groq_api_key:
-            raise ValueError("GROQ_API_KEY not set in .env")
-        
-        self.llm = ChatGroq(
-            model="llama-3.3-70b-versatile",
-            groq_api_key=groq_api_key,
-            temperature=0.0,
-            max_tokens=1024,
-        )
-        
-        # Load training dataset
-        with open('backend/training_questions.json', 'r') as f:
-            self.data = json.load(f)
+        """LLM integration removed: implement direct API call if needed."""
+        raise NotImplementedError("LLM integration removed: implement direct API call if needed.")
         
         print("✓ Groq initialized (llama-3.3-70b-versatile)")
         print(f"✓ Dataset loaded: {len(self.data)} questions")

@@ -9,10 +9,12 @@ class SQLPatternEngine:
             self.patterns = yaml.safe_load(f)["patterns"]
 
     def detect_pattern(self, question):
+        # Only use for query shape classification, not for semantic meaning extraction
         q = question.lower()
         for name, pat in self.patterns.items():
             for kw in pat.get("question_pattern", []):
                 if kw in q:
+                    # Ensure this is not used for metric/dimension/meaning extraction
                     return name
         return "default"
 
