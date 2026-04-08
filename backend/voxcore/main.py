@@ -14,11 +14,13 @@ from fastapi import FastAPI, Request, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 import logging
 import time
 from datetime import datetime
 import os
+from pathlib import Path
 
 # VoxCore components
 from backend.voxcore.api import conversation_api
@@ -87,13 +89,50 @@ app.add_middleware(
 
 
 # ============= STATIC FILES =============
-# Serve frontend from frontend/dist if it exists
-frontend_dist_path = os.path.join(os.path.dirname(__file__), "../../frontend/dist")
-if os.path.exists(frontend_dist_path):
-    app.mount("/", StaticFiles(directory=frontend_dist_path, html=True), name="frontend")
-    logger.info(f"✅ Serving frontend from {frontend_dist_path}")
-else:
-    logger.warning(f"⚠️  Frontend not found at {frontend_dist_path} - serving API only")
+# Determine frontend dist path - works on both local and Render
+frontend_dist_path = None
+possible_paths = [
+    "/opt/render/project/src/frontend/dist",  # Render production
+    os.path.join(os.path.dirname(__file__), "../../frontend/dist"),  # Local dev
+    "frontend/dist",  # Fallback
+]
+
+for path in possible_paths:
+    if os.path.exists(path):
+        frontend_dist_path = Path(path).resolve()
+        logger.info(f"✅ Found frontend dist at {frontend_dist_path}")
+        break
+
+if not frontend_dist_path:
+    logger.warning(f"⚠️  Frontend dist not found in any of {possible_paths} - serving API only")
+    frontend_dist_path = None
+
+# Serve static assets explicitly
+if frontend_dist_path and (frontend_dist_path / "assets").exists():
+    app.mount(
+        "/assets",
+        StaticFiles(directory=str(frontend_dist_path / "assets")),
+        name="assets"
+    )
+    logger.info("✅ Mounted /assets from dist")
+
+# SPA fallback: serve index.html for unknown routes
+if frontend_dist_path and (frontend_dist_path / "index.html").exists():
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve Vite SPA - routes unknown paths to index.html"""
+        # Don't intercept API routes
+        if full_path.startswith("api/"):
+            return {"error": "Not Found"}, 404
+        
+        target = frontend_dist_path / full_path
+        
+        # Serve exact file if it exists
+        if full_path and target.exists() and target.is_file():
+            return FileResponse(target)
+        
+        # Otherwise serve index.html (SPA routing)
+        return FileResponse(frontend_dist_path / "index.html")
 
 
 # Global request/response middleware for the 14-step pipeline
@@ -146,18 +185,20 @@ async def pipeline_middleware(request: Request, call_next):
 app.include_router(conversation_api.router)
 
 
-# Additional master routes
-@app.get("/")
-async def root():
-    """Root endpoint"""
+# Health/status endpoint
+@app.get("/api/health")
+async def health():
+    """Health check endpoint"""
     return {
         "status": "healthy",
         "service": "VoxQuery",
         "version": "16.0.0",
         "steps_implemented": 16,
         "api_version": "v1",
-        "documentation": "/docs"
     }
+
+
+# (Old root endpoint removed - now serves index.html via SPA fallback)
 
 
 @app.get("/docs/architecture")
