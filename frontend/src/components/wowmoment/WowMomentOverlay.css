@@ -1,0 +1,236 @@
+.wow-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 8888;
+  backdrop-filter: blur(4px);
+  animation: fadeInOverlay 0.3s ease-out;
+}
+
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.wow-card {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid rgba(0, 135, 255, 0.3);
+  border-radius: 16px;
+  padding: 48px;
+  max-width: 450px;
+  width: 90%;
+  position: relative;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 60px rgba(0, 135, 255, 0.15);
+  animation: slideInScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.wow-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.wow-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.wow-content {
+  text-align: center;
+}
+
+.wow-icon {
+  font-size: 56px;
+  margin-bottom: 20px;
+  display: block;
+  animation: bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.wow-icon-blocked {
+  color: #ff6b6b;
+}
+
+.wow-icon-success {
+  color: #51cf66;
+}
+
+.wow-title {
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+}
+
+.wow-subtitle {
+  color: #0087ff;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 24px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wow-explanation {
+  background: rgba(0, 135, 255, 0.05);
+  border: 1px solid rgba(0, 135, 255, 0.2);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 24px 0;
+  text-align: left;
+}
+
+.wow-reason {
+  color: #aaa;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 16px 0;
+}
+
+.wow-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 135, 255, 0.1);
+}
+
+.wow-metric .label {
+  color: #666;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.wow-metric .value {
+  color: #0087ff;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.wow-insight {
+  color: #5a8;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 24px 0;
+  padding: 12px;
+  background: rgba(81, 207, 102, 0.05);
+  border-left: 3px solid #51cf66;
+  border-radius: 4px;
+  text-align: left;
+}
+
+/* CTAs */
+.wow-cta-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.wow-cta-primary {
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(90deg, #0087ff, #00a8ff);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.wow-cta-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 135, 255, 0.4);
+}
+
+.wow-cta-primary:active {
+  transform: translateY(0);
+}
+
+.wow-cta-secondary {
+  width: 100%;
+  padding: 12px 20px;
+  background: transparent;
+  color: #666;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.wow-cta-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #aaa;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .wow-card {
+    padding: 32px 24px;
+  }
+
+  .wow-icon {
+    font-size: 48px;
+  }
+
+  .wow-title {
+    font-size: 22px;
+  }
+
+  .wow-cta-primary,
+  .wow-cta-secondary {
+    font-size: 13px;
+    padding: 12px 16px;
+  }
+}

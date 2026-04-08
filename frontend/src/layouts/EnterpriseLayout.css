@@ -1,0 +1,12 @@
+.enterprise-layout {
+  display: flex;
+  height: 100vh;
+  background: #0f172a;
+  color: white;
+}
+
+.enterprise-main {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}

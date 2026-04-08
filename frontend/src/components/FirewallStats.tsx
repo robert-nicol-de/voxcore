@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { apiUrl } from '../lib/api';
-import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from '../lib/polling';
-import DrilldownModal from './results/DrilldownModal';
+import { useEffect, useState } from "react";
+import { apiUrl } from "../lib/api";
+import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from "../lib/polling";
+import DrilldownModal from "./results/DrilldownModal";
 
 type QueryLog = {
   status?: string;
@@ -15,7 +15,7 @@ type FirewallCounts = {
 
 function widthFor(value: number, total: number) {
   if (total === 0) {
-    return '0%';
+    return "0%";
   }
 
   return `${Math.max((value / total) * 100, value > 0 ? 8 : 0)}%`;
@@ -42,9 +42,9 @@ export default function FirewallStats() {
     };
 
     const loadStats = async () => {
-      const companyId = localStorage.getItem('voxcore_company_id') || 'default';
-      const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
-      const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
+      const companyId = localStorage.getItem("voxcore_company_id") || "default";
+      const workspaceId = localStorage.getItem("voxcore_workspace_id") || "default";
+      const token = localStorage.getItem("voxcore_token") || localStorage.getItem("vox_token") || "";
 
       try {
         const response = await fetch(
@@ -70,10 +70,10 @@ export default function FirewallStats() {
         let sandboxed = 0;
 
         logs.forEach((entry) => {
-          const status = (entry.status || '').toLowerCase();
-          if (status === 'allowed') allowed += 1;
-          if (status === 'blocked' || status === 'blocked_sensitive') blocked += 1;
-          if (status === 'sandboxed') sandboxed += 1;
+          const status = (entry.status || "").toLowerCase();
+          if (status === "allowed") allowed += 1;
+          if (status === "blocked" || status === "blocked_sensitive") blocked += 1;
+          if (status === "sandboxed") sandboxed += 1;
         });
 
         setStats({ allowed, blocked, sandboxed });
@@ -107,7 +107,7 @@ export default function FirewallStats() {
           <span>Allowed Queries</span>
           <span>{stats.allowed}</span>
         </div>
-        <div className="firewall-track" onClick={() => setSelectedCategory('allowed')} style={{ cursor: 'pointer' }}>
+        <div className="firewall-track" onClick={() => setSelectedCategory("allowed")} style={{ cursor: "pointer" }}>
           <div className="bar green" style={{ width: widthFor(stats.allowed, total) }} />
         </div>
       </div>
@@ -117,7 +117,7 @@ export default function FirewallStats() {
           <span>Blocked Queries</span>
           <span>{stats.blocked}</span>
         </div>
-        <div className="firewall-track" onClick={() => setSelectedCategory('blocked')} style={{ cursor: 'pointer' }}>
+        <div className="firewall-track" onClick={() => setSelectedCategory("blocked")} style={{ cursor: "pointer" }}>
           <div className="bar red" style={{ width: widthFor(stats.blocked, total) }} />
         </div>
       </div>
@@ -127,7 +127,7 @@ export default function FirewallStats() {
           <span>Sandboxed Queries</span>
           <span>{stats.sandboxed}</span>
         </div>
-        <div className="firewall-track" onClick={() => setSelectedCategory('sandboxed')} style={{ cursor: 'pointer' }}>
+        <div className="firewall-track" onClick={() => setSelectedCategory("sandboxed")} style={{ cursor: "pointer" }}>
           <div className="bar yellow" style={{ width: widthFor(stats.sandboxed, total) }} />
         </div>
       </div>

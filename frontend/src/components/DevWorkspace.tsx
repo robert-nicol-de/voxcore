@@ -1,45 +1,45 @@
-import React, { useState } from 'react';
-import './DevWorkspace.css';
-import SensitivityScanner from './DevConsole/SensitivityScanner';
+import React, { useState } from "react";
+import "./DevWorkspace.css";
+import SensitivityScanner from "./DevConsole/SensitivityScanner";
 
 interface DevWorkspaceProps {
   onClose?: () => void;
 }
 
 export const DevWorkspace: React.FC<DevWorkspaceProps> = ({ onClose }) => {
-  const [sqlQuery, setSqlQuery] = useState('');
+  const [sqlQuery, setSqlQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [tables, setTables] = useState([
-    'customers', 'orders', 'products', 'employees', 'departments'
+    "customers", "orders", "products", "employees", "departments"
   ]);
-  const [activeTab, setActiveTab] = useState<'editor' | 'scanner'>('editor');
+  const [activeTab, setActiveTab] = useState<"editor" | "scanner">("editor");
   
   // Sample schema for scanner demo
   const [sampleSchema] = useState([
     {
-      table_name: 'users',
-      columns: ['id', 'username', 'email', 'password', 'phone_number', 'date_of_birth']
+      table_name: "users",
+      columns: ["id", "username", "email", "password", "phone_number", "date_of_birth"]
     },
     {
-      table_name: 'payments',
-      columns: ['id', 'user_id', 'card_number', 'cvv', 'expiry_date', 'amount']
+      table_name: "payments",
+      columns: ["id", "user_id", "card_number", "cvv", "expiry_date", "amount"]
     },
     {
-      table_name: 'employees',
-      columns: ['id', 'name', 'email', 'ssn', 'salary', 'department']
+      table_name: "employees",
+      columns: ["id", "name", "email", "ssn", "salary", "department"]
     }
   ]);
 
   const handleRunQuery = async () => {
     if (!sqlQuery.trim()) {
-      setError('Enter a SQL query');
+      setError("Enter a SQL query");
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError("");
     setResults([]);
 
     try {
@@ -47,21 +47,21 @@ export const DevWorkspace: React.FC<DevWorkspaceProps> = ({ onClose }) => {
       // For now, show mock results
       setTimeout(() => {
         setResults([
-          { id: 1, column1: 'value1', column2: 'value2' },
-          { id: 2, column1: 'value3', column2: 'value4' },
+          { id: 1, column1: "value1", column2: "value2" },
+          { id: 2, column1: "value3", column2: "value4" },
         ]);
         setLoading(false);
       }, 800);
     } catch (err) {
-      setError('Query execution failed');
+      setError("Query execution failed");
       setLoading(false);
     }
   };
 
   const clearQuery = () => {
-    setSqlQuery('');
+    setSqlQuery("");
     setResults([]);
-    setError('');
+    setError("");
   };
 
   return (
@@ -69,14 +69,14 @@ export const DevWorkspace: React.FC<DevWorkspaceProps> = ({ onClose }) => {
       {/* Workspace Tabs */}
       <div className="workspace-tabs">
         <button 
-          className={`tab-button ${activeTab === 'editor' ? 'active' : ''}`}
-          onClick={() => setActiveTab('editor')}
+          className={`tab-button ${activeTab === "editor" ? "active" : ""}`}
+          onClick={() => setActiveTab("editor")}
         >
           ⚙️ SQL Editor
         </button>
         <button 
-          className={`tab-button ${activeTab === 'scanner' ? 'active' : ''}`}
-          onClick={() => setActiveTab('scanner')}
+          className={`tab-button ${activeTab === "scanner" ? "active" : ""}`}
+          onClick={() => setActiveTab("scanner")}
         >
           📊 Sensitivity Scanner
         </button>
@@ -84,7 +84,7 @@ export const DevWorkspace: React.FC<DevWorkspaceProps> = ({ onClose }) => {
 
       <div className="dev-layout">
         {/* Editor View */}
-        {activeTab === 'editor' && (
+        {activeTab === "editor" && (
           <>
             {/* Schema Explorer Panel */}
             <div className="schema-panel">
@@ -97,15 +97,15 @@ export const DevWorkspace: React.FC<DevWorkspaceProps> = ({ onClose }) => {
                   <div
                     key={table}
                     className="table-item"
-                    onClick={() => setSqlQuery(prev => `${prev}${prev ? '\n' : ''}SELECT * FROM ${table}`)}
-                    title={`Click to add table to query`}
+                    onClick={() => setSqlQuery(prev => `${prev}${prev ? "\n" : ""}SELECT * FROM ${table}`)}
+                    title={"Click to add table to query"}
                   >
                     📋 {table}
                   </div>
                 ))}
               </div>
               <div className="schema-info">
-                <p style={{ fontSize: '12px', color: '#888', marginTop: '20px' }}>
+                <p style={{ fontSize: "12px", color: "#888", marginTop: "20px" }}>
                   Click a table to add it to your query.
                 </p>
               </div>
@@ -121,7 +121,7 @@ export const DevWorkspace: React.FC<DevWorkspaceProps> = ({ onClose }) => {
                 onClick={handleRunQuery}
                 disabled={loading}
               >
-                {loading ? '⏳ Running...' : '▶ Run Query'}
+                {loading ? "⏳ Running..." : "▶ Run Query"}
               </button>
               <button 
                 className="btn btn-secondary"
@@ -199,7 +199,7 @@ export const DevWorkspace: React.FC<DevWorkspaceProps> = ({ onClose }) => {
         )}
 
         {/* Scanner View */}
-        {activeTab === 'scanner' && (
+        {activeTab === "scanner" && (
           <div className="scanner-container">
             <SensitivityScanner 
               connectorName="VoxQuery_Demo"

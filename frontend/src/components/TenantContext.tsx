@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../lib/api';
+import { useState, useEffect } from "react";
+import { apiUrl } from "../lib/api";
 
 interface TenantInfo {
   tenant_id: string;
@@ -16,14 +16,14 @@ interface TenantInfo {
 export default function TenantContext() {
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
   const [allTenants, setAllTenants] = useState<string[]>([]);
-  const [selectedTenant, setSelectedTenant] = useState<string>('tenant_acme_corp');
+  const [selectedTenant, setSelectedTenant] = useState<string>("tenant_acme_corp");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Fetch list of all tenants
     const fetchTenants = async () => {
       try {
-        const response = await fetch(apiUrl('/api/v1/tenants'));
+        const response = await fetch(apiUrl("/api/v1/tenants"));
         if (response.ok) {
           const data = await response.json();
           setAllTenants(data.tenants || []);
@@ -32,7 +32,7 @@ export default function TenantContext() {
           }
         }
       } catch (error) {
-        console.error('Failed to fetch tenants:', error);
+        console.error("Failed to fetch tenants:", error);
       }
     };
 
@@ -41,6 +41,7 @@ export default function TenantContext() {
 
   useEffect(() => {
     // Fetch selected tenant configuration
+    // Also store tenantId in localStorage for API header use
     const fetchTenantConfig = async () => {
       setLoading(true);
       try {
@@ -48,9 +49,12 @@ export default function TenantContext() {
         if (response.ok) {
           const data = await response.json();
           setTenant(data);
+          if (data.tenant_id) {
+            localStorage.setItem("voxcore_tenant_id", data.tenant_id);
+          }
         }
       } catch (error) {
-        console.error('Failed to fetch tenant config:', error);
+        console.error("Failed to fetch tenant config:", error);
       } finally {
         setLoading(false);
       }
@@ -63,14 +67,14 @@ export default function TenantContext() {
 
   const getPlanBadgeColor = (plan: string) => {
     switch (plan) {
-      case 'Enterprise':
-        return '#ef4444'; // Red
-      case 'Pro':
-        return '#f59e0b'; // Orange
-      case 'Starter':
-        return '#22c55e'; // Green
+      case "Enterprise":
+        return "#ef4444"; // Red
+      case "Pro":
+        return "#f59e0b"; // Orange
+      case "Starter":
+        return "#22c55e"; // Green
       default:
-        return '#8892b0'; // Gray
+        return "#8892b0"; // Gray
     }
   };
 
@@ -117,8 +121,15 @@ export default function TenantContext() {
                   className="plan-badge"
                   style={{ backgroundColor: getPlanBadgeColor(tenant.subscription_plan) }}
                 >
-                  {tenant.subscription_plan}
+                  {tenant.subscription_plan === "pro" ? "Pro" :
+                   tenant.subscription_plan === "team" ? "Team" :
+                   tenant.subscription_plan === "enterprise" ? "Enterprise" :
+                   tenant.subscription_plan === "free" ? "Free / Demo" :
+                   tenant.subscription_plan}
                 </span>
+                {tenant.dev_ai_addon && (
+                  <span className="plan-badge premium ml-2">Dev AI Add-on</span>
+                )}
               </div>
             </div>
           </div>
@@ -147,13 +158,13 @@ export default function TenantContext() {
 
 function getRoleColor(role: string): string {
   switch (role) {
-    case 'admin':
-      return '#ef4444'; // Red
-    case 'developer':
-      return '#3b82f6'; // Blue
-    case 'viewer':
-      return '#8b5cf6'; // Purple
+    case "admin":
+      return "#ef4444"; // Red
+    case "developer":
+      return "#3b82f6"; // Blue
+    case "viewer":
+      return "#8b5cf6"; // Purple
     default:
-      return '#8892b0'; // Gray
+      return "#8892b0"; // Gray
   }
 }

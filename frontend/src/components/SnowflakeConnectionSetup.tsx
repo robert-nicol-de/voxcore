@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { apiUrl } from '../lib/api';
+import { useState } from "react";
+import { apiUrl } from "../lib/api";
 
 export interface SnowflakeConnectionSetupProps {
   onConnect: (credentials: Record<string, string>) => void;
@@ -23,20 +23,20 @@ export interface SnowflakeConnectionSetupProps {
  * - Role
  */
 export default function SnowflakeConnectionSetup({ onConnect, onCancel }: SnowflakeConnectionSetupProps) {
-  const [user, setUser] = useState('');
-  const [password, setPassword] = useState('');
-  const [account, setAccount] = useState('');
-  const [warehouse, setWarehouse] = useState('');
-  const [database, setDatabase] = useState('');
-  const [schema, setSchema] = useState('');
-  const [role, setRole] = useState('');
+  const [user, setUser] = useState("");
+  const [password, setPassword] = useState("");
+  const [account, setAccount] = useState("");
+  const [warehouse, setWarehouse] = useState("");
+  const [database, setDatabase] = useState("");
+  const [schema, setSchema] = useState("");
+  const [role, setRole] = useState("");
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const handleTest = async () => {
     if (!user || !password || !account || !warehouse) {
-      setError('User, password, account, and warehouse are required');
+      setError("User, password, account, and warehouse are required");
       return;
     }
 
@@ -49,10 +49,10 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
       if (schema) credentials.schema = schema;
       if (role) credentials.role = role;
 
-      const res = await fetch(apiUrl('/api/v1/datasources/test-connection'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform: 'snowflake', credentials }),
+      const res = await fetch(apiUrl("/api/v1/datasources/test-connection"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform: "snowflake", credentials }),
       });
 
       const data = (await res.json()) as { valid: boolean; error?: string };
@@ -61,11 +61,11 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
         setError(null);
       } else {
         setSuccess(false);
-        setError(data.error || 'Connection test failed');
+        setError(data.error || "Connection test failed");
       }
     } catch (e) {
       setSuccess(false);
-      setError('Network error');
+      setError("Network error");
     } finally {
       setTesting(false);
     }
@@ -73,7 +73,7 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
 
   const handleSubmit = () => {
     if (!user || !password || !account || !warehouse) {
-      setError('User, password, account, and warehouse are required');
+      setError("User, password, account, and warehouse are required");
       return;
     }
 
@@ -92,7 +92,7 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
     placeholder,
     help,
     required = false,
-    type = 'text',
+    type = "text",
   }: {
     label: string;
     value: string;
@@ -103,8 +103,8 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
     type?: string;
   }) => (
     <div style={{ marginBottom: 16 }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#e2e8f0' }}>
-        {label} {required && <span style={{ color: '#ff5050' }}>*</span>}
+      <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "#e2e8f0" }}>
+        {label} {required && <span style={{ color: "#ff5050" }}>*</span>}
       </label>
       <input
         type={type}
@@ -112,19 +112,19 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         style={{
-          width: '100%',
-          background: 'rgba(255,255,255,0.07)',
-          border: '1px solid var(--platform-border)',
+          width: "100%",
+          background: "rgba(255,255,255,0.07)",
+          border: "1px solid var(--platform-border)",
           borderRadius: 8,
-          color: '#fff',
-          padding: '10px 14px',
+          color: "#fff",
+          padding: "10px 14px",
           fontSize: 13,
-          boxSizing: 'border-box',
-          outline: 'none',
+          boxSizing: "border-box",
+          outline: "none",
         }}
       />
       {help && (
-        <div style={{ fontSize: 11, color: 'var(--platform-muted)', marginTop: 4 }}>
+        <div style={{ fontSize: 11, color: "var(--platform-muted)", marginTop: 4 }}>
           {help}
         </div>
       )}
@@ -134,19 +134,19 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
   return (
     <div
       style={{
-        display: 'flex',
-        flexDirection: 'column',
+        display: "flex",
+        flexDirection: "column",
         gap: 20,
-        maxWidth: '480px',
-        margin: '0 auto',
-        padding: '32px',
+        maxWidth: "480px",
+        margin: "0 auto",
+        padding: "32px",
       }}
     >
       <div>
-        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
           Connect to Snowflake
         </h2>
-        <p style={{ margin: 0, color: 'var(--platform-muted)', fontSize: 13 }}>
+        <p style={{ margin: 0, color: "var(--platform-muted)", fontSize: 13 }}>
           Enter your Snowflake credentials to establish a connection.
         </p>
       </div>
@@ -154,11 +154,11 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
       {error && (
         <div
           style={{
-            background: 'rgba(255,80,80,0.1)',
-            border: '1px solid rgba(255,80,80,0.3)',
+            background: "rgba(255,80,80,0.1)",
+            border: "1px solid rgba(255,80,80,0.3)",
             borderRadius: 8,
-            padding: '10px 14px',
-            color: '#ff5050',
+            padding: "10px 14px",
+            color: "#ff5050",
             fontSize: 12,
           }}
         >
@@ -169,11 +169,11 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
       {success && (
         <div
           style={{
-            background: 'rgba(34,197,94,0.1)',
-            border: '1px solid rgba(34,197,94,0.3)',
+            background: "rgba(34,197,94,0.1)",
+            border: "1px solid rgba(34,197,94,0.3)",
             borderRadius: 8,
-            padding: '10px 14px',
-            color: '#22c55e',
+            padding: "10px 14px",
+            color: "#22c55e",
             fontSize: 12,
           }}
         >
@@ -181,8 +181,8 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
         </div>
       )}
 
-      <div style={{ borderTop: '1px solid var(--platform-border)', paddingTop: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--platform-muted)', marginBottom: 12, letterSpacing: '0.08em' }}>
+      <div style={{ borderTop: "1px solid var(--platform-border)", paddingTop: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: "var(--platform-muted)", marginBottom: 12, letterSpacing: "0.08em" }}>
           Required
         </div>
 
@@ -224,8 +224,8 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
         />
       </div>
 
-      <div style={{ borderTop: '1px solid var(--platform-border)', paddingTop: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--platform-muted)', marginBottom: 12, letterSpacing: '0.08em' }}>
+      <div style={{ borderTop: "1px solid var(--platform-border)", paddingTop: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: "var(--platform-muted)", marginBottom: 12, letterSpacing: "0.08em" }}>
           Optional
         </div>
 
@@ -254,24 +254,24 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
         />
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+      <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
         <button
           onClick={handleTest}
           disabled={testing || !user || !password || !account || !warehouse}
           style={{
             flex: 1,
-            background: 'rgba(79,140,255,0.18)',
-            border: '1px solid rgba(79,140,255,0.3)',
-            color: '#4f8cff',
+            background: "rgba(79,140,255,0.18)",
+            border: "1px solid rgba(79,140,255,0.3)",
+            color: "#4f8cff",
             borderRadius: 8,
-            padding: '10px 16px',
+            padding: "10px 16px",
             fontSize: 13,
-            cursor: 'pointer',
+            cursor: "pointer",
             fontWeight: 600,
             opacity: testing || !user || !password || !account || !warehouse ? 0.5 : 1,
           }}
         >
-          {testing ? 'Testing…' : 'Test Connection'}
+          {testing ? "Testing…" : "Test Connection"}
         </button>
 
         <button
@@ -279,13 +279,13 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
           disabled={!user || !password || !account || !warehouse}
           style={{
             flex: 1,
-            background: '#4f8cff',
-            border: 'none',
-            color: '#fff',
+            background: "#4f8cff",
+            border: "none",
+            color: "#fff",
             borderRadius: 8,
-            padding: '10px 16px',
+            padding: "10px 16px",
             fontSize: 13,
-            cursor: 'pointer',
+            cursor: "pointer",
             fontWeight: 600,
             opacity: !user || !password || !account || !warehouse ? 0.5 : 1,
           }}
@@ -297,13 +297,13 @@ export default function SnowflakeConnectionSetup({ onConnect, onCancel }: Snowfl
           <button
             onClick={onCancel}
             style={{
-              background: 'transparent',
-              border: '1px solid var(--platform-border)',
-              color: 'var(--platform-muted)',
+              background: "transparent",
+              border: "1px solid var(--platform-border)",
+              color: "var(--platform-muted)",
               borderRadius: 8,
-              padding: '10px 16px',
+              padding: "10px 16px",
               fontSize: 13,
-              cursor: 'pointer',
+              cursor: "pointer",
             }}
           >
             Cancel

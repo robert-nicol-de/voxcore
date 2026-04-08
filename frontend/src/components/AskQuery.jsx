@@ -13,12 +13,13 @@ export default function AskQuery() {
     
     setLoading(true);
     try {
+      const session_id = localStorage.getItem('voxcore_session_id') || 'default';
       const response = await fetch(apiUrl('/api/v1/query'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, session_id }),
       });
       
       const data = await response.json();

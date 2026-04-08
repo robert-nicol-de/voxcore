@@ -1,24 +1,24 @@
-import { useState } from "react"
+import { useState } from "react";
 
 export default function AttackSimulator() {
-  const [log, setLog] = useState<string[]>([])
+  const [log, setLog] = useState<string[]>([]);
 
   function simulateAttack(type: string) {
-    let message = ""
+    let message = "";
 
     if (type === "injection") {
-      message = "🔴 SQL Injection detected → Query blocked"
+      message = "🔴 SQL Injection detected → Query blocked";
     }
 
     if (type === "pii") {
-      message = "🔴 Sensitive table access detected → Blocked by policy"
+      message = "🔴 Sensitive table access detected → Blocked by policy";
     }
 
     if (type === "drop") {
-      message = "🔴 Dangerous DROP TABLE command blocked"
+      message = "🔴 Dangerous DROP TABLE command blocked";
     }
 
-    setLog(prev => [message, ...prev])
+    setLog(prev => [message, ...prev]);
   }
 
   return (
@@ -52,5 +52,5 @@ export default function AttackSimulator() {
         )}
       </div>
     </div>
-  )
+  );
 }

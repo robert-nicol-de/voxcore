@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import './UserDropdown.css';
-import { RoleBadge } from './RoleBadge';
-import { isAdmin, isDeveloper } from '../utils/permissions';
-import { apiUrl, isApiNotFound } from '../lib/api';
+import React, { useState, useEffect } from "react";
+import "./UserDropdown.css";
+import { RoleBadge } from "./RoleBadge";
+import { isAdmin, isDeveloper } from "../utils/permissions";
+import { apiUrl, isApiNotFound } from "../lib/api";
 
 interface UserInfo {
   email: string;
@@ -23,24 +23,24 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout, onN
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const setFallbackUser = () => {
     setUser({
-      email: localStorage.getItem('voxcore_user_email') || 'User',
-      name: localStorage.getItem('voxcore_user_name') || 'User',
-      role: 'analyst',
-      role_label: 'Analyst',
-      company: localStorage.getItem('voxcore_org_name') || 'VoxCloud',
-      company_id: Number(localStorage.getItem('voxcore_company_id') || '1'),
+      email: localStorage.getItem("voxcore_user_email") || "User",
+      name: localStorage.getItem("voxcore_user_name") || "User",
+      role: "analyst",
+      role_label: "Analyst",
+      company: localStorage.getItem("voxcore_org_name") || "VoxCloud",
+      company_id: Number(localStorage.getItem("voxcore_company_id") || "1"),
     });
   };
 
   useEffect(() => {
     if (!token) return;
     setLoading(true);
-    fetch(apiUrl('/api/v1/auth/me'), {
-      headers: { 'Authorization': `Bearer ${token}` },
+    fetch(apiUrl("/api/v1/auth/me"), {
+      headers: { "Authorization": `Bearer ${token}` },
     })
       .then(res => {
         if (res.ok) return res.json();
@@ -58,22 +58,22 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout, onN
       })
       .catch(() => {
         setFallbackUser();
-        setError('');
+        setError("");
         setLoading(false);
       });
   }, [token]);
 
   const handleLogout = () => {
-    fetch(apiUrl('/api/v1/auth/logout'), { method: 'POST' }).catch(() => {
+    fetch(apiUrl("/api/v1/auth/logout"), { method: "POST" }).catch(() => {
       // Ignore logout API errors; client-side token clearing is the source of truth.
     });
-    localStorage.removeItem('token');
-    localStorage.removeItem('voxcore_token');
-    localStorage.removeItem('voxcore_user_name');
-    localStorage.removeItem('voxcore_user_email');
+    localStorage.removeItem("token");
+    localStorage.removeItem("voxcore_token");
+    localStorage.removeItem("voxcore_user_name");
+    localStorage.removeItem("voxcore_user_email");
     sessionStorage.clear();
     onLogout();
-    window.location.href = '/login';
+    window.location.href = "/login";
   };
 
   const handleNavigate = (page: string) => {
@@ -85,27 +85,27 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ token, onLogout, onN
 
   // Role-based menu with navigation actions
   const menu = [
-    { label: 'Profile', action: () => handleNavigate('profile') },
-    { label: 'My Queries', action: () => handleNavigate('queries') },
-    { label: 'API Keys', action: () => handleNavigate('api-keys') },
-    { label: '🎬 Try Demo', action: () => window.location.href = '/app?demo=true' },
+    { label: "Profile", action: () => handleNavigate("profile") },
+    { label: "My Queries", action: () => handleNavigate("queries") },
+    { label: "API Keys", action: () => handleNavigate("api-keys") },
+    { label: "🎬 Try Demo", action: () => window.location.href = "/app?demo=true" },
   ];
   
   // Admin menu items (god and admin bypass)
   if (user && isAdmin(user.role)) {
-    menu.push({ label: 'Admin Panel', action: () => handleNavigate('admin') });
-    menu.push({ label: 'User Management', action: () => handleNavigate('admin-users') });
+    menu.push({ label: "Admin Panel", action: () => handleNavigate("admin") });
+    menu.push({ label: "User Management", action: () => handleNavigate("admin-users") });
   }
   
   // Developer menu items (god, admin, developer)
   if (user && isDeveloper(user.role)) {
-    menu.push({ label: 'Dev Space', action: () => handleNavigate('devspace') });
+    menu.push({ label: "Dev Space", action: () => handleNavigate("devspace") });
   }
 
   return (
     <div className="user-dropdown-root">
       <div className="user-menu" onClick={() => setOpen(v => !v)}>
-        <span>👤 {user ? user.email : 'User'}</span>
+        <span>👤 {user ? user.email : "User"}</span>
         <span className="dropdown-arrow">▼</span>
       </div>
       {open && (

@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/AppRouter.tsx",
+    "src/api/voxcoreApi.ts",
+    "src/lib/api.ts",
+    "src/pages/Home.tsx",
+    "src/pages/Playground.tsx",
+    "src/playground/**/*.ts",
+    "src/playground/**/*.tsx",
+    "src/vite-env.d.ts",
+    "src/components/layout/MarketingLayout.tsx"
+  ]
+}

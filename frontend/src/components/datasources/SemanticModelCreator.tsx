@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { apiUrl } from '../../lib/api';
+import React, { useState } from "react";
+import { apiUrl } from "../../lib/api";
 
 type Props = {
   onSaved?: () => void;
@@ -23,23 +23,23 @@ const starterJson = `{
 }`;
 
 export default function SemanticModelCreator({ onSaved }: Props) {
-  const [name, setName] = useState('Sales Model');
-  const [sourceDatabase, setSourceDatabase] = useState('Snowflake');
+  const [name, setName] = useState("Sales Model");
+  const [sourceDatabase, setSourceDatabase] = useState("Snowflake");
   const [definition, setDefinition] = useState(starterJson);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const workspaceId = Number(localStorage.getItem('voxcore_workspace_id') || '1');
+  const workspaceId = Number(localStorage.getItem("voxcore_workspace_id") || "1");
 
   const save = async () => {
     setSaving(true);
     setMessage(null);
     try {
-      const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
+      const token = localStorage.getItem("voxcore_token") || localStorage.getItem("vox_token") || "";
       const parsed = JSON.parse(definition);
       const res = await fetch(apiUrl(`/api/v1/datasources/models?workspace_id=${workspaceId}`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           datasource_id: 1,
           name,
@@ -49,13 +49,13 @@ export default function SemanticModelCreator({ onSaved }: Props) {
       });
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { detail?: string };
-        setMessage(err.detail || 'Failed to save semantic model.');
+        setMessage(err.detail || "Failed to save semantic model.");
         return;
       }
-      setMessage('Semantic model saved. VoxQuery can now use business context.');
+      setMessage("Semantic model saved. VoxQuery can now use business context.");
       onSaved?.();
     } catch {
-      setMessage('Invalid JSON definition or network issue.');
+      setMessage("Invalid JSON definition or network issue.");
     } finally {
       setSaving(false);
     }
@@ -89,7 +89,7 @@ export default function SemanticModelCreator({ onSaved }: Props) {
 
       <div className="ds-actions">
         <button className="primary-btn" onClick={save} disabled={saving}>
-          {saving ? 'Saving...' : 'Save Semantic Model'}
+          {saving ? "Saving..." : "Save Semantic Model"}
         </button>
       </div>
     </div>

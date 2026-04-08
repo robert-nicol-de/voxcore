@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState } from "react";
 
 export default function SecurityShield() {
   const [security] = useState({
@@ -6,14 +6,14 @@ export default function SecurityShield() {
     blockedQueries: 2,
     protectedTables: 4,
     riskScore: 0.12
-  })
+  });
 
   const threatColor =
     security.threatLevel === "LOW"
       ? "#22c55e"
       : security.threatLevel === "MEDIUM"
       ? "#f59e0b"
-      : "#ef4444"
+      : "#ef4444";
 
   return (
     <div className="security-shield">
@@ -49,5 +49,5 @@ export default function SecurityShield() {
         </div>
       </div>
     </div>
-  )
+  );
 }

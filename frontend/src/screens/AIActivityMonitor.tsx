@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Card } from '@/components/core/Card';
-import { Badge } from '@/components/Badge';
-import { Input } from '@/components/core/Input';
-import { Button } from '@/components/core/Button';
-import './AIActivityMonitor.css';
+import React, { useEffect, useState } from "react";
+import { Card } from "@/components/core/Card";
+import { Badge } from "@/components/Badge";
+import { VoxInput } from "@/components/core/Input";
+import { Button } from "@/components/core/Button";
+import "./AIActivityMonitor.css";
 
 interface Activity {
   id: string;
@@ -11,8 +11,8 @@ interface Activity {
   prompt: string;
   generated_sql: string;
   risk_score: number;
-  risk_level: 'safe' | 'warning' | 'danger';
-  action_taken: 'executed' | 'blocked' | 'rewritten';
+  risk_level: "safe" | "warning" | "danger";
+  action_taken: "executed" | "blocked" | "rewritten";
   execution_time_ms?: number;
   result_rows?: number;
   blocked_reason?: string;
@@ -32,23 +32,23 @@ export const AIActivityMonitor: React.FC = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterUser, setFilterUser] = useState('');
-  const [filterRiskLevel, setFilterRiskLevel] = useState<string>('');
+  const [filterUser, setFilterUser] = useState("");
+  const [filterRiskLevel, setFilterRiskLevel] = useState<string>("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchActivities = async () => {
       try {
-        let url = '/api/governance/activity/feed?limit=50';
+        let url = "/api/governance/activity/feed?limit=50";
         if (filterUser) url += `&filter_user=${filterUser}`;
         if (filterRiskLevel) url += `&filter_risk_level=${filterRiskLevel}`;
 
         const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch activities');
+        if (!response.ok) throw new Error("Failed to fetch activities");
         const data: ActivityResponse = await response.json();
         setActivities(data.activities);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -59,31 +59,31 @@ export const AIActivityMonitor: React.FC = () => {
 
   const getRiskBadgeVariant = (level: string) => {
     switch (level) {
-      case 'safe':
-        return 'safe';
-      case 'warning':
-        return 'warning';
-      case 'danger':
-        return 'danger';
+      case "safe":
+        return "safe";
+      case "warning":
+        return "warning";
+      case "danger":
+        return "danger";
       default:
-        return 'info';
+        return "info";
     }
   };
 
   const getActionBadgeVariant = (action: string) => {
     switch (action) {
-      case 'executed':
-        return 'safe';
-      case 'blocked':
-        return 'danger';
-      case 'rewritten':
-        return 'warning';
+      case "executed":
+        return "safe";
+      case "blocked":
+        return "danger";
+      case "rewritten":
+        return "warning";
       default:
-        return 'info';
+        return "info";
     }
   };
 
-  if (loading) return <div className="monitor-loading">Loading activity feed...</div>;
+  if (loading) return <SkeletonTable />;
   if (error) return <div className="monitor-error">Error: {error}</div>;
 
   return (
@@ -97,7 +97,7 @@ export const AIActivityMonitor: React.FC = () => {
             value={filterUser}
             onChange={setFilterUser}
             placeholder="Filter by user email..."
-            state={filterUser ? 'filled' : 'default'}
+            state={filterUser ? "filled" : "default"}
           />
           <select
             value={filterRiskLevel}
@@ -132,7 +132,7 @@ export const AIActivityMonitor: React.FC = () => {
                   className="table-row"
                   onClick={() => setExpandedId(expandedId === activity.id ? null : activity.id)}
                 >
-                  <div className="col-user">{activity.user.split('@')[0]}</div>
+                  <div className="col-user">{activity.user.split("@")[0]}</div>
                   <div className="col-prompt">{activity.prompt.substring(0, 50)}...</div>
                   <div className="col-risk">
                     <Badge variant={getRiskBadgeVariant(activity.risk_level)}>
@@ -199,7 +199,7 @@ export const AIActivityMonitor: React.FC = () => {
 
       {/* Export Button */}
       <div className="monitor-actions">
-        <Button variant="secondary" onClick={() => alert('Export functionality coming soon')}>
+        <Button variant="secondary" onClick={() => alert("Export functionality coming soon")}>
           Export as CSV
         </Button>
       </div>

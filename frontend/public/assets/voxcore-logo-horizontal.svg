@@ -1,7 +1,0 @@
-<svg width="256" height="64" viewBox="0 0 256 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <g>
-    <path d="M12 52 L32 12 L52 52 Z" fill="#1F6FEB"/>
-    <path d="M32 12 Q36 28 52 52" stroke="#22C1F1" stroke-width="3" fill="none"/>
-    <text x="60" y="48" font-family="Inter, sans-serif" font-size="40" fill="#fff" font-weight="bold">VoxCore</text>
-  </g>
-</svg>

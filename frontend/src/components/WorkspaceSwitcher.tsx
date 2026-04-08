@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { apiUrl } from '../lib/api';
-import { useWorkspace } from '../context/WorkspaceContext';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { apiUrl } from "../lib/api";
+import { useWorkspace } from "../context/WorkspaceContext";
 
 type WorkspaceItem = {
   id: number;
@@ -15,14 +15,14 @@ type DatasourceItem = {
 };
 
 function badgeFromWorkspace(name: string) {
-  const normalized = (name || '').toLowerCase();
-  if (normalized.includes('prod') || normalized.includes('production')) {
-    return { label: 'PROD', color: '#ff6b6b', bg: 'rgba(255,107,107,0.18)' };
+  const normalized = (name || "").toLowerCase();
+  if (normalized.includes("prod") || normalized.includes("production")) {
+    return { label: "PROD", color: "#ff6b6b", bg: "rgba(255,107,107,0.18)" };
   }
-  if (normalized.includes('test') || normalized.includes('qa') || normalized.includes('uat')) {
-    return { label: 'TEST', color: '#ffd166', bg: 'rgba(255,209,102,0.18)' };
+  if (normalized.includes("test") || normalized.includes("qa") || normalized.includes("uat")) {
+    return { label: "TEST", color: "#ffd166", bg: "rgba(255,209,102,0.18)" };
   }
-  return { label: 'DEV', color: '#35d07f', bg: 'rgba(53,208,127,0.18)' };
+  return { label: "DEV", color: "#35d07f", bg: "rgba(53,208,127,0.18)" };
 }
 
 export default function WorkspaceSwitcher() {
@@ -31,11 +31,11 @@ export default function WorkspaceSwitcher() {
   const [open, setOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
   const [datasources, setDatasources] = useState<DatasourceItem[]>([]);
-  const [selectedDatasourceId, setSelectedDatasourceId] = useState(() => Number(localStorage.getItem('voxcore_datasource_id') || '0'));
-  const [selectedSchema, setSelectedSchema] = useState(() => localStorage.getItem('voxcore_schema') || 'public');
+  const [selectedDatasourceId, setSelectedDatasourceId] = useState(() => Number(localStorage.getItem("voxcore_datasource_id") || "0"));
+  const [selectedSchema, setSelectedSchema] = useState(() => localStorage.getItem("voxcore_schema") || "public");
 
   const [creating, setCreating] = useState(false);
-  const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -46,20 +46,20 @@ export default function WorkspaceSwitcher() {
         setOpen(false);
       }
     };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
   useEffect(() => {
     const loadWorkspaces = async () => {
-      const res = await fetch(apiUrl('/api/v1/workspaces'));
+      const res = await fetch(apiUrl("/api/v1/workspaces"));
       if (!res.ok) return;
       const data = (await res.json().catch(() => [])) as WorkspaceItem[];
       setWorkspaces(Array.isArray(data) ? data : []);
     };
 
     const loadDatasources = async () => {
-      const workspaceId = Number(localStorage.getItem('voxcore_workspace_id') || '1');
+      const workspaceId = Number(localStorage.getItem("voxcore_workspace_id") || "1");
       const res = await fetch(apiUrl(`/api/v1/datasources?workspace_id=${workspaceId}`));
       if (!res.ok) return;
       const data = (await res.json().catch(() => [])) as DatasourceItem[];
@@ -68,7 +68,7 @@ export default function WorkspaceSwitcher() {
 
       if (!selectedDatasourceId && list.length > 0) {
         setSelectedDatasourceId(list[0].id);
-        localStorage.setItem('voxcore_datasource_id', String(list[0].id));
+        localStorage.setItem("voxcore_datasource_id", String(list[0].id));
       }
     };
 
@@ -76,7 +76,7 @@ export default function WorkspaceSwitcher() {
     void loadDatasources();
   }, [currentWorkspace?.id, selectedDatasourceId]);
 
-  const currentWorkspaceName = currentWorkspace?.name || localStorage.getItem('voxcore_workspace_name') || 'Default';
+  const currentWorkspaceName = currentWorkspace?.name || localStorage.getItem("voxcore_workspace_name") || "Default";
   const badge = badgeFromWorkspace(currentWorkspaceName);
 
   const selectedDatasource = useMemo(
@@ -86,17 +86,17 @@ export default function WorkspaceSwitcher() {
 
   useEffect(() => {
     if (selectedDatasource?.id) {
-      localStorage.setItem('voxcore_datasource_id', String(selectedDatasource.id));
+      localStorage.setItem("voxcore_datasource_id", String(selectedDatasource.id));
     }
   }, [selectedDatasource?.id]);
 
   useEffect(() => {
-    localStorage.setItem('voxcore_schema', selectedSchema);
+    localStorage.setItem("voxcore_schema", selectedSchema);
   }, [selectedSchema]);
 
   const handleSwitchWorkspace = async (workspaceId: number) => {
     await setCurrentWorkspaceId(workspaceId);
-    localStorage.setItem('vox_workspace', String(workspaceId));
+    localStorage.setItem("vox_workspace", String(workspaceId));
     setOpen(false);
     window.location.reload();
   };
@@ -104,20 +104,20 @@ export default function WorkspaceSwitcher() {
   const handleCreateWorkspace = async () => {
     const trimmed = newWorkspaceName.trim();
     if (!trimmed) {
-      setCreateError('Workspace name is required');
+      setCreateError("Workspace name is required");
       return;
     }
 
-    const orgId = org?.id || Number(localStorage.getItem('voxcore_org_id') || '1');
+    const orgId = org?.id || Number(localStorage.getItem("voxcore_org_id") || "1");
     const res = await fetch(apiUrl(`/api/v1/orgs/${orgId}/workspaces`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: trimmed }),
     });
 
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { detail?: string };
-      setCreateError(body.detail || 'Failed to create workspace');
+      setCreateError(body.detail || "Failed to create workspace");
       return;
     }
 
@@ -133,7 +133,7 @@ export default function WorkspaceSwitcher() {
         <button className="workspace-pill" onClick={() => setOpen((v) => !v)}>
           <span className="workspace-pill-label">Workspace:</span>
           <span className="workspace-pill-value">{currentWorkspaceName}</span>
-          <span className="workspace-pill-arrow">{open ? '▲' : '▼'}</span>
+          <span className="workspace-pill-arrow">{open ? "▲" : "▼"}</span>
         </button>
 
         <span className="workspace-badge" style={{ color: badge.color, background: badge.bg, borderColor: badge.color }}>
@@ -170,7 +170,7 @@ export default function WorkspaceSwitcher() {
                 <button
                   onClick={() => {
                     setCreating(false);
-                    setNewWorkspaceName('');
+                    setNewWorkspaceName("");
                     setCreateError(null);
                   }}
                 >
@@ -185,20 +185,20 @@ export default function WorkspaceSwitcher() {
       <div className="workspace-context-row">
         <label>
           Organization
-          <select value={org?.name || 'Organization'} disabled>
-            <option value={org?.name || 'Organization'}>{org?.name || 'Organization'}</option>
+          <select value={org?.name || "Organization"} disabled>
+            <option value={org?.name || "Organization"}>{org?.name || "Organization"}</option>
           </select>
         </label>
 
         <label>
           Database
           <select
-            value={selectedDatasource?.id || ''}
-            onChange={(e) => setSelectedDatasourceId(Number(e.target.value || '0'))}
+            value={selectedDatasource?.id || ""}
+            onChange={(e) => setSelectedDatasourceId(Number(e.target.value || "0"))}
           >
             {datasources.length === 0 && <option value="">No datasource</option>}
             {datasources.map((d) => (
-              <option key={d.id} value={d.id}>{d.name} ({(d.platform || 'unknown').toUpperCase()})</option>
+              <option key={d.id} value={d.id}>{d.name} ({(d.platform || "unknown").toUpperCase()})</option>
             ))}
           </select>
         </label>

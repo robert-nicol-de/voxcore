@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 
 interface DevSidebarProps {
   currentView: string
@@ -7,21 +7,21 @@ interface DevSidebarProps {
 
 export default function DevSidebar({ currentView, setView }: DevSidebarProps) {
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'tenants', label: 'Tenants', icon: '👥' },
-    { id: 'zerotrust', label: 'Zero Trust', icon: '🔐' },
-    { id: 'sandbox', label: 'AI Sandbox', icon: '🧪' },
-    { id: 'inspector', label: 'Query Inspector', icon: '🔍' },
-    { id: 'schema', label: 'Schema Map', icon: '🗺️' },
-    { id: 'connectors', label: 'Database Connectors', icon: '🗄️' },
-    { id: 'connectorsecurity', label: 'Connector Security', icon: '🛡️' },
-    { id: 'threatmonitor', label: 'Threat Monitor', icon: '📊' },
-    { id: 'security', label: 'Security Shield', icon: '🔐' },
-    { id: 'rules', label: 'Protection Rules', icon: '📋' },
-    { id: 'attacks', label: 'Attack Simulator', icon: '⚔️' },
-    { id: 'history', label: 'Query History', icon: '📜' },
-    { id: 'metrics', label: 'Execution Metrics', icon: '⏱️' }
-  ]
+    { id: "dashboard", label: "Dashboard", icon: "📊" },
+    { id: "tenants", label: "Tenants", icon: "👥" },
+    { id: "zerotrust", label: "Zero Trust", icon: "🔐" },
+    { id: "sandbox", label: "AI Sandbox", icon: "🧪" },
+    { id: "inspector", label: "Query Inspector", icon: "🔍" },
+    { id: "schema", label: "Schema Map", icon: "🗺️" },
+    { id: "connectors", label: "Database Connectors", icon: "🗄️" },
+    { id: "connectorsecurity", label: "Connector Security", icon: "🛡️" },
+    { id: "threatmonitor", label: "Threat Monitor", icon: "📊" },
+    { id: "security", label: "Security Shield", icon: "🔐" },
+    { id: "rules", label: "Protection Rules", icon: "📋" },
+    { id: "attacks", label: "Attack Simulator", icon: "⚔️" },
+    { id: "history", label: "Query History", icon: "📜" },
+    { id: "metrics", label: "Execution Metrics", icon: "⏱️" }
+  ];
 
   return (
     <div className="dev-sidebar">
@@ -34,7 +34,7 @@ export default function DevSidebar({ currentView, setView }: DevSidebarProps) {
         {navItems.map(item => (
           <button
             key={item.id}
-            className={`nav-button ${currentView === item.id ? 'active' : ''}`}
+            className={`nav-button ${currentView === item.id ? "active" : ""}`}
             onClick={() => setView(item.id)}
             title={item.label}
           >
@@ -48,5 +48,5 @@ export default function DevSidebar({ currentView, setView }: DevSidebarProps) {
         <p>v1.0.0</p>
       </div>
     </div>
-  )
+  );
 }

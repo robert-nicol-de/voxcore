@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 type SchemaNode = {
   name: string;
@@ -21,7 +21,7 @@ export default function SchemaTree({ schemas, selectedTable, onSelect }: Props) 
             <div
               key={`${s.name}.${t}`}
               className="table-name"
-              style={selectedTable === t ? { background: '#1b2a3d', color: '#9ec3ff' } : undefined}
+              style={selectedTable === t ? { background: "#1b2a3d", color: "#9ec3ff" } : undefined}
               onClick={() => onSelect(s.name, t)}
             >
               {t}

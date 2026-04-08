@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { PoliciesManager } from '../components/PoliciesManager';
-import EmptyState from '../components/EmptyState';
-import PageHeader from '@/components/layout/PageHeader';
-import { apiUrl, isApiNotFound } from '../lib/api';
+import React, { useEffect, useState } from "react";
+import { PoliciesManager } from "../components/PoliciesManager";
+import EmptyState from "../components/EmptyState";
+import PageHeader from "@/components/layout/PageHeader";
+import { apiUrl, isApiNotFound } from "../lib/api";
 
 export default function Policies() {
   const [isLoading, setIsLoading] = useState(true);
@@ -11,7 +11,7 @@ export default function Policies() {
 
   useEffect(() => {
     const loadPolicyPresence = async () => {
-      const companyId = localStorage.getItem('voxcore_company_id') || 'default';
+      const companyId = localStorage.getItem("voxcore_company_id") || "default";
       try {
         const response = await fetch(apiUrl(`/api/v1/policies/${companyId}`));
         if (isApiNotFound(response)) {

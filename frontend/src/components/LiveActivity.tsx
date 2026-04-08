@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { apiUrl } from '../lib/api';
-import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from '../lib/polling';
-import DrilldownModal from './results/DrilldownModal';
+import { useEffect, useState } from "react";
+import { apiUrl } from "../lib/api";
+import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from "../lib/polling";
+import DrilldownModal from "./results/DrilldownModal";
 
 type ActivityLog = {
   timestamp?: string;
@@ -20,29 +20,29 @@ function formatTime(log: ActivityLog) {
   if (log.timestamp) {
     const date = new Date(log.timestamp);
     if (!Number.isNaN(date.getTime())) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
     }
   }
 
-  return '--:--';
+  return "--:--";
 }
 
 function formatQuery(log: ActivityLog) {
-  const value = log.query || log.sql || 'Unknown query';
+  const value = log.query || log.sql || "Unknown query";
   return value.length > 44 ? `${value.slice(0, 41)}...` : value;
 }
 
 function formatRisk(log: ActivityLog) {
-  const risk = (log.risk || '').toLowerCase();
-  if (risk === 'high' || risk === 'medium' || risk === 'low') {
+  const risk = (log.risk || "").toLowerCase();
+  if (risk === "high" || risk === "medium" || risk === "low") {
     return risk;
   }
 
-  if ((log.status || '').toLowerCase().includes('blocked')) {
-    return 'high';
+  if ((log.status || "").toLowerCase().includes("blocked")) {
+    return "high";
   }
 
-  return 'low';
+  return "low";
 }
 
 export default function LiveActivity() {
@@ -62,9 +62,9 @@ export default function LiveActivity() {
     };
 
     const load = async () => {
-      const companyId = localStorage.getItem('voxcore_company_id') || 'default';
-      const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
-      const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
+      const companyId = localStorage.getItem("voxcore_company_id") || "default";
+      const workspaceId = localStorage.getItem("voxcore_workspace_id") || "default";
+      const token = localStorage.getItem("voxcore_token") || localStorage.getItem("vox_token") || "";
 
       try {
         const response = await fetch(
@@ -112,10 +112,10 @@ export default function LiveActivity() {
       ) : (
         logs.map((log, i) => (
           <div
-            key={`${log.time || 'time'}-${i}`}
+            key={`${log.time || "time"}-${i}`}
             className="activity-row"
-            style={{ cursor: 'pointer' }}
-            onClick={() => setSelectedPoint(log.query || log.sql || 'query')}
+            style={{ cursor: "pointer" }}
+            onClick={() => setSelectedPoint(log.query || log.sql || "query")}
           >
             <span>{formatTime(log)}</span>
             <span>{formatQuery(log)}</span>

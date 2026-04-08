@@ -1,4 +1,52 @@
 import React, { useEffect, useState } from 'react';
+interface PendingApproval {
+  id: number;
+  query_text: string;
+  risk_score: number;
+  risk_level: string;
+  reasons: string;
+  status: string;
+  user_id: number;
+  created_at: string;
+}
+  const [showApprovalsModal, setShowApprovalsModal] = useState(false);
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
+  const [approvalsLoading, setApprovalsLoading] = useState(false);
+  const [approvalActionStatus, setApprovalActionStatus] = useState<string | null>(null);
+  // Fetch pending approvals
+  const fetchPendingApprovals = async () => {
+    setApprovalsLoading(true);
+    try {
+      const res = await fetch(apiUrl('/api/approval/pending'));
+      const data = await res.json();
+      setPendingApprovals(data.pending || []);
+    } catch (err) {
+      setPendingApprovals([]);
+    } finally {
+      setApprovalsLoading(false);
+    }
+  };
+
+  // Approve or reject a query
+  const handleApprovalAction = async (id: number, action: 'approve' | 'reject') => {
+    setApprovalActionStatus('Processing...');
+    try {
+      const res = await fetch(apiUrl(`/api/approval/${id}/${action}`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewed_by: 'admin' }),
+      });
+      if (res.ok) {
+        setApprovalActionStatus(`${action === 'approve' ? 'Approved' : 'Rejected'} successfully.`);
+        fetchPendingApprovals();
+      } else {
+        setApprovalActionStatus('Action failed.');
+      }
+    } catch {
+      setApprovalActionStatus('Action failed.');
+    }
+    setTimeout(() => setApprovalActionStatus(null), 2000);
+  };
 import { Card } from '@/components/core/Card';
 import { Badge } from '@/components/Badge';
 import FirewallMonitor from '@/components/FirewallMonitor';
@@ -156,6 +204,47 @@ export const GovernanceDashboard: React.FC<GovernanceDashboardProps> = ({ onAskQ
   const blockedQueries = metrics.recent_activity.filter(a => a.status === 'blocked');
 
   return (
+          {/* Pending Approvals Button */}
+          <button className="bg-warning text-white rounded-md px-4 py-2 font-semibold mb-4 transition hover:bg-warning/80" onClick={() => { setShowApprovalsModal(true); fetchPendingApprovals(); }}>
+            🛡️ Pending Approvals
+          </button>
+          {/* Pending Approvals Modal */}
+          {showApprovalsModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowApprovalsModal(false)}>
+              <Card elevation="md" className="max-w-2xl w-full max-h-[80vh] overflow-y-auto relative" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between border-b border-border px-6 py-4 bg-black/5 rounded-t-lg">
+                  <h2 className="text-lg font-semibold text-primary m-0">🛡️ Pending Approvals ({pendingApprovals.length})</h2>
+                  <button className="text-secondary text-xl px-2 py-1 rounded hover:bg-black/10 transition" onClick={() => setShowApprovalsModal(false)}>✕</button>
+                </div>
+                <div className="flex flex-col gap-3 px-6 py-4">
+                  {approvalsLoading ? (
+                    <div className="text-center text-secondary py-8">Loading...</div>
+                  ) : pendingApprovals.length > 0 ? (
+                    pendingApprovals.map((approval) => (
+                      <div key={approval.id} className="flex flex-col gap-2 p-3 bg-black/5 border border-border rounded-md">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="font-mono text-xs text-primary break-all flex-1"><span className="font-semibold">Query:</span> {approval.query_text}</div>
+                          <div className="text-warning font-bold text-sm whitespace-nowrap">Risk: {approval.risk_score}/100</div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4 text-xs text-secondary">
+                          <div><span className="font-semibold text-primary">User ID:</span> {approval.user_id}</div>
+                          <div><span className="font-semibold text-primary">Time:</span> {new Date(approval.created_at).toLocaleString()}</div>
+                          <div><span className="inline-block px-2 py-1 rounded bg-warning/10 text-warning font-semibold">Pending</span></div>
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          <button className="bg-success text-white rounded-md px-3 py-1 font-semibold transition hover:bg-success/80" onClick={() => handleApprovalAction(approval.id, 'approve')}>Approve</button>
+                          <button className="bg-error text-white rounded-md px-3 py-1 font-semibold transition hover:bg-error/80" onClick={() => handleApprovalAction(approval.id, 'reject')}>Reject</button>
+                          {approvalActionStatus && <span className="ml-2 text-xs text-secondary">{approvalActionStatus}</span>}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-secondary py-8">No pending approvals</div>
+                  )}
+                </div>
+              </Card>
+            </div>
+          )}
     <div className="governance-dashboard">
       <div className="dashboard-header">
         {/* Modern PageHeader and Firewall status */}

@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import PageHeader from '@/components/layout/PageHeader';
-import { apiUrl } from '../lib/api';
-import { canAccessControlCenter } from '../utils/permissions';
+import React, { useEffect, useMemo, useState } from "react";
+import PageHeader from "@/components/layout/PageHeader";
+import { apiUrl } from "../lib/api";
+import { canAccessControlCenter } from "../utils/permissions";
 
 type ControlCenterPayload = {
   overview?: {
@@ -99,7 +99,7 @@ type ControlCenterPayload = {
   };
 };
 
-type PlatformIntelligencePayload = NonNullable<ControlCenterPayload['platform_intelligence']> & {
+type PlatformIntelligencePayload = NonNullable<ControlCenterPayload["platform_intelligence"]> & {
   selected_range?: string;
   platform_health?: {
     score?: number;
@@ -114,10 +114,10 @@ export default function ControlCenter() {
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<ControlCenterPayload | null>(null);
   const [intelligence, setIntelligence] = useState<PlatformIntelligencePayload | null>(null);
-  const [timeRange, setTimeRange] = useState('7d');
+  const [timeRange, setTimeRange] = useState("7d");
 
-  const role = (localStorage.getItem('voxcore_role') || '').toLowerCase();
-  const isSuperAdmin = localStorage.getItem('voxcore_is_super_admin') === 'true';
+  const role = (localStorage.getItem("voxcore_role") || "").toLowerCase();
+  const isSuperAdmin = localStorage.getItem("voxcore_is_super_admin") === "true";
   const allowed = canAccessControlCenter(role, isSuperAdmin);
 
   useEffect(() => {
@@ -126,20 +126,20 @@ export default function ControlCenter() {
         setLoading(false);
         return;
       }
-      const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
+      const token = localStorage.getItem("voxcore_token") || localStorage.getItem("vox_token") || "";
       setLoading(true);
       try {
         const headers = {
           Authorization: `Bearer ${token}`,
         };
         const [response, intelligenceResponse] = await Promise.all([
-          fetch(apiUrl('/api/v1/platform/control-center'), { headers }),
+          fetch(apiUrl("/api/v1/platform/control-center"), { headers }),
           fetch(apiUrl(`/api/v1/platform/intelligence?range=${encodeURIComponent(timeRange)}`), { headers }),
         ]);
         if (!response.ok || !intelligenceResponse.ok) {
           const body = await response.json().catch(() => ({}));
           const intelligenceBody = await intelligenceResponse.json().catch(() => ({}));
-          throw new Error(body.detail || intelligenceBody.detail || 'Failed to load control center');
+          throw new Error(body.detail || intelligenceBody.detail || "Failed to load control center");
         }
         const [data, intelligenceData] = await Promise.all([
           response.json(),
@@ -149,7 +149,7 @@ export default function ControlCenter() {
         setIntelligence(intelligenceData || null);
         setError(null);
       } catch (err: any) {
-        setError(err.message || 'Failed to load control center');
+        setError(err.message || "Failed to load control center");
       } finally {
         setLoading(false);
       }
@@ -161,12 +161,12 @@ export default function ControlCenter() {
   const cards = useMemo(() => {
     const o = payload?.overview || {};
     return [
-      { label: 'Total Organizations', value: o.total_organizations ?? 0 },
-      { label: 'Total Users', value: o.total_users ?? 0 },
-      { label: 'Active Workspaces', value: o.active_workspaces ?? 0 },
-      { label: 'Queries Today', value: o.queries_today ?? 0 },
-      { label: 'AI Requests Today', value: o.ai_requests_today ?? 0 },
-      { label: 'Avg Query Time', value: `${o.avg_query_time_ms ?? 0}ms` },
+      { label: "Total Organizations", value: o.total_organizations ?? 0 },
+      { label: "Total Users", value: o.total_users ?? 0 },
+      { label: "Active Workspaces", value: o.active_workspaces ?? 0 },
+      { label: "Queries Today", value: o.queries_today ?? 0 },
+      { label: "AI Requests Today", value: o.ai_requests_today ?? 0 },
+      { label: "Avg Query Time", value: `${o.avg_query_time_ms ?? 0}ms` },
     ];
   }, [payload]);
 
@@ -183,7 +183,7 @@ export default function ControlCenter() {
     return (
       <div>
         <PageHeader title="VoxCore Control Center" subtitle="Global platform operations" />
-        <div style={panelStyle}>Loading control center...</div>
+        <SkeletonCard />
       </div>
     );
   }
@@ -192,7 +192,7 @@ export default function ControlCenter() {
     return (
       <div>
         <PageHeader title="VoxCore Control Center" subtitle="Global platform operations" />
-        <div style={{ ...panelStyle, color: '#fda4af' }}>{error}</div>
+        <div style={{ ...panelStyle, color: "#fda4af" }}>{error}</div>
       </div>
     );
   }
@@ -228,26 +228,26 @@ export default function ControlCenter() {
       <section style={gridCardsStyle}>
         {cards.map((item) => (
           <div key={item.label} style={cardStyle}>
-            <div style={{ color: 'var(--platform-muted)', fontSize: 12 }}>{item.label}</div>
-            <div style={{ marginTop: 8, fontSize: 24, fontWeight: 700, color: '#e2e8f0' }}>{item.value}</div>
+            <div style={{ color: "var(--platform-muted)", fontSize: 12 }}>{item.label}</div>
+            <div style={{ marginTop: 8, fontSize: 24, fontWeight: 700, color: "#e2e8f0" }}>{item.value}</div>
           </div>
         ))}
       </section>
 
       <section style={panelStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
           <h3 style={{ ...sectionTitle, margin: 0 }}>Platform Intelligence</h3>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#cbd5e1', fontSize: 13 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#cbd5e1", fontSize: 13 }}>
             <span>Time Range</span>
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
               style={{
-                background: 'rgba(15,23,42,0.75)',
-                color: '#e2e8f0',
-                border: '1px solid rgba(148,163,184,0.22)',
+                background: "rgba(15,23,42,0.75)",
+                color: "#e2e8f0",
+                border: "1px solid rgba(148,163,184,0.22)",
                 borderRadius: 8,
-                padding: '6px 10px',
+                padding: "6px 10px",
               }}
             >
               <option value="24h">Last 24 Hours</option>
@@ -260,19 +260,19 @@ export default function ControlCenter() {
         {platformHealth ? (
           <div style={healthScoreStyle}>
             <div>
-              <div style={{ color: '#7dd3fc', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Platform Health</div>
-              <div style={{ color: '#f8fafc', fontSize: 32, fontWeight: 800, marginTop: 4 }}>{platformHealth.score ?? 0}%</div>
+              <div style={{ color: "#7dd3fc", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>Platform Health</div>
+              <div style={{ color: "#f8fafc", fontSize: 32, fontWeight: 800, marginTop: 4 }}>{platformHealth.score ?? 0}%</div>
             </div>
             <div style={healthMetricsStyle}>
               <span>Query Success Rate: <strong>{platformHealth.query_success_rate_pct ?? 0}%</strong></span>
-              <span>Guardian Blocks: <strong>{String(platformHealth.guardian_status || 'normal').toUpperCase()}</strong></span>
-              <span>System Latency: <strong>{String(platformHealth.latency_status || 'optimal').toUpperCase()}</strong></span>
+              <span>Guardian Blocks: <strong>{String(platformHealth.guardian_status || "normal").toUpperCase()}</strong></span>
+              <span>System Latency: <strong>{String(platformHealth.latency_status || "optimal").toUpperCase()}</strong></span>
             </div>
           </div>
         ) : null}
         {executiveBriefing ? (
           <div style={briefingStyle}>
-            <div style={briefingTitleStyle}>{executiveBriefing.title || 'VoxCore Executive Briefing'}</div>
+            <div style={briefingTitleStyle}>{executiveBriefing.title || "VoxCore Executive Briefing"}</div>
             <ul style={briefingListStyle}>
               {(executiveBriefing.summary_lines || []).map((line) => (
                 <li key={line}>{line}</li>
@@ -317,7 +317,7 @@ export default function ControlCenter() {
           <div style={subPanelStyle}>
             <h4 style={subSectionTitle}>System Performance Intelligence</h4>
             <div style={metricRowStyle}><span>Average Query Time</span><strong>{systemPerformance?.average_query_time_ms ?? 0}ms</strong></div>
-            <div style={metricRowStyle}><span>Peak Usage</span><strong>{systemPerformance?.peak_usage_window || systemPerformance?.peak_usage_hour || 'n/a'}</strong></div>
+            <div style={metricRowStyle}><span>Peak Usage</span><strong>{systemPerformance?.peak_usage_window || systemPerformance?.peak_usage_hour || "n/a"}</strong></div>
             <div style={metricRowStyle}><span>Query Success Rate</span><strong>{systemPerformance?.query_success_rate_pct ?? 0}%</strong></div>
             <div style={insightBoxStyle}>{systemPerformance?.insight}</div>
             <div style={actionHintStyle}>{systemPerformance?.suggested_improvement}</div>
@@ -341,9 +341,9 @@ export default function ControlCenter() {
                     <tr><td style={tdStyle} colSpan={3}>No health signals yet</td></tr>
                   ) : orgHealth.map((org) => (
                     <tr key={org.name}>
-                      <td style={tdStyle}>{org.name || '-'}</td>
+                      <td style={tdStyle}>{org.name || "-"}</td>
                       <td style={tdStyle}>{org.queries ?? 0}</td>
-                      <td style={tdStyle}>{org.health || 'unknown'}</td>
+                      <td style={tdStyle}>{org.health || "unknown"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -354,14 +354,14 @@ export default function ControlCenter() {
           <div style={subPanelStyle}>
             <h4 style={subSectionTitle}>AI Improvement Recommendations</h4>
             {aiRecommendations.length === 0 ? (
-              <div style={{ color: 'var(--platform-muted)' }}>No recommendations available.</div>
+              <div style={{ color: "var(--platform-muted)" }}>No recommendations available.</div>
             ) : aiRecommendations.map((item, idx) => (
-              <div key={`${item.title || 'rec'}-${idx}`} style={recommendationCardStyle}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                  <strong style={{ color: '#e2e8f0' }}>{item.title}</strong>
-                  <span style={priorityBadgeStyle(String(item.priority || 'medium'))}>{item.priority || 'medium'}</span>
+              <div key={`${item.title || "rec"}-${idx}`} style={recommendationCardStyle}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                  <strong style={{ color: "#e2e8f0" }}>{item.title}</strong>
+                  <span style={priorityBadgeStyle(String(item.priority || "medium"))}>{item.priority || "medium"}</span>
                 </div>
-                <div style={{ color: '#cbd5e1', marginTop: 6 }}>{item.detail}</div>
+                <div style={{ color: "#cbd5e1", marginTop: 6 }}>{item.detail}</div>
               </div>
             ))}
           </div>
@@ -370,10 +370,10 @@ export default function ControlCenter() {
         <div style={subPanelStyle}>
           <h4 style={subSectionTitle}>Platform Risk Detector</h4>
           {riskAlerts.length === 0 ? (
-            <div style={{ color: 'var(--platform-muted)' }}>No active platform risks detected.</div>
+            <div style={{ color: "var(--platform-muted)" }}>No active platform risks detected.</div>
           ) : riskAlerts.map((alert, idx) => (
-            <div key={`${alert.message || 'risk'}-${idx}`} style={riskAlertStyle(String(alert.severity || 'low'))}>
-              <strong style={{ textTransform: 'uppercase', fontSize: 11 }}>{alert.severity || 'low'}</strong>
+            <div key={`${alert.message || "risk"}-${idx}`} style={riskAlertStyle(String(alert.severity || "low"))}>
+              <strong style={{ textTransform: "uppercase", fontSize: 11 }}>{alert.severity || "low"}</strong>
               <div style={{ marginTop: 4 }}>{alert.message}</div>
             </div>
           ))}
@@ -383,15 +383,15 @@ export default function ControlCenter() {
           <div style={subPanelStyle}>
             <h4 style={subSectionTitle}>Product Roadmap AI</h4>
             {roadmapInsights.length === 0 ? (
-              <div style={{ color: 'var(--platform-muted)' }}>No roadmap insights available.</div>
+              <div style={{ color: "var(--platform-muted)" }}>No roadmap insights available.</div>
             ) : roadmapInsights.map((item, idx) => (
-              <div key={`${item.title || 'roadmap'}-${idx}`} style={recommendationCardStyle}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                  <strong style={{ color: '#e2e8f0' }}>{item.title}</strong>
-                  <span style={priorityBadgeStyle(String(item.priority || 'medium'))}>{item.priority || 'medium'}</span>
+              <div key={`${item.title || "roadmap"}-${idx}`} style={recommendationCardStyle}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                  <strong style={{ color: "#e2e8f0" }}>{item.title}</strong>
+                  <span style={priorityBadgeStyle(String(item.priority || "medium"))}>{item.priority || "medium"}</span>
                 </div>
-                <div style={{ color: '#cbd5e1', marginTop: 6 }}>{item.evidence}</div>
-                <div style={{ color: '#93c5fd', marginTop: 8 }}>{item.recommendation}</div>
+                <div style={{ color: "#cbd5e1", marginTop: 6 }}>{item.evidence}</div>
+                <div style={{ color: "#93c5fd", marginTop: 8 }}>{item.recommendation}</div>
               </div>
             ))}
           </div>
@@ -400,12 +400,12 @@ export default function ControlCenter() {
             <h4 style={subSectionTitle}>Founder Mode</h4>
             <div style={metricRowStyle}><span>Global User Activity</span><strong>{founderMode?.global_user_activity ?? 0}</strong></div>
             <div style={metricRowStyle}><span>AI Usage Trend</span><strong>{founderMode?.ai_usage_trend_pct ?? 0}%</strong></div>
-            <div style={metricRowStyle}><span>System Risk Level</span><strong>{String(founderMode?.system_risk_level || 'low').toUpperCase()}</strong></div>
+            <div style={metricRowStyle}><span>System Risk Level</span><strong>{String(founderMode?.system_risk_level || "low").toUpperCase()}</strong></div>
             <div style={insightBoxStyle}>{founderMode?.recommended_focus}</div>
             <div style={{ marginTop: 12 }}>
-              <div style={{ color: '#e2e8f0', fontWeight: 700, marginBottom: 8 }}>Fastest Growing Organizations</div>
+              <div style={{ color: "#e2e8f0", fontWeight: 700, marginBottom: 8 }}>Fastest Growing Organizations</div>
               {(founderMode?.fastest_growing_organizations || []).length === 0 ? (
-                <div style={{ color: 'var(--platform-muted)' }}>No growth signals available.</div>
+                <div style={{ color: "var(--platform-muted)" }}>No growth signals available.</div>
               ) : (founderMode?.fastest_growing_organizations || []).map((org) => (
                 <div key={org.name} style={metricRowStyle}>
                   <span>{org.name}</span>
@@ -443,8 +443,8 @@ export default function ControlCenter() {
               {topQueries.length === 0 ? (
                 <tr><td style={tdStyle} colSpan={2}>No query activity yet</td></tr>
               ) : topQueries.map((row, idx) => (
-                <tr key={`${row.query || 'query'}-${idx}`}>
-                  <td style={tdStyle}>{row.query || '-'}</td>
+                <tr key={`${row.query || "query"}-${idx}`}>
+                  <td style={tdStyle}>{row.query || "-"}</td>
                   <td style={tdStyle}>{row.count ?? 0}</td>
                 </tr>
               ))}
@@ -470,12 +470,12 @@ export default function ControlCenter() {
               {liveStream.length === 0 ? (
                 <tr><td style={tdStyle} colSpan={5}>No live activity yet</td></tr>
               ) : liveStream.slice(0, 20).map((row, idx) => (
-                <tr key={`${row.time || 'time'}-${idx}`}>
-                  <td style={tdStyle}>{row.time || '-'}</td>
-                  <td style={tdStyle}>{row.organization || '-'}</td>
-                  <td style={tdStyle}>{row.query || '-'}</td>
-                  <td style={tdStyle}>{row.status || '-'}</td>
-                  <td style={tdStyle}>{(row.risk || '-').toUpperCase()}</td>
+                <tr key={`${row.time || "time"}-${idx}`}>
+                  <td style={tdStyle}>{row.time || "-"}</td>
+                  <td style={tdStyle}>{row.organization || "-"}</td>
+                  <td style={tdStyle}>{row.query || "-"}</td>
+                  <td style={tdStyle}>{row.status || "-"}</td>
+                  <td style={tdStyle}>{(row.risk || "-").toUpperCase()}</td>
                 </tr>
               ))}
             </tbody>
@@ -488,10 +488,10 @@ export default function ControlCenter() {
           <h3 style={sectionTitle}>Data Sources</h3>
           <div style={metricLineStyle}>Total Connections: <strong>{payload?.data_sources?.total_connections ?? 0}</strong></div>
           <div style={metricLineStyle}>Total Tables Indexed: <strong>{payload?.data_sources?.total_tables_indexed ?? 0}</strong></div>
-          <div style={metricLineStyle}>Schema Sync Status: <strong>{payload?.data_sources?.schema_sync_status || 'unknown'}</strong></div>
+          <div style={metricLineStyle}>Schema Sync Status: <strong>{payload?.data_sources?.schema_sync_status || "unknown"}</strong></div>
           <div style={{ marginTop: 10 }}>
             {Object.keys(byPlatform).length === 0 ? (
-              <div style={{ color: 'var(--platform-muted)' }}>No datasource usage yet.</div>
+              <div style={{ color: "var(--platform-muted)" }}>No datasource usage yet.</div>
             ) : Object.entries(byPlatform).map(([platform, count]) => (
               <div key={platform} style={metricLineStyle}>{platform}: <strong>{count}</strong></div>
             ))}
@@ -503,7 +503,7 @@ export default function ControlCenter() {
           <div style={metricLineStyle}>AI Requests (24h): <strong>{payload?.ai_usage?.requests_24h ?? 0}</strong></div>
           <div style={metricLineStyle}>Average Response Time: <strong>{payload?.ai_usage?.average_response_time_s ?? 0}s</strong></div>
           <div style={metricLineStyle}>Tokens Consumed: <strong>{payload?.ai_usage?.tokens_consumed ?? 0}</strong></div>
-          <div style={metricLineStyle}>Top Prompt Category: <strong>{payload?.ai_usage?.top_prompt_category || 'n/a'}</strong></div>
+          <div style={metricLineStyle}>Top Prompt Category: <strong>{payload?.ai_usage?.top_prompt_category || "n/a"}</strong></div>
         </div>
       </section>
 
@@ -543,9 +543,9 @@ export default function ControlCenter() {
           <div style={metricLineStyle}>Blocked Queries: <strong>{payload?.security?.blocked_queries ?? 0}</strong></div>
           <div style={{ marginTop: 12 }}>
             {securityAlerts.length === 0 ? (
-              <div style={{ color: 'var(--platform-muted)' }}>No active security alerts.</div>
+              <div style={{ color: "var(--platform-muted)" }}>No active security alerts.</div>
             ) : securityAlerts.map((alert, idx) => (
-              <div key={`${alert.message || 'alert'}-${idx}`} style={{ color: '#fbbf24', marginBottom: 4 }}>
+              <div key={`${alert.message || "alert"}-${idx}`} style={{ color: "#fbbf24", marginBottom: 4 }}>
                 {alert.message}
               </div>
             ))}
@@ -555,11 +555,11 @@ export default function ControlCenter() {
 
       <section style={panelStyle}>
         <h3 style={sectionTitle}>System Health</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
           {Object.entries(components).map(([name, status]) => (
             <div key={name} style={cardStyle}>
-              <div style={{ color: 'var(--platform-muted)', textTransform: 'capitalize' }}>{name.replace('_', ' ')}</div>
-              <div style={{ marginTop: 6, color: status === 'up' ? '#4ade80' : '#f87171', fontWeight: 700 }}>
+              <div style={{ color: "var(--platform-muted)", textTransform: "capitalize" }}>{name.replace("_", " ")}</div>
+              <div style={{ marginTop: 6, color: status === "up" ? "#4ade80" : "#f87171", fontWeight: 700 }}>
                 {status}
               </div>
             </div>
@@ -571,158 +571,158 @@ export default function ControlCenter() {
 }
 
 const panelStyle: React.CSSProperties = {
-  background: 'var(--platform-card-bg)',
-  border: '1px solid var(--platform-border)',
+  background: "var(--platform-card-bg)",
+  border: "1px solid var(--platform-border)",
   borderRadius: 12,
   padding: 18,
   marginBottom: 18,
 };
 
 const gridCardsStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
   gap: 12,
   marginBottom: 18,
 };
 
 const twoColStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
   gap: 14,
 };
 
 const cardStyle: React.CSSProperties = {
-  background: 'rgba(15,23,42,0.65)',
-  border: '1px solid var(--platform-border)',
+  background: "rgba(15,23,42,0.65)",
+  border: "1px solid var(--platform-border)",
   borderRadius: 10,
   padding: 12,
 };
 
 const sectionTitle: React.CSSProperties = {
-  margin: '0 0 12px 0',
+  margin: "0 0 12px 0",
   fontSize: 16,
-  color: '#e2e8f0',
+  color: "#e2e8f0",
 };
 
 const tableWrapStyle: React.CSSProperties = {
-  overflowX: 'auto',
+  overflowX: "auto",
 };
 
 const tableStyle: React.CSSProperties = {
-  width: '100%',
-  borderCollapse: 'collapse',
+  width: "100%",
+  borderCollapse: "collapse",
 };
 
 const thStyle: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '8px 10px',
-  borderBottom: '1px solid var(--platform-border)',
-  color: 'var(--platform-muted)',
+  textAlign: "left",
+  padding: "8px 10px",
+  borderBottom: "1px solid var(--platform-border)",
+  color: "var(--platform-muted)",
   fontSize: 12,
-  textTransform: 'uppercase',
+  textTransform: "uppercase",
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  borderBottom: '1px solid rgba(148,163,184,0.12)',
-  color: '#dbe7ff',
+  padding: "8px 10px",
+  borderBottom: "1px solid rgba(148,163,184,0.12)",
+  color: "#dbe7ff",
   fontSize: 13,
 };
 
 const metricLineStyle: React.CSSProperties = {
-  color: '#dbe7ff',
+  color: "#dbe7ff",
   marginBottom: 6,
 };
 
 const subPanelStyle: React.CSSProperties = {
-  background: 'rgba(15,23,42,0.55)',
-  border: '1px solid rgba(148,163,184,0.12)',
+  background: "rgba(15,23,42,0.55)",
+  border: "1px solid rgba(148,163,184,0.12)",
   borderRadius: 12,
   padding: 16,
   marginBottom: 14,
 };
 
 const subSectionTitle: React.CSSProperties = {
-  margin: '0 0 12px 0',
+  margin: "0 0 12px 0",
   fontSize: 15,
-  color: '#e2e8f0',
+  color: "#e2e8f0",
 };
 
 const briefingStyle: React.CSSProperties = {
-  background: 'linear-gradient(135deg, rgba(12,20,38,0.96), rgba(26,34,58,0.92))',
-  border: '1px solid rgba(96,165,250,0.22)',
+  background: "linear-gradient(135deg, rgba(12,20,38,0.96), rgba(26,34,58,0.92))",
+  border: "1px solid rgba(96,165,250,0.22)",
   borderRadius: 14,
   padding: 18,
   marginBottom: 16,
 };
 
 const briefingTitleStyle: React.CSSProperties = {
-  color: '#7dd3fc',
+  color: "#7dd3fc",
   fontSize: 12,
-  textTransform: 'uppercase',
-  letterSpacing: '0.12em',
+  textTransform: "uppercase",
+  letterSpacing: "0.12em",
   fontWeight: 700,
 };
 
 const briefingListStyle: React.CSSProperties = {
-  margin: '10px 0 12px 18px',
-  color: '#eff6ff',
-  display: 'grid',
+  margin: "10px 0 12px 18px",
+  color: "#eff6ff",
+  display: "grid",
   gap: 8,
 };
 
 const briefingActionStyle: React.CSSProperties = {
-  color: '#cbd5e1',
+  color: "#cbd5e1",
   fontSize: 13,
 };
 
 const healthScoreStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
+  display: "flex",
+  justifyContent: "space-between",
   gap: 16,
-  alignItems: 'center',
-  flexWrap: 'wrap',
-  background: 'linear-gradient(135deg, rgba(12,20,38,0.96), rgba(26,34,58,0.92))',
-  border: '1px solid rgba(96,165,250,0.22)',
+  alignItems: "center",
+  flexWrap: "wrap",
+  background: "linear-gradient(135deg, rgba(12,20,38,0.96), rgba(26,34,58,0.92))",
+  border: "1px solid rgba(96,165,250,0.22)",
   borderRadius: 14,
   padding: 18,
   marginBottom: 16,
 };
 
 const healthMetricsStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
+  display: "flex",
+  flexWrap: "wrap",
   gap: 12,
-  color: '#cbd5e1',
+  color: "#cbd5e1",
   fontSize: 13,
 };
 
 const insightBoxStyle: React.CSSProperties = {
   marginTop: 12,
-  padding: '10px 12px',
+  padding: "10px 12px",
   borderRadius: 10,
-  background: 'rgba(30,41,59,0.72)',
-  color: '#dbe7ff',
+  background: "rgba(30,41,59,0.72)",
+  color: "#dbe7ff",
   lineHeight: 1.5,
 };
 
 const actionHintStyle: React.CSSProperties = {
   marginTop: 8,
-  color: '#93c5fd',
+  color: "#93c5fd",
   fontSize: 13,
 };
 
 const metricRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
+  display: "flex",
+  justifyContent: "space-between",
   gap: 12,
-  color: '#dbe7ff',
+  color: "#dbe7ff",
   marginBottom: 8,
 };
 
 const recommendationCardStyle: React.CSSProperties = {
-  background: 'rgba(30,41,59,0.72)',
-  border: '1px solid rgba(148,163,184,0.12)',
+  background: "rgba(30,41,59,0.72)",
+  border: "1px solid rgba(148,163,184,0.12)",
   borderRadius: 10,
   padding: 12,
   marginBottom: 10,
@@ -730,17 +730,17 @@ const recommendationCardStyle: React.CSSProperties = {
 
 const priorityBadgeStyle = (priority: string): React.CSSProperties => ({
   borderRadius: 999,
-  padding: '4px 8px',
+  padding: "4px 8px",
   fontSize: 11,
   fontWeight: 700,
-  color: priority === 'high' ? '#fecaca' : '#fde68a',
-  background: priority === 'high' ? 'rgba(127,29,29,0.35)' : 'rgba(120,53,15,0.35)',
+  color: priority === "high" ? "#fecaca" : "#fde68a",
+  background: priority === "high" ? "rgba(127,29,29,0.35)" : "rgba(120,53,15,0.35)",
 });
 
 const riskAlertStyle = (severity: string): React.CSSProperties => ({
-  background: severity === 'medium' ? 'rgba(120,53,15,0.32)' : 'rgba(30,41,59,0.72)',
-  border: severity === 'medium' ? '1px solid rgba(251,191,36,0.3)' : '1px solid rgba(148,163,184,0.12)',
-  color: severity === 'medium' ? '#fde68a' : '#dbe7ff',
+  background: severity === "medium" ? "rgba(120,53,15,0.32)" : "rgba(30,41,59,0.72)",
+  border: severity === "medium" ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(148,163,184,0.12)",
+  color: severity === "medium" ? "#fde68a" : "#dbe7ff",
   borderRadius: 10,
   padding: 12,
   marginBottom: 10,

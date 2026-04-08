@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { apiUrl } from '../lib/api';
+import { useEffect, useState } from "react";
+import { apiUrl } from "../lib/api";
 
 type SchemaExplorerProps = {
   connectionName?: string;
@@ -15,11 +15,11 @@ export default function SchemaExplorer({ connectionName }: SchemaExplorerProps) 
 
   useEffect(() => {
     const loadSchema = async () => {
-      const companyId = localStorage.getItem('voxcore_company_id') || 'default';
-      const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
+      const companyId = localStorage.getItem("voxcore_company_id") || "default";
+      const workspaceId = localStorage.getItem("voxcore_workspace_id") || "default";
       const params = new URLSearchParams({ company_id: companyId, workspace_id: workspaceId });
       if (connectionName) {
-        params.set('connection_name', connectionName);
+        params.set("connection_name", connectionName);
       }
 
       try {
@@ -35,7 +35,7 @@ export default function SchemaExplorer({ connectionName }: SchemaExplorerProps) 
           return;
         }
 
-        setTables((data.schema || []).map((item) => item.table || '').filter(Boolean));
+        setTables((data.schema || []).map((item) => item.table || "").filter(Boolean));
       } catch {
         setTables([]);
       }

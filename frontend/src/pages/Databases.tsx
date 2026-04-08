@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { apiUrl } from '../lib/api';
-import EmptyState from '../components/EmptyState';
-import PageHeader from '@/components/layout/PageHeader';
-import SchemaExplorer from '../components/SchemaExplorer';
-import DataSourceSelector, { type PlatformOption } from '../components/DataSourceSelector';
-import SQLServerConnectionForm from '../components/datasources/SQLServerConnectionForm';
-import SnowflakeConnectionForm from '../components/datasources/SnowflakeConnectionForm';
+import React, { useState } from "react";
+import { apiUrl } from "../lib/api";
+import EmptyState from "../components/EmptyState";
+import PageHeader from "@/components/layout/PageHeader";
+import SchemaExplorer from "../components/schema/SchemaExplorer";
+import DataSourceSelector, { type PlatformOption } from "../components/DataSourceSelector";
+import SQLServerConnectionForm from "../components/datasources/SQLServerConnectionForm";
+import SnowflakeConnectionForm from "../components/datasources/SnowflakeConnectionForm";
 
 type SchemaColumn = {
   name: string;
@@ -18,42 +18,42 @@ type SchemaTable = {
 };
 
 export default function Databases() {
-  const [dbType, setDbType] = useState('sqlserver');
+  const [dbType, setDbType] = useState("sqlserver");
   const [showSelector, setShowSelector] = useState(false);
   const [selectedSource, setSelectedSource] = useState<PlatformOption | null>(null);
-  const [host, setHost] = useState('');
-  const [database, setDatabase] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [host, setHost] = useState("");
+  const [database, setDatabase] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [connected, setConnected] = useState(false);
   const [schemaLoading, setSchemaLoading] = useState(false);
   const [schema, setSchema] = useState<SchemaTable[]>([]);
-  const [connectionName, setConnectionName] = useState('');
+  const [connectionName, setConnectionName] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [rememberConnection, setRememberConnection] = useState(true);
   const [connectedDatabases, setConnectedDatabases] = useState<Array<{ name: string; type: string; host: string; status: string }>>(() => {
     try {
-      const stored = localStorage.getItem('voxcloud_connected_databases');
+      const stored = localStorage.getItem("voxcloud_connected_databases");
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
     }
   });
 
-  const companyId = localStorage.getItem('voxcore_company_id') || 'default';
-  const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
-  const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
+  const companyId = localStorage.getItem("voxcore_company_id") || "default";
+  const workspaceId = localStorage.getItem("voxcore_workspace_id") || "default";
+  const token = localStorage.getItem("voxcore_token") || localStorage.getItem("vox_token") || "";
 
   async function testConnection() {
     setTesting(true);
     setResult(null);
     try {
-      const response = await fetch(apiUrl('/api/v1/auth/test-connection'), {
-        method: 'POST',
+      const response = await fetch(apiUrl("/api/v1/auth/test-connection"), {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -82,10 +82,10 @@ export default function Databases() {
         if (rememberConnection) {
           const savedConnectionName = `${dbType}-default`;
 
-          const saveResponse = await fetch(apiUrl('/api/v1/auth/connections/save'), {
-            method: 'POST',
+          const saveResponse = await fetch(apiUrl("/api/v1/auth/connections/save"), {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
@@ -105,7 +105,7 @@ export default function Databases() {
 
           const saveData = await saveResponse.json().catch(() => ({}));
           if (!saveResponse.ok || !saveData.ok) {
-            setResult(saveData.detail || saveData.message || 'Connected, but failed to save connection');
+            setResult(saveData.detail || saveData.message || "Connected, but failed to save connection");
             return;
           }
 
@@ -114,21 +114,21 @@ export default function Databases() {
             name: database || `${dbType}-database`,
             type: dbType,
             host,
-            status: 'Connected',
+            status: "Connected",
           };
           const next = [dbRecord, ...connectedDatabases.filter((item) => item.name !== dbRecord.name)];
           setConnectedDatabases(next);
-          localStorage.setItem('voxcloud_connected_databases', JSON.stringify(next));
+          localStorage.setItem("voxcloud_connected_databases", JSON.stringify(next));
         }
 
         setShowModal(false);
       } else {
         setConnected(false);
-        setResult(`${data.message || data.detail || 'Connection failed'}`);
+        setResult(`${data.message || data.detail || "Connection failed"}`);
       }
     } catch {
       setConnected(false);
-      setResult('Network error');
+      setResult("Network error");
     } finally {
       setTesting(false);
     }
@@ -136,7 +136,7 @@ export default function Databases() {
 
   async function loadSchema() {
     if (!connectionName) {
-      setResult('No saved connection found for schema discovery');
+      setResult("No saved connection found for schema discovery");
       return;
     }
 
@@ -149,13 +149,13 @@ export default function Databases() {
       const data = await response.json();
 
       if (!response.ok) {
-        setResult(data.detail || 'Schema discovery failed');
+        setResult(data.detail || "Schema discovery failed");
         return;
       }
 
       setSchema(data.schema || []);
     } catch {
-      setResult('Schema discovery request failed');
+      setResult("Schema discovery request failed");
     } finally {
       setSchemaLoading(false);
     }
@@ -164,11 +164,11 @@ export default function Databases() {
   function closeModal() {
     setShowModal(false);
     setSelectedSource(null);
-    setDbType('sqlserver');
-    setHost('');
-    setDatabase('');
-    setUsername('');
-    setPassword('');
+    setDbType("sqlserver");
+    setHost("");
+    setDatabase("");
+    setUsername("");
+    setPassword("");
     setRememberConnection(true);
     setResult(null);
   }
@@ -176,23 +176,23 @@ export default function Databases() {
   function disconnectDatabase(dbName: string) {
     const updated = connectedDatabases.filter((db) => db.name !== dbName);
     setConnectedDatabases(updated);
-    localStorage.setItem('voxcloud_connected_databases', JSON.stringify(updated));
+    localStorage.setItem("voxcloud_connected_databases", JSON.stringify(updated));
     setResult(`Disconnected from ${dbName}`);
   }
 
   const inputStyle: React.CSSProperties = {
-    width: '100%',
+    width: "100%",
     marginBottom: 12,
-    padding: '10px 12px',
+    padding: "10px 12px",
     borderRadius: 8,
-    border: '1px solid var(--platform-border)',
-    background: 'rgba(10,16,28,0.8)',
-    color: '#e2e8f0',
+    border: "1px solid var(--platform-border)",
+    background: "rgba(10,16,28,0.8)",
+    color: "#e2e8f0",
   };
 
   return (
-    <div style={{ color: '#e2e8f0' }}>
-      <h1 style={{ marginTop: 0, fontSize: '2rem', letterSpacing: '-0.03em' }}>Databases</h1>
+    <div style={{ color: "#e2e8f0" }}>
+      <h1 style={{ marginTop: 0, fontSize: "2rem", letterSpacing: "-0.03em" }}>Databases</h1>
 
       {showSelector && (
         <section style={panelStyle}>
@@ -201,8 +201,8 @@ export default function Databases() {
               setSelectedSource(source);
               setDbType(source.code);
               setShowSelector(false);
-              if (source.code === 'semantic') {
-                setResult('Use Semantic Models from the Semantic Models page.');
+              if (source.code === "semantic") {
+                setResult("Use Semantic Models from the Semantic Models page.");
                 return;
               }
               setShowModal(true);
@@ -214,7 +214,7 @@ export default function Databases() {
 
       <section style={panelStyle}>
         <h2 style={sectionTitle}>Connected Databases</h2>
-        <div style={{ display: 'grid', gap: 12 }}>
+        <div style={{ display: "grid", gap: 12 }}>
           {connectedDatabases.length === 0 ? (
             <EmptyState
               title="No databases connected"
@@ -226,29 +226,29 @@ export default function Databases() {
             connectedDatabases.map((db) => (
               <div key={db.name} style={databaseRowStyle}>
                 <div>
-                  <div style={{ fontWeight: 700, color: '#ffffff' }}>{db.name}</div>
-                  <div style={{ color: 'var(--platform-muted)', fontSize: 13, marginTop: 4 }}>{db.type.toUpperCase()} • {db.host || 'host not provided'}</div>
+                  <div style={{ fontWeight: 700, color: "#ffffff" }}>{db.name}</div>
+                  <div style={{ color: "var(--platform-muted)", fontSize: 13, marginTop: 4 }}>{db.type.toUpperCase()} • {db.host || "host not provided"}</div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ color: '#35d07f', fontWeight: 700 }}>Status: {db.status}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <div style={{ color: "#35d07f", fontWeight: 700 }}>Status: {db.status}</div>
                   <button
                     onClick={() => disconnectDatabase(db.name)}
                     style={{
-                      padding: '6px 12px',
+                      padding: "6px 12px",
                       borderRadius: 6,
-                      border: '1px solid #ff6b6b',
-                      background: 'transparent',
-                      color: '#ff6b6b',
+                      border: "1px solid #ff6b6b",
+                      background: "transparent",
+                      color: "#ff6b6b",
                       fontSize: 12,
                       fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
                     }}
                     onMouseEnter={(e) => {
-                      (e.target as HTMLButtonElement).style.background = 'rgba(255, 107, 107, 0.1)';
+                      (e.target as HTMLButtonElement).style.background = "rgba(255, 107, 107, 0.1)";
                     }}
                     onMouseLeave={(e) => {
-                      (e.target as HTMLButtonElement).style.background = 'transparent';
+                      (e.target as HTMLButtonElement).style.background = "transparent";
                     }}
                   >
                     Disconnect
@@ -259,24 +259,24 @@ export default function Databases() {
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
           <button onClick={() => setShowSelector(true)} style={primaryButton}>Add Data Source</button>
           {connected && (
             <button onClick={loadSchema} disabled={schemaLoading} style={secondaryButton}>
-              {schemaLoading ? 'Discovering...' : 'Discover Schema'}
+              {schemaLoading ? "Discovering..." : "Discover Schema"}
             </button>
           )}
         </div>
 
-        {result && <p style={{ marginTop: 14, color: '#d6e4ff' }}>{result}</p>}
+        {result && <p style={{ marginTop: 14, color: "#d6e4ff" }}>{result}</p>}
 
         {schema.length > 0 && (
-          <div style={{ marginTop: 18, display: 'grid', gap: 10 }}>
+          <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
             {schema.map((table) => (
-              <div key={table.table} style={{ background: 'rgba(11,17,30,0.8)', border: '1px solid var(--platform-border)', padding: 12, borderRadius: 8 }}>
-                <h3 style={{ margin: '0 0 8px 0' }}>{table.table}</h3>
+              <div key={table.table} style={{ background: "rgba(11,17,30,0.8)", border: "1px solid var(--platform-border)", padding: 12, borderRadius: 8 }}>
+                <h3 style={{ margin: "0 0 8px 0" }}>{table.table}</h3>
                 {table.columns.map((col) => (
-                  <p key={`${table.table}-${col.name}`} style={{ margin: '2px 0', fontFamily: 'monospace', color: '#c9dbff' }}>
+                  <p key={`${table.table}-${col.name}`} style={{ margin: "2px 0", fontFamily: "monospace", color: "#c9dbff" }}>
                     {col.name} ({col.type})
                   </p>
                 ))}
@@ -293,20 +293,20 @@ export default function Databases() {
       {showModal && (
         <div style={overlayStyle}>
           <div style={modalStyle}>
-            {(selectedSource?.code || dbType) === 'sqlserver' && (
+            {(selectedSource?.code || dbType) === "sqlserver" && (
               <SQLServerConnectionForm onSaved={closeModal} />
             )}
 
-            {(selectedSource?.code || dbType) === 'snowflake' && (
+            {(selectedSource?.code || dbType) === "snowflake" && (
               <SnowflakeConnectionForm onSaved={closeModal} />
             )}
 
-            {(selectedSource?.code || dbType) !== 'sqlserver' && (selectedSource?.code || dbType) !== 'snowflake' && (
+            {(selectedSource?.code || dbType) !== "sqlserver" && (selectedSource?.code || dbType) !== "snowflake" && (
               <div>
                 <h2 style={{ marginTop: 0, marginBottom: 14 }}>
-                  {selectedSource?.name || 'Platform'} is coming soon
+                  {selectedSource?.name || "Platform"} is coming soon
                 </h2>
-                <p style={{ color: 'var(--platform-muted)', marginTop: 0 }}>
+                <p style={{ color: "var(--platform-muted)", marginTop: 0 }}>
                   This connector is not enabled yet. Please select SQL Server or Snowflake for now.
                 </p>
                 <button onClick={closeModal} style={secondaryButton}>Close</button>
@@ -320,8 +320,8 @@ export default function Databases() {
 }
 
 const panelStyle: React.CSSProperties = {
-  background: 'var(--platform-card-bg)',
-  border: '1px solid var(--platform-border)',
+  background: "var(--platform-card-bg)",
+  border: "1px solid var(--platform-border)",
   borderRadius: 12,
   padding: 24,
 };
@@ -329,54 +329,54 @@ const panelStyle: React.CSSProperties = {
 const sectionTitle: React.CSSProperties = {
   marginTop: 0,
   marginBottom: 12,
-  fontSize: '1.1rem',
+  fontSize: "1.1rem",
 };
 
 const databaseRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
   gap: 12,
   padding: 16,
   borderRadius: 10,
-  border: '1px solid var(--platform-border)',
-  background: 'rgba(10,16,28,0.8)',
+  border: "1px solid var(--platform-border)",
+  background: "rgba(10,16,28,0.8)",
 };
 
 const primaryButton: React.CSSProperties = {
-  padding: '10px 14px',
+  padding: "10px 14px",
   borderRadius: 10,
-  border: '1px solid var(--platform-accent)',
-  background: 'var(--platform-accent)',
-  color: '#fff',
-  cursor: 'pointer',
+  border: "1px solid var(--platform-accent)",
+  background: "var(--platform-accent)",
+  color: "#fff",
+  cursor: "pointer",
   fontWeight: 700,
 };
 
 const secondaryButton: React.CSSProperties = {
-  padding: '10px 14px',
+  padding: "10px 14px",
   borderRadius: 10,
-  border: '1px solid var(--platform-border)',
-  background: 'transparent',
-  color: '#e2e8f0',
-  cursor: 'pointer',
+  border: "1px solid var(--platform-border)",
+  background: "transparent",
+  color: "#e2e8f0",
+  cursor: "pointer",
   fontWeight: 700,
 };
 
 const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
+  position: "fixed",
   inset: 0,
-  background: 'rgba(3, 7, 18, 0.75)',
-  display: 'grid',
-  placeItems: 'center',
+  background: "rgba(3, 7, 18, 0.75)",
+  display: "grid",
+  placeItems: "center",
   padding: 24,
   zIndex: 60,
 };
 
 const modalStyle: React.CSSProperties = {
-  width: 'min(560px, 100%)',
-  background: '#101826',
-  border: '1px solid var(--platform-border)',
+  width: "min(560px, 100%)",
+  background: "#101826",
+  border: "1px solid var(--platform-border)",
   borderRadius: 12,
   padding: 24,
 };

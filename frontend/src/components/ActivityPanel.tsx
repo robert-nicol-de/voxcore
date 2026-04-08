@@ -1,5 +1,5 @@
 import React from "react";
-import './ActivityPanel.css';
+import "./ActivityPanel.css";
 const ActivityPanel: React.FC = () => (
   <footer className="activity-panel">
     <div className="activity-title">Activity / Logs / AI Insights</div>

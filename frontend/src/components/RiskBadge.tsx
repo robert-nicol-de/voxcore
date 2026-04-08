@@ -1,51 +1,34 @@
-import React from 'react';
-import './RiskBadge.css';
+import React from "react";
 
-interface RiskBadgeProps {
-  score: number;
-  size?: 'sm' | 'md' | 'lg';
-  showLabel?: boolean;
+function getRiskLevel(score: number) {
+  if (score <= 30) return "safe";
+  if (score <= 70) return "medium";
+  return "high";
 }
 
-export function RiskBadge({ score, size = 'md', showLabel = true }: RiskBadgeProps) {
-  const getStyle = (score: number) => {
-    if (score >= 70) {
-      return {
-        color: 'var(--risk-danger)',
-        label: 'Danger',
-        emoji: '🔴',
-        bgColor: 'rgba(220, 38, 38, 0.1)',
-      };
-    }
-    if (score >= 30) {
-      return {
-        color: 'var(--risk-warning)',
-        label: 'Warning',
-        emoji: '🟠',
-        bgColor: 'rgba(245, 158, 11, 0.1)',
-      };
-    }
-    return {
-      color: 'var(--risk-safe)',
-      label: 'Safe',
-      emoji: '🟢',
-      bgColor: 'rgba(22, 163, 74, 0.1)',
-    };
-  };
+interface RiskBadgeProps {
+  riskScore: number;
+}
 
-  const style = getStyle(score);
-
+export default function RiskBadge({ riskScore }: RiskBadgeProps) {
+  const level = getRiskLevel(riskScore);
+  let color = "";
+  let glow = "";
+  if (level === "safe") {
+    color = "bg-[var(--accent-green)] text-white";
+    glow = "shadow-[var(--glow-green)]";
+  } else if (level === "medium") {
+    color = "bg-yellow-400 text-black";
+    glow = "shadow-[0_0_12px_rgba(251,191,36,0.6)]";
+  } else {
+    color = "bg-red-600 text-white";
+    glow = "shadow-[0_0_12px_rgba(239,68,68,0.6)]";
+  }
   return (
-    <div
-      className={`risk-badge risk-badge-${size}`}
-      style={{
-        borderColor: style.color,
-        backgroundColor: style.bgColor,
-      }}
-    >
-      <span className="risk-emoji">{style.emoji}</span>
-      <span className="risk-score">{score}</span>
-      {showLabel && <span className="risk-label">{style.label}</span>}
+    <div className={"flex flex-col items-center gap-2 mt-8"}>
+      <div className={`px-8 py-3 rounded-full font-bold text-lg ${color} ${glow}`}>
+        Risk: {riskScore} ({level})
+      </div>
     </div>
   );
 }

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 interface ThreatEvent {
   time: string;
   message: string;
-  level: 'info' | 'warning' | 'critical';
+  level: "info" | "warning" | "critical";
   connector?: string;
 }
 
@@ -12,22 +12,22 @@ export const ThreatMonitor: React.FC = () => {
   const [eventCount, setEventCount] = useState(0);
 
   useEffect(() => {
-    const simulatedEvents: Omit<ThreatEvent, 'time'>[] = [
-      { message: 'SQL Injection attempt blocked', level: 'critical', connector: 'sales_db' },
-      { message: 'PII table access prevented', level: 'warning', connector: 'hr_db' },
-      { message: 'Query exceeded row limit (5000 rows requested)', level: 'warning', connector: 'finance_db' },
-      { message: 'Connector policy violation detected (block_delete)', level: 'critical', connector: 'hr_db' },
-      { message: 'AI query executed successfully', level: 'info', connector: 'sales_db' },
-      { message: 'Credential validation passed', level: 'info', connector: 'finance_db' },
-      { message: 'DROP TABLE statement blocked by policy', level: 'critical', connector: 'hr_db' },
-      { message: 'Multiple failed connection attempts detected', level: 'warning', connector: 'sales_db' },
-      { message: 'Firewall analysis: Risk score 0.45 (High)', level: 'critical', connector: 'finance_db' },
-      { message: 'Query fingerprint matched known attack pattern', level: 'critical', connector: 'sales_db' },
+    const simulatedEvents: Omit<ThreatEvent, "time">[] = [
+      { message: "SQL Injection attempt blocked", level: "critical", connector: "sales_db" },
+      { message: "PII table access prevented", level: "warning", connector: "hr_db" },
+      { message: "Query exceeded row limit (5000 rows requested)", level: "warning", connector: "finance_db" },
+      { message: "Connector policy violation detected (block_delete)", level: "critical", connector: "hr_db" },
+      { message: "AI query executed successfully", level: "info", connector: "sales_db" },
+      { message: "Credential validation passed", level: "info", connector: "finance_db" },
+      { message: "DROP TABLE statement blocked by policy", level: "critical", connector: "hr_db" },
+      { message: "Multiple failed connection attempts detected", level: "warning", connector: "sales_db" },
+      { message: "Firewall analysis: Risk score 0.45 (High)", level: "critical", connector: "finance_db" },
+      { message: "Query fingerprint matched known attack pattern", level: "critical", connector: "sales_db" },
     ];
 
     const interval = setInterval(() => {
       const eventTemplate = simulatedEvents[Math.floor(Math.random() * simulatedEvents.length)];
-      const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+      const time = new Date().toLocaleTimeString("en-US", { hour12: false });
 
       setEvents((prev) => [
         {
@@ -46,21 +46,21 @@ export const ThreatMonitor: React.FC = () => {
   }, []);
 
   const getColor = (level: string): string => {
-    if (level === 'critical') return '#ef4444';
-    if (level === 'warning') return '#f59e0b';
-    return '#22c55e';
+    if (level === "critical") return "#ef4444";
+    if (level === "warning") return "#f59e0b";
+    return "#22c55e";
   };
 
   const getIcon = (level: string): string => {
-    if (level === 'critical') return '🔴';
-    if (level === 'warning') return '🟡';
-    return '🟢';
+    if (level === "critical") return "🔴";
+    if (level === "warning") return "🟡";
+    return "🟢";
   };
 
   const getTotalEvents = () => {
-    const critical = events.filter((e) => e.level === 'critical').length;
-    const warning = events.filter((e) => e.level === 'warning').length;
-    const info = events.filter((e) => e.level === 'info').length;
+    const critical = events.filter((e) => e.level === "critical").length;
+    const warning = events.filter((e) => e.level === "warning").length;
+    const info = events.filter((e) => e.level === "info").length;
     return { critical, warning, info };
   };
 
@@ -74,22 +74,22 @@ export const ThreatMonitor: React.FC = () => {
       </div>
 
       {/* Event Statistics */}
-      <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+      <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
         <div className="bg-success bg-opacity-10 border-success border rounded-sm p-3 text-center">
           <div className="text-xs text-muted mb-1">Info Events</div>
-          <div className="text-xl font-bold" style={{ color: '#22c55e' }}>{stats.info}</div>
+          <div className="text-xl font-bold" style={{ color: "#22c55e" }}>{stats.info}</div>
         </div>
         <div className="bg-warning bg-opacity-10 border-warning border rounded-sm p-3 text-center">
           <div className="text-xs text-muted mb-1">Warnings</div>
-          <div className="text-xl font-bold" style={{ color: '#f59e0b' }}>{stats.warning}</div>
+          <div className="text-xl font-bold" style={{ color: "#f59e0b" }}>{stats.warning}</div>
         </div>
         <div className="bg-error bg-opacity-10 border-error border rounded-sm p-3 text-center">
           <div className="text-xs text-muted mb-1">Critical</div>
-          <div className="text-xl font-bold" style={{ color: '#ef4444' }}>{stats.critical}</div>
+          <div className="text-xl font-bold" style={{ color: "#ef4444" }}>{stats.critical}</div>
         </div>
         <div className="bg-info bg-opacity-10 border-info border rounded-sm p-3 text-center">
           <div className="text-xs text-muted mb-1">Total Events</div>
-          <div className="text-xl font-bold" style={{ color: '#00d4ff' }}>{eventCount}</div>
+          <div className="text-xl font-bold" style={{ color: "#00d4ff" }}>{eventCount}</div>
         </div>
       </div>
 
@@ -102,7 +102,7 @@ export const ThreatMonitor: React.FC = () => {
             <div
               key={idx}
               className="threat-entry"
-              style={{ color: getColor(event.level), animation: idx === 0 ? 'slideIn 0.3s ease-out' : 'none' }}
+              style={{ color: getColor(event.level), animation: idx === 0 ? "slideIn 0.3s ease-out" : "none" }}
             >
               <div className="flex items-start gap-3 border-b border-default pb-2 mb-2">
                 <span className="min-w-[16px] mt-0.5">{getIcon(event.level)}</span>
@@ -115,7 +115,7 @@ export const ThreatMonitor: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <div className="text-sm mt-1" style={{ color: 'inherit' }}>{event.message}</div>
+                  <div className="text-sm mt-1" style={{ color: "inherit" }}>{event.message}</div>
                 </div>
               </div>
             </div>
@@ -124,7 +124,7 @@ export const ThreatMonitor: React.FC = () => {
       </div>
 
       {/* Legend */}
-      <div className="mt-5 p-3 bg-info bg-opacity-5 rounded-sm border-info border text-xs text-muted grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+      <div className="mt-5 p-3 bg-info bg-opacity-5 rounded-sm border-info border text-xs text-muted grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
         <div className="flex items-center gap-2">
           <span>🟢</span>
           <span><strong>Info:</strong> Normal operations</span>

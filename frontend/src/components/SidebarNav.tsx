@@ -1,5 +1,5 @@
 import React from "react";
-import './SidebarNav.css';
+import "./SidebarNav.css";
 const SidebarNav: React.FC = () => (
   <nav className="sidebar-nav">
     <ul>

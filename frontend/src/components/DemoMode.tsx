@@ -3,143 +3,143 @@
     alert(`Clicked: ${chartLabel} - ${barData.label} (${barData.value})`);
   }
 import { useState } from "react";
-import './DemoMode.css';
+import "./DemoMode.css";
 
-type DemoView = 'dashboard' | 'query' | 'history' | 'logs' | 'policies';
+type DemoView = "dashboard" | "query" | "history" | "logs" | "policies";
 
 const demoQuestions = [
-  'Show me sales trends',
-  'Revenue by customer',
-  'Top 10 customers by revenue',
-  'Sales by region',
-  'Monthly recurring revenue',
-  'Show inventory levels',
+  "Show me sales trends",
+  "Revenue by customer",
+  "Top 10 customers by revenue",
+  "Sales by region",
+  "Monthly recurring revenue",
+  "Show inventory levels",
 ];
 
 interface DemoResponse {
   sql: string;
   headers: string[];
   rows: string[][];
-  chartType: 'bar' | 'horizontal' | 'line';
+  chartType: "bar" | "horizontal" | "line";
   chartLabel: string;
   chartData: { label: string; value: number; color?: string }[];
 }
 
 const demoQueryResponses: Record<string, DemoResponse> = {
   default: {
-    sql: `SELECT region,\n       SUM(revenue) AS total_revenue\nFROM sales\nGROUP BY region\nORDER BY total_revenue DESC`,
-    headers: ['Region', 'Revenue'],
-    rows: [['North', '$1,250,000'], ['South', '$980,000'], ['West', '$875,000'], ['East', '$720,000']],
-    chartType: 'bar',
-    chartLabel: 'Revenue by Region',
+    sql: "SELECT region,\n       SUM(revenue) AS total_revenue\nFROM sales\nGROUP BY region\nORDER BY total_revenue DESC",
+    headers: ["Region", "Revenue"],
+    rows: [["North", "$1,250,000"], ["South", "$980,000"], ["West", "$875,000"], ["East", "$720,000"]],
+    chartType: "bar",
+    chartLabel: "Revenue by Region",
     chartData: [
-      { label: 'North', value: 1250000, color: '#3b82f6' },
-      { label: 'South', value: 980000, color: '#8b5cf6' },
-      { label: 'West', value: 875000, color: '#06b6d4' },
-      { label: 'East', value: 720000, color: '#10b981' },
+      { label: "North", value: 1250000, color: "#3b82f6" },
+      { label: "South", value: 980000, color: "#8b5cf6" },
+      { label: "West", value: 875000, color: "#06b6d4" },
+      { label: "East", value: 720000, color: "#10b981" },
     ],
   },
-  'Show me sales trends': {
-    sql: `SELECT DATE_TRUNC('month', order_date) AS month,\n       SUM(total_amount) AS monthly_sales\nFROM orders\nGROUP BY month\nORDER BY month DESC\nLIMIT 6`,
-    headers: ['Month', 'Sales'],
-    rows: [['2026-03', '$2,450,000'], ['2026-02', '$2,180,000'], ['2026-01', '$1,920,000'], ['2025-12', '$2,650,000'], ['2025-11', '$2,100,000'], ['2025-10', '$1,870,000']],
-    chartType: 'line',
-    chartLabel: 'Monthly Sales Trend',
+  "Show me sales trends": {
+    sql: "SELECT DATE_TRUNC('month', order_date) AS month,\n       SUM(total_amount) AS monthly_sales\nFROM orders\nGROUP BY month\nORDER BY month DESC\nLIMIT 6",
+    headers: ["Month", "Sales"],
+    rows: [["2026-03", "$2,450,000"], ["2026-02", "$2,180,000"], ["2026-01", "$1,920,000"], ["2025-12", "$2,650,000"], ["2025-11", "$2,100,000"], ["2025-10", "$1,870,000"]],
+    chartType: "line",
+    chartLabel: "Monthly Sales Trend",
     chartData: [
-      { label: 'Oct', value: 1870000 },
-      { label: 'Nov', value: 2100000 },
-      { label: 'Dec', value: 2650000 },
-      { label: 'Jan', value: 1920000 },
-      { label: 'Feb', value: 2180000 },
-      { label: 'Mar', value: 2450000 },
+      { label: "Oct", value: 1870000 },
+      { label: "Nov", value: 2100000 },
+      { label: "Dec", value: 2650000 },
+      { label: "Jan", value: 1920000 },
+      { label: "Feb", value: 2180000 },
+      { label: "Mar", value: 2450000 },
     ],
   },
-  'Revenue by customer': {
-    sql: `SELECT c.company_name,\n       SUM(o.total_amount) AS total_revenue\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nGROUP BY c.company_name\nORDER BY total_revenue DESC\nLIMIT 5`,
-    headers: ['Customer', 'Revenue'],
-    rows: [['Acme Corp', '$450,000'], ['Global Industries', '$380,000'], ['TechStart Inc', '$290,000'], ['DataFlow Ltd', '$245,000'], ['CloudNine Systems', '$198,000']],
-    chartType: 'horizontal',
-    chartLabel: 'Revenue by Customer',
+  "Revenue by customer": {
+    sql: "SELECT c.company_name,\n       SUM(o.total_amount) AS total_revenue\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nGROUP BY c.company_name\nORDER BY total_revenue DESC\nLIMIT 5",
+    headers: ["Customer", "Revenue"],
+    rows: [["Acme Corp", "$450,000"], ["Global Industries", "$380,000"], ["TechStart Inc", "$290,000"], ["DataFlow Ltd", "$245,000"], ["CloudNine Systems", "$198,000"]],
+    chartType: "horizontal",
+    chartLabel: "Revenue by Customer",
     chartData: [
-      { label: 'Acme Corp', value: 450000, color: '#3b82f6' },
-      { label: 'Global Industries', value: 380000, color: '#8b5cf6' },
-      { label: 'TechStart Inc', value: 290000, color: '#06b6d4' },
-      { label: 'DataFlow Ltd', value: 245000, color: '#10b981' },
-      { label: 'CloudNine', value: 198000, color: '#f59e0b' },
+      { label: "Acme Corp", value: 450000, color: "#3b82f6" },
+      { label: "Global Industries", value: 380000, color: "#8b5cf6" },
+      { label: "TechStart Inc", value: 290000, color: "#06b6d4" },
+      { label: "DataFlow Ltd", value: 245000, color: "#10b981" },
+      { label: "CloudNine", value: 198000, color: "#f59e0b" },
     ],
   },
-  'Top 10 customers by revenue': {
-    sql: `SELECT c.company_name,\n       SUM(o.total_amount) AS total_revenue,\n       COUNT(o.id) AS order_count\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nGROUP BY c.company_name\nORDER BY total_revenue DESC\nLIMIT 10`,
-    headers: ['Customer', 'Revenue', 'Orders'],
+  "Top 10 customers by revenue": {
+    sql: "SELECT c.company_name,\n       SUM(o.total_amount) AS total_revenue,\n       COUNT(o.id) AS order_count\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nGROUP BY c.company_name\nORDER BY total_revenue DESC\nLIMIT 10",
+    headers: ["Customer", "Revenue", "Orders"],
     rows: [
-      ['Acme Corp', '$450,000', '23'], ['Global Industries', '$380,000', '18'], ['TechStart Inc', '$290,000', '15'],
-      ['DataFlow Ltd', '$245,000', '12'], ['CloudNine Systems', '$198,000', '11'], ['Pinnacle Group', '$175,000', '9'],
-      ['NexGen Solutions', '$162,000', '8'], ['Atlas Dynamics', '$148,000', '10'], ['Vertex Analytics', '$134,000', '7'],
-      ['Horizon Labs', '$121,000', '6'],
+      ["Acme Corp", "$450,000", "23"], ["Global Industries", "$380,000", "18"], ["TechStart Inc", "$290,000", "15"],
+      ["DataFlow Ltd", "$245,000", "12"], ["CloudNine Systems", "$198,000", "11"], ["Pinnacle Group", "$175,000", "9"],
+      ["NexGen Solutions", "$162,000", "8"], ["Atlas Dynamics", "$148,000", "10"], ["Vertex Analytics", "$134,000", "7"],
+      ["Horizon Labs", "$121,000", "6"],
     ],
-    chartType: 'horizontal',
-    chartLabel: 'Top 10 Customers',
+    chartType: "horizontal",
+    chartLabel: "Top 10 Customers",
     chartData: [
-      { label: 'Acme Corp', value: 450000, color: '#3b82f6' },
-      { label: 'Global Ind.', value: 380000, color: '#8b5cf6' },
-      { label: 'TechStart', value: 290000, color: '#06b6d4' },
-      { label: 'DataFlow', value: 245000, color: '#10b981' },
-      { label: 'CloudNine', value: 198000, color: '#f59e0b' },
-      { label: 'Pinnacle', value: 175000, color: '#ef4444' },
-      { label: 'NexGen', value: 162000, color: '#ec4899' },
-      { label: 'Atlas', value: 148000, color: '#14b8a6' },
-      { label: 'Vertex', value: 134000, color: '#a855f7' },
-      { label: 'Horizon', value: 121000, color: '#64748b' },
+      { label: "Acme Corp", value: 450000, color: "#3b82f6" },
+      { label: "Global Ind.", value: 380000, color: "#8b5cf6" },
+      { label: "TechStart", value: 290000, color: "#06b6d4" },
+      { label: "DataFlow", value: 245000, color: "#10b981" },
+      { label: "CloudNine", value: 198000, color: "#f59e0b" },
+      { label: "Pinnacle", value: 175000, color: "#ef4444" },
+      { label: "NexGen", value: 162000, color: "#ec4899" },
+      { label: "Atlas", value: 148000, color: "#14b8a6" },
+      { label: "Vertex", value: 134000, color: "#a855f7" },
+      { label: "Horizon", value: 121000, color: "#64748b" },
     ],
   },
-  'Sales by region': {
-    sql: `SELECT region,\n       COUNT(*) AS num_orders,\n       SUM(revenue) AS total_revenue\nFROM sales\nGROUP BY region\nORDER BY total_revenue DESC`,
-    headers: ['Region', 'Orders', 'Revenue'],
-    rows: [['North', '142', '$1,250,000'], ['South', '118', '$980,000'], ['West', '97', '$875,000'], ['East', '83', '$720,000']],
-    chartType: 'bar',
-    chartLabel: 'Sales by Region',
+  "Sales by region": {
+    sql: "SELECT region,\n       COUNT(*) AS num_orders,\n       SUM(revenue) AS total_revenue\nFROM sales\nGROUP BY region\nORDER BY total_revenue DESC",
+    headers: ["Region", "Orders", "Revenue"],
+    rows: [["North", "142", "$1,250,000"], ["South", "118", "$980,000"], ["West", "97", "$875,000"], ["East", "83", "$720,000"]],
+    chartType: "bar",
+    chartLabel: "Sales by Region",
     chartData: [
-      { label: 'North', value: 1250000, color: '#3b82f6' },
-      { label: 'South', value: 980000, color: '#8b5cf6' },
-      { label: 'West', value: 875000, color: '#06b6d4' },
-      { label: 'East', value: 720000, color: '#10b981' },
+      { label: "North", value: 1250000, color: "#3b82f6" },
+      { label: "South", value: 980000, color: "#8b5cf6" },
+      { label: "West", value: 875000, color: "#06b6d4" },
+      { label: "East", value: 720000, color: "#10b981" },
     ],
   },
-  'Monthly recurring revenue': {
-    sql: `SELECT DATE_TRUNC('month', billing_date) AS month,\n       SUM(mrr_amount) AS mrr,\n       COUNT(DISTINCT account_id) AS active_accounts\nFROM subscriptions\nWHERE status = 'active'\nGROUP BY month\nORDER BY month DESC\nLIMIT 6`,
-    headers: ['Month', 'MRR', 'Accounts'],
-    rows: [['2026-03', '$842,000', '1,247'], ['2026-02', '$815,000', '1,218'], ['2026-01', '$789,000', '1,195'], ['2025-12', '$761,000', '1,163'], ['2025-11', '$738,000', '1,140'], ['2025-10', '$712,000', '1,112']],
-    chartType: 'line',
-    chartLabel: 'Monthly Recurring Revenue',
+  "Monthly recurring revenue": {
+    sql: "SELECT DATE_TRUNC('month', billing_date) AS month,\n       SUM(mrr_amount) AS mrr,\n       COUNT(DISTINCT account_id) AS active_accounts\nFROM subscriptions\nWHERE status = 'active'\nGROUP BY month\nORDER BY month DESC\nLIMIT 6",
+    headers: ["Month", "MRR", "Accounts"],
+    rows: [["2026-03", "$842,000", "1,247"], ["2026-02", "$815,000", "1,218"], ["2026-01", "$789,000", "1,195"], ["2025-12", "$761,000", "1,163"], ["2025-11", "$738,000", "1,140"], ["2025-10", "$712,000", "1,112"]],
+    chartType: "line",
+    chartLabel: "Monthly Recurring Revenue",
     chartData: [
-      { label: 'Oct', value: 712000 },
-      { label: 'Nov', value: 738000 },
-      { label: 'Dec', value: 761000 },
-      { label: 'Jan', value: 789000 },
-      { label: 'Feb', value: 815000 },
-      { label: 'Mar', value: 842000 },
+      { label: "Oct", value: 712000 },
+      { label: "Nov", value: 738000 },
+      { label: "Dec", value: 761000 },
+      { label: "Jan", value: 789000 },
+      { label: "Feb", value: 815000 },
+      { label: "Mar", value: 842000 },
     ],
   },
-  'Show inventory levels': {
-    sql: `SELECT p.product_name,\n       p.category,\n       i.quantity_on_hand,\n       i.reorder_point,\n       CASE WHEN i.quantity_on_hand < i.reorder_point\n            THEN 'Low' ELSE 'OK' END AS status\nFROM products p\nJOIN inventory i ON p.id = i.product_id\nORDER BY i.quantity_on_hand ASC\nLIMIT 8`,
-    headers: ['Product', 'Category', 'Qty', 'Reorder', 'Status'],
+  "Show inventory levels": {
+    sql: "SELECT p.product_name,\n       p.category,\n       i.quantity_on_hand,\n       i.reorder_point,\n       CASE WHEN i.quantity_on_hand < i.reorder_point\n            THEN 'Low' ELSE 'OK' END AS status\nFROM products p\nJOIN inventory i ON p.id = i.product_id\nORDER BY i.quantity_on_hand ASC\nLIMIT 8",
+    headers: ["Product", "Category", "Qty", "Reorder", "Status"],
     rows: [
-      ['Widget Pro', 'Hardware', '12', '50', '⚠️ Low'], ['Sensor X1', 'IoT', '34', '40', '⚠️ Low'],
-      ['Cable Pack 10m', 'Accessories', '67', '30', '✅ OK'], ['Router Elite', 'Network', '89', '25', '✅ OK'],
-      ['Display 27"', 'Hardware', '105', '40', '✅ OK'], ['Keyboard MK3', 'Peripherals', '142', '60', '✅ OK'],
-      ['Mouse Wireless', 'Peripherals', '198', '50', '✅ OK'], ['USB Hub 7-Port', 'Accessories', '234', '80', '✅ OK'],
+      ["Widget Pro", "Hardware", "12", "50", "⚠️ Low"], ["Sensor X1", "IoT", "34", "40", "⚠️ Low"],
+      ["Cable Pack 10m", "Accessories", "67", "30", "✅ OK"], ["Router Elite", "Network", "89", "25", "✅ OK"],
+      ["Display 27\"", "Hardware", "105", "40", "✅ OK"], ["Keyboard MK3", "Peripherals", "142", "60", "✅ OK"],
+      ["Mouse Wireless", "Peripherals", "198", "50", "✅ OK"], ["USB Hub 7-Port", "Accessories", "234", "80", "✅ OK"],
     ],
-    chartType: 'horizontal',
-    chartLabel: 'Inventory Levels vs Reorder Point',
+    chartType: "horizontal",
+    chartLabel: "Inventory Levels vs Reorder Point",
     chartData: [
-      { label: 'Widget Pro', value: 12, color: '#ef4444' },
-      { label: 'Sensor X1', value: 34, color: '#f59e0b' },
-      { label: 'Cable Pack', value: 67, color: '#10b981' },
-      { label: 'Router Elite', value: 89, color: '#10b981' },
-      { label: 'Display 27"', value: 105, color: '#3b82f6' },
-      { label: 'Keyboard', value: 142, color: '#3b82f6' },
-      { label: 'Mouse', value: 198, color: '#3b82f6' },
-      { label: 'USB Hub', value: 234, color: '#3b82f6' },
+      { label: "Widget Pro", value: 12, color: "#ef4444" },
+      { label: "Sensor X1", value: 34, color: "#f59e0b" },
+      { label: "Cable Pack", value: 67, color: "#10b981" },
+      { label: "Router Elite", value: 89, color: "#10b981" },
+      { label: "Display 27\"", value: 105, color: "#3b82f6" },
+      { label: "Keyboard", value: 142, color: "#3b82f6" },
+      { label: "Mouse", value: 198, color: "#3b82f6" },
+      { label: "USB Hub", value: 234, color: "#3b82f6" },
     ],
   },
 };
@@ -147,8 +147,8 @@ const demoQueryResponses: Record<string, DemoResponse> = {
 // Fuzzy match: find the best matching response by keyword overlap
 function findResponse(query: string): DemoResponse {
   const q = query.toLowerCase();
-  const keys = Object.keys(demoQueryResponses).filter(k => k !== 'default');
-  let bestKey = 'default';
+  const keys = Object.keys(demoQueryResponses).filter(k => k !== "default");
+  let bestKey = "default";
   let bestScore = 0;
   for (const key of keys) {
     const words = key.toLowerCase().split(/\s+/);
@@ -157,45 +157,45 @@ function findResponse(query: string): DemoResponse {
   }
   // Also match common keywords to specific responses
   if (bestScore === 0) {
-    if (/inventory|stock|warehouse|reorder/i.test(q)) bestKey = 'Show inventory levels';
-    else if (/mrr|recurring|subscription/i.test(q)) bestKey = 'Monthly recurring revenue';
-    else if (/top.*customer|customer.*top|best.*customer/i.test(q)) bestKey = 'Top 10 customers by revenue';
-    else if (/trend|month.*sale|sale.*month|over time/i.test(q)) bestKey = 'Show me sales trends';
-    else if (/region|geography|area|territory/i.test(q)) bestKey = 'Sales by region';
-    else if (/customer.*revenue|revenue.*customer/i.test(q)) bestKey = 'Revenue by customer';
+    if (/inventory|stock|warehouse|reorder/i.test(q)) bestKey = "Show inventory levels";
+    else if (/mrr|recurring|subscription/i.test(q)) bestKey = "Monthly recurring revenue";
+    else if (/top.*customer|customer.*top|best.*customer/i.test(q)) bestKey = "Top 10 customers by revenue";
+    else if (/trend|month.*sale|sale.*month|over time/i.test(q)) bestKey = "Show me sales trends";
+    else if (/region|geography|area|territory/i.test(q)) bestKey = "Sales by region";
+    else if (/customer.*revenue|revenue.*customer/i.test(q)) bestKey = "Revenue by customer";
   }
-  return demoQueryResponses[bestKey] || demoQueryResponses['default'];
+  return demoQueryResponses[bestKey] || demoQueryResponses["default"];
 }
 
 export default function DemoMode() {
-  const [currentView, setCurrentView] = useState<DemoView>('dashboard');
+  const [currentView, setCurrentView] = useState<DemoView>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [queryInput, setQueryInput] = useState('');
-  const [sql, setSql] = useState('');
-  const [firewall, setFirewall] = useState('');
+  const [queryInput, setQueryInput] = useState("");
+  const [sql, setSql] = useState("");
+  const [firewall, setFirewall] = useState("");
   const [resultRows, setResultRows] = useState<string[][]>([]);
   const [resultHeaders, setResultHeaders] = useState<string[]>([]);
   const [activeChart, setActiveChart] = useState<DemoResponse | null>(null);
   const [isQuerying, setIsQuerying] = useState(false);
 
   function runDemoQuery(question?: string) {
-    const q = question || queryInput || '';
-    const response = q ? findResponse(q) : demoQueryResponses['default'];
+    const q = question || queryInput || "";
+    const response = q ? findResponse(q) : demoQueryResponses["default"];
 
     setIsQuerying(true);
-    setSql('');
-    setFirewall('');
+    setSql("");
+    setFirewall("");
     setResultRows([]);
     setResultHeaders([]);
     setActiveChart(null);
-    setCurrentView('query');
+    setCurrentView("query");
 
     setTimeout(() => {
       setSql(response.sql);
     }, 600);
 
     setTimeout(() => {
-      setFirewall('✓ Syntax correct\n✓ No injection risk\n✓ Policy compliant');
+      setFirewall("✓ Syntax correct\n✓ No injection risk\n✓ Policy compliant");
     }, 1200);
 
     setTimeout(() => {
@@ -210,7 +210,7 @@ export default function DemoMode() {
     const maxVal = Math.max(...resp.chartData.map(d => d.value));
     const formatVal = (v: number) => v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `${v}`;
 
-    if (resp.chartType === 'horizontal') {
+    if (resp.chartType === "horizontal") {
       return (
         <div className="demo-chart-container">
           <div className="demo-chart-title">{resp.chartLabel}</div>
@@ -221,7 +221,7 @@ export default function DemoMode() {
                 <div className="demo-hbar-track">
                   <div
                     className="demo-hbar-fill"
-                    style={{ width: `${(d.value / maxVal) * 100}%`, background: d.color || '#3b82f6' }}
+                    style={{ width: `${(d.value / maxVal) * 100}%`, background: d.color || "#3b82f6" }}
                     onClick={() => handleBarClick(resp.chartLabel, d)}
                     role="button"
                     tabIndex={0}
@@ -235,7 +235,7 @@ export default function DemoMode() {
       );
     }
 
-    if (resp.chartType === 'line') {
+    if (resp.chartType === "line") {
       const points = resp.chartData;
       const height = 200;
       const width = 500;
@@ -249,7 +249,7 @@ export default function DemoMode() {
         x: padX + (i / (points.length - 1)) * plotW,
         y: padY + plotH - ((p.value - minVal) / rangeVal) * plotH,
       }));
-      const pathD = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
+      const pathD = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x} ${c.y}`).join(" ");
       const areaD = pathD + ` L ${coords[coords.length - 1].x} ${padY + plotH} L ${coords[0].x} ${padY + plotH} Z`;
 
       return (
@@ -291,7 +291,7 @@ export default function DemoMode() {
               <div className="demo-vbar-track">
                 <div
                   className="demo-vbar-fill"
-                  style={{ height: `${(d.value / maxVal) * 100}%`, background: d.color || '#3b82f6' }}
+                  style={{ height: `${(d.value / maxVal) * 100}%`, background: d.color || "#3b82f6" }}
                   onClick={() => handleBarClick(resp.chartLabel, d)}
                   role="button"
                   tabIndex={0}
@@ -314,30 +314,30 @@ export default function DemoMode() {
 
       <div className="demo-layout">
         {/* Sidebar */}
-        <aside className={`demo-sidebar ${!sidebarOpen ? 'collapsed' : ''}`}>
+        <aside className={`demo-sidebar ${!sidebarOpen ? "collapsed" : ""}`}>
           <div className="demo-sidebar-header">
-            <img src="/images/voxcore-icon.png" alt="VoxCore" className="demo-sidebar-logo" />
-            {sidebarOpen && <span className="demo-sidebar-title">VoxCore</span>}
+            <img src="/assets/voxcore-logo-symbol.svg" alt="VoxQuery" className="demo-sidebar-logo" />
+            {sidebarOpen && <span className="demo-sidebar-title">VoxQuery</span>}
           </div>
 
           <nav className="demo-sidebar-nav">
-            <button className={`demo-nav-item ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentView('dashboard')}>
+            <button className={`demo-nav-item ${currentView === "dashboard" ? "active" : ""}`} onClick={() => setCurrentView("dashboard")}>
               <span className="demo-nav-icon">📊</span>
               {sidebarOpen && <span>Dashboard</span>}
             </button>
-            <button className={`demo-nav-item ${currentView === 'query' ? 'active' : ''}`} onClick={() => setCurrentView('query')}>
+            <button className={`demo-nav-item ${currentView === "query" ? "active" : ""}`} onClick={() => setCurrentView("query")}>
               <span className="demo-nav-icon">💬</span>
               {sidebarOpen && <span>Query</span>}
             </button>
-            <button className={`demo-nav-item ${currentView === 'history' ? 'active' : ''}`} onClick={() => setCurrentView('history')}>
+            <button className={`demo-nav-item ${currentView === "history" ? "active" : ""}`} onClick={() => setCurrentView("history")}>
               <span className="demo-nav-icon">📋</span>
               {sidebarOpen && <span>History</span>}
             </button>
-            <button className={`demo-nav-item ${currentView === 'logs' ? 'active' : ''}`} onClick={() => setCurrentView('logs')}>
+            <button className={`demo-nav-item ${currentView === "logs" ? "active" : ""}`} onClick={() => setCurrentView("logs")}>
               <span className="demo-nav-icon">📜</span>
               {sidebarOpen && <span>Logs</span>}
             </button>
-            <button className={`demo-nav-item ${currentView === 'policies' ? 'active' : ''}`} onClick={() => setCurrentView('policies')}>
+            <button className={`demo-nav-item ${currentView === "policies" ? "active" : ""}`} onClick={() => setCurrentView("policies")}>
               <span className="demo-nav-icon">🛡️</span>
               {sidebarOpen && <span>Policies</span>}
             </button>
@@ -371,7 +371,7 @@ export default function DemoMode() {
 
           <main className="demo-content">
             {/* Dashboard View */}
-            {currentView === 'dashboard' && (
+            {currentView === "dashboard" && (
               <div className="demo-dashboard">
                 <div className="demo-dash-header">
                   <div>
@@ -410,30 +410,30 @@ export default function DemoMode() {
                   <div className="demo-panel">
                     <h3>Risk Distribution</h3>
                     <div className="demo-risk-bars">
-                      <div className="demo-risk-row"><span>Safe (156)</span><div className="demo-bar-bg"><div className="demo-bar safe" style={{ width: '66.7%' }}></div></div><span>66.7%</span></div>
-                      <div className="demo-risk-row"><span>Warning (45)</span><div className="demo-bar-bg"><div className="demo-bar warning" style={{ width: '19.2%' }}></div></div><span>19.2%</span></div>
-                      <div className="demo-risk-row"><span>Danger (33)</span><div className="demo-bar-bg"><div className="demo-bar danger" style={{ width: '14.1%' }}></div></div><span>14.1%</span></div>
+                      <div className="demo-risk-row"><span>Safe (156)</span><div className="demo-bar-bg"><div className="demo-bar safe" style={{ width: "66.7%" }}></div></div><span>66.7%</span></div>
+                      <div className="demo-risk-row"><span>Warning (45)</span><div className="demo-bar-bg"><div className="demo-bar warning" style={{ width: "19.2%" }}></div></div><span>19.2%</span></div>
+                      <div className="demo-risk-row"><span>Danger (33)</span><div className="demo-bar-bg"><div className="demo-bar danger" style={{ width: "14.1%" }}></div></div><span>14.1%</span></div>
                     </div>
 
-                    <h3 style={{ marginTop: '24px' }}>Data Access Heatmap</h3>
+                    <h3 style={{ marginTop: "24px" }}>Data Access Heatmap</h3>
                     <div className="demo-heatmap">
-                      <div className="demo-heat-row"><span>customers</span><div className="demo-bar-bg"><div className="demo-bar heat" style={{ width: '100%' }}></div></div><span>45</span></div>
-                      <div className="demo-heat-row"><span>orders</span><div className="demo-bar-bg"><div className="demo-bar heat" style={{ width: '84%' }}></div></div><span>38</span></div>
-                      <div className="demo-heat-row"><span>products</span><div className="demo-bar-bg"><div className="demo-bar heat" style={{ width: '71%' }}></div></div><span>32</span></div>
-                      <div className="demo-heat-row"><span>transactions</span><div className="demo-bar-bg"><div className="demo-bar heat" style={{ width: '62%' }}></div></div><span>28</span></div>
-                      <div className="demo-heat-row"><span>users</span><div className="demo-bar-bg"><div className="demo-bar heat" style={{ width: '49%' }}></div></div><span>22</span></div>
+                      <div className="demo-heat-row"><span>customers</span><div className="demo-bar-bg"><div className="demo-bar heat" style={{ width: "100%" }}></div></div><span>45</span></div>
+                      <div className="demo-heat-row"><span>orders</span><div className="demo-bar-bg"><div className="demo-bar heat" style={{ width: "84%" }}></div></div><span>38</span></div>
+                      <div className="demo-heat-row"><span>products</span><div className="demo-bar-bg"><div className="demo-bar heat" style={{ width: "71%" }}></div></div><span>32</span></div>
+                      <div className="demo-heat-row"><span>transactions</span><div className="demo-bar-bg"><div className="demo-bar heat" style={{ width: "62%" }}></div></div><span>28</span></div>
+                      <div className="demo-heat-row"><span>users</span><div className="demo-bar-bg"><div className="demo-bar heat" style={{ width: "49%" }}></div></div><span>22</span></div>
                     </div>
                   </div>
                 </div>
 
-                <button className="demo-ask-btn" onClick={() => setCurrentView('query')}>
+                <button className="demo-ask-btn" onClick={() => setCurrentView("query")}>
                   💬 Ask VoxCore a Question
                 </button>
               </div>
             )}
 
             {/* Query View */}
-            {currentView === 'query' && (
+            {currentView === "query" && (
               <div className="demo-query-view">
                 <h2>Ask VoxCore</h2>
                 <div className="demo-query-input-row">
@@ -442,10 +442,10 @@ export default function DemoMode() {
                     onChange={(e) => setQueryInput(e.target.value)}
                     placeholder="Ask your database anything..."
                     className="demo-query-input"
-                    onKeyDown={(e) => e.key === 'Enter' && runDemoQuery()}
+                    onKeyDown={(e) => e.key === "Enter" && runDemoQuery()}
                   />
                   <button onClick={() => runDemoQuery()} className="demo-query-btn" disabled={isQuerying}>
-                    {isQuerying ? 'Processing...' : 'Ask VoxCore'}
+                    {isQuerying ? "Processing..." : "Ask VoxCore"}
                   </button>
                 </div>
 
@@ -489,7 +489,7 @@ export default function DemoMode() {
             )}
 
             {/* History View */}
-            {currentView === 'history' && (
+            {currentView === "history" && (
               <div className="demo-history-view">
                 <h2>Query History</h2>
                 <table className="demo-table">
@@ -506,7 +506,7 @@ export default function DemoMode() {
             )}
 
             {/* Logs View */}
-            {currentView === 'logs' && (
+            {currentView === "logs" && (
               <div className="demo-logs-view">
                 <h2>Governance Logs</h2>
                 <div className="demo-log-entries">
@@ -520,7 +520,7 @@ export default function DemoMode() {
             )}
 
             {/* Policies View */}
-            {currentView === 'policies' && (
+            {currentView === "policies" && (
               <div className="demo-policies-view">
                 <h2>Firewall Policies</h2>
                 <div className="demo-policy-cards">

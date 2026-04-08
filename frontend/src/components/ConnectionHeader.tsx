@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import './ConnectionHeader.css';
-import { ConnectionModal } from './ConnectionModal';
+import React, { useState, useEffect } from "react";
+import "./ConnectionHeader.css";
+import { ConnectionModal } from "./ConnectionModal";
 
 interface ConnectionHeaderProps {
   database?: string;
@@ -10,37 +10,37 @@ interface ConnectionHeaderProps {
   isPreviewMode?: boolean;
 }
 
-function ConnectionHeader({ database = 'Snowflake', host = 'we08391.af-south-1.aws', isConnected = true, onDisconnect, isPreviewMode = false }: ConnectionHeaderProps) {
+function ConnectionHeader({ database = "Snowflake", host = "we08391.af-south-1.aws", isConnected = true, onDisconnect, isPreviewMode = false }: ConnectionHeaderProps) {
   const [showConnectionModal, setShowConnectionModal] = useState(false);
-  const displayDatabase = localStorage.getItem('selectedDatabase') || '';
-  const displayHost = localStorage.getItem('dbHost') || '';
-  const displayDatabaseName = localStorage.getItem('dbDatabase') || '';
+  const displayDatabase = localStorage.getItem("selectedDatabase") || "";
+  const displayHost = localStorage.getItem("dbHost") || "";
+  const displayDatabaseName = localStorage.getItem("dbDatabase") || "";
   
   // Only show connected if we have a database name saved
   const isActuallyConnected = displayDatabaseName && displayDatabase;
-  const displayStatus = isActuallyConnected ? 'connected' : 'disconnected';
+  const displayStatus = isActuallyConnected ? "connected" : "disconnected";
 
   // Update localStorage connection status whenever it changes
   useEffect(() => {
     if (isActuallyConnected) {
-      localStorage.setItem('dbConnectionStatus', 'connected');
+      localStorage.setItem("dbConnectionStatus", "connected");
     } else {
-      localStorage.removeItem('dbConnectionStatus');
+      localStorage.removeItem("dbConnectionStatus");
     }
     // Dispatch event to notify other components
-    window.dispatchEvent(new Event('connectionStatusChanged'));
+    window.dispatchEvent(new Event("connectionStatusChanged"));
   }, [isActuallyConnected]);
 
   const handleDisconnect = () => {
     // Clear connection info from localStorage
-    localStorage.removeItem('selectedDatabase');
-    localStorage.removeItem('dbHost');
-    localStorage.removeItem('dbDatabase');
-    localStorage.removeItem('dbSchema');
-    localStorage.removeItem('dbConnectionStatus');
+    localStorage.removeItem("selectedDatabase");
+    localStorage.removeItem("dbHost");
+    localStorage.removeItem("dbDatabase");
+    localStorage.removeItem("dbSchema");
+    localStorage.removeItem("dbConnectionStatus");
     
     // Dispatch event to notify other components (Chat, etc.)
-    window.dispatchEvent(new Event('connectionStatusChanged'));
+    window.dispatchEvent(new Event("connectionStatusChanged"));
     
     // Call the onDisconnect callback to navigate back to dashboard
     if (onDisconnect) {
@@ -86,7 +86,7 @@ function ConnectionHeader({ database = 'Snowflake', host = 'we08391.af-south-1.a
               <div className="detail-item">
                 <span className={`status ${displayStatus}`}>
                   <span className="dot"></span>
-                  {displayStatus === 'connected' ? 'Connected' : 'Disconnected'}
+                  {displayStatus === "connected" ? "Connected" : "Disconnected"}
                 </span>
               </div>
             </div>

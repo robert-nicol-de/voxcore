@@ -1,5 +1,5 @@
 import React from "react";
-import './ErrorFeedback.css';
+import "./ErrorFeedback.css";
 
 const ErrorFeedback: React.FC<{ reason: string }> = ({ reason }) => (
   <div className="error-feedback">

@@ -1,21 +1,47 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { playgroundSuggestions } from "./PlaygroundSuggestions";
 
-export default function PlaygroundPage() {
+export default function PlaygroundPage({ demoMode = true }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState(null);
   const [response, setResponse] = useState(null);
 
+  useEffect(() => {
+    if (demoMode) {
+      sendMessage("Show revenue by region");
+    }
+  }, [demoMode]);
+
   const sendMessage = async (text) => {
-    const res = await fetch("/api/playground/query", {
+    const session_id = localStorage.getItem('voxcore_session_id') || 'default';
+    const payload = {
+      query: text,
+      agent: demoMode ? "playground-agent" : "anonymous",
+      company_id: "default",
+      workspace_id: "default",
+      session_id,
+    };
+
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    const res = await fetch(`${apiUrl}/api/v1/query`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId, text })
+      headers: {
+        "Content-Type": "application/json",
+        "X-Demo-Mode": demoMode ? "true" : "false"
+      },
+      body: JSON.stringify(payload),
     });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("Playground query failed", res.status, errorText);
+      return;
+    }
+
     const data = await res.json();
-    setSessionId(data.session_id);
-    setMessages((msgs) => [...msgs, { user: text, bot: data.message }]);
+
+    setMessages((msgs) => [...msgs, { user: text, bot: data.generated_sql || data.error || "No response" }]);
     setResponse(data);
   };
 
@@ -53,7 +79,11 @@ export default function PlaygroundPage() {
           {response && (
             <>
               {response.chart && <div style={{ marginBottom: 16 }}>[Chart Placeholder]</div>}
-              {response.data && <pre style={{ background: "#f6f8fa", padding: 12 }}>{JSON.stringify(response.data, null, 2)}</pre>}
+              {response?.data ? (
+                <Table data={response.data} />
+              ) : (
+                <SkeletonTable />
+              )}
               {response.suggestions && (
                 <div style={{ marginTop: 16 }}>
                   <b>Exploration Suggestions:</b>

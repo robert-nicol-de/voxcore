@@ -1,5 +1,5 @@
 import React from "react";
-import './SmartLoading.css';
+import "./SmartLoading.css";
 
 const steps = [
   "Parsing query structure",

@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Card } from '@/components/core/Card';
-import { Button } from '@/components/core/Button';
-import { Input } from '@/components/core/Input';
-import { Badge } from '@/components/Badge';
-import './PolicyEngineManager.css';
-import { apiUrl } from '../lib/api';
+import React, { useEffect, useState } from "react";
+import { Card } from "@/components/core/Card";
+import { Button } from "@/components/core/Button";
+import { VoxInput } from "@/components/core/Input";
+import { Badge } from "@/components/Badge";
+import "./PolicyEngineManager.css";
+import { apiUrl } from "../lib/api";
 
 interface PolicyConfig {
   risk_thresholds: {
@@ -38,12 +38,12 @@ export const PolicyEngineManager: React.FC = () => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await fetch(apiUrl('/api/governance/policies/config'));
-        if (!response.ok) throw new Error('Failed to fetch policy config');
+        const response = await fetch(apiUrl("/api/governance/policies/config"));
+        if (!response.ok) throw new Error("Failed to fetch policy config");
         const data = await response.json();
         setConfig(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -56,16 +56,16 @@ export const PolicyEngineManager: React.FC = () => {
     if (!config) return;
     setSaving(true);
     try {
-      const response = await fetch(apiUrl('/api/governance/policies/update'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(apiUrl("/api/governance/policies/update"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
       });
-      if (!response.ok) throw new Error('Failed to save policy config');
+      if (!response.ok) throw new Error("Failed to save policy config");
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setSaving(false);
     }
@@ -82,7 +82,7 @@ export const PolicyEngineManager: React.FC = () => {
     });
   };
 
-  if (loading) return <div className="manager-loading">Loading policy configuration...</div>;
+  if (loading) return <SkeletonCard />;
   if (error) return <div className="manager-error">Error: {error}</div>;
   if (!config) return <div className="manager-error">No configuration available</div>;
 
@@ -171,8 +171,8 @@ export const PolicyEngineManager: React.FC = () => {
                 />
                 <span className="toggle-text">{operation}</span>
               </label>
-              <Badge variant={allowed ? 'safe' : 'danger'}>
-                {allowed ? 'Allowed' : 'Blocked'}
+              <Badge variant={allowed ? "safe" : "danger"}>
+                {allowed ? "Allowed" : "Blocked"}
               </Badge>
             </div>
           ))}
@@ -203,8 +203,8 @@ export const PolicyEngineManager: React.FC = () => {
                 <Badge variant="warning">{rule.strategy}</Badge>
               </div>
               <div className="masking-status">
-                <Badge variant={rule.enabled ? 'safe' : 'danger'}>
-                  {rule.enabled ? 'Enabled' : 'Disabled'}
+                <Badge variant={rule.enabled ? "safe" : "danger"}>
+                  {rule.enabled ? "Enabled" : "Disabled"}
                 </Badge>
               </div>
             </div>
@@ -334,9 +334,9 @@ export const PolicyEngineManager: React.FC = () => {
         <Button
           variant="primary"
           onClick={handleSaveConfig}
-          state={saving ? 'loading' : 'default'}
+          state={saving ? "loading" : "default"}
         >
-          {saving ? 'Saving...' : 'Save Configuration'}
+          {saving ? "Saving..." : "Save Configuration"}
         </Button>
       </div>
     </div>

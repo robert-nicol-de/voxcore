@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 interface ZeroTrustPolicy {
   mode: string;
@@ -15,7 +15,7 @@ interface ZeroTrustPolicy {
 }
 
 export default function ZeroTrustPolicy() {
-  const [tenant, setTenant] = useState<string>('tenant_acme_corp');
+  const [tenant, setTenant] = useState<string>("tenant_acme_corp");
   const [policies, setPolicies] = useState<ZeroTrustPolicy | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -24,7 +24,7 @@ export default function ZeroTrustPolicy() {
       setLoading(true);
       try {
         const response = await fetch(`/api/v1/tenants/${tenant}/config`, {
-          headers: { 'X-Tenant-ID': tenant }
+          headers: { "X-Tenant-ID": tenant }
         });
         if (response.ok) {
           const data = await response.json();
@@ -33,7 +33,7 @@ export default function ZeroTrustPolicy() {
           }
         }
       } catch (error) {
-        console.error('Failed to fetch policy:', error);
+        console.error("Failed to fetch policy:", error);
       } finally {
         setLoading(false);
       }
@@ -45,7 +45,7 @@ export default function ZeroTrustPolicy() {
   }, [tenant]);
 
   const parseList = (str: string): string[] => {
-    return str ? str.split(',').map(s => s.trim()).filter(Boolean) : [];
+    return str ? str.split(",").map(s => s.trim()).filter(Boolean) : [];
   };
 
   return (
@@ -73,8 +73,8 @@ export default function ZeroTrustPolicy() {
             <div className="section-title">🎯 Zero-Trust Mode</div>
             <div className="policy-stat">
               <span className="stat-label">Status</span>
-              <span className="stat-value" style={{ color: policies.mode === 'enabled' ? '#22c55e' : '#ef4444' }}>
-                {policies.mode === 'enabled' ? '✓ ENABLED' : '✗ DISABLED'}
+              <span className="stat-value" style={{ color: policies.mode === "enabled" ? "#22c55e" : "#ef4444" }}>
+                {policies.mode === "enabled" ? "✓ ENABLED" : "✗ DISABLED"}
               </span>
             </div>
           </div>
@@ -118,20 +118,20 @@ export default function ZeroTrustPolicy() {
           <div className="policy-section">
             <div className="section-title">⚠️ Blocked Operations</div>
             <div className="operation-grid">
-              <div className={`operation ${policies.block_delete ? 'blocked' : 'allowed'}`}>
+              <div className={`operation ${policies.block_delete ? "blocked" : "allowed"}`}>
                 <div className="op-icon">🗑️</div>
                 <div className="op-name">DELETE</div>
-                <div className="op-status">{policies.block_delete ? 'BLOCKED' : 'ALLOWED'}</div>
+                <div className="op-status">{policies.block_delete ? "BLOCKED" : "ALLOWED"}</div>
               </div>
-              <div className={`operation ${policies.block_drop ? 'blocked' : 'allowed'}`}>
+              <div className={`operation ${policies.block_drop ? "blocked" : "allowed"}`}>
                 <div className="op-icon">💥</div>
                 <div className="op-name">DROP</div>
-                <div className="op-status">{policies.block_drop ? 'BLOCKED' : 'ALLOWED'}</div>
+                <div className="op-status">{policies.block_drop ? "BLOCKED" : "ALLOWED"}</div>
               </div>
-              <div className={`operation ${policies.block_update ? 'blocked' : 'allowed'}`}>
+              <div className={`operation ${policies.block_update ? "blocked" : "allowed"}`}>
                 <div className="op-icon">✏️</div>
                 <div className="op-name">UPDATE</div>
-                <div className="op-status">{policies.block_update ? 'BLOCKED' : 'ALLOWED'}</div>
+                <div className="op-status">{policies.block_update ? "BLOCKED" : "ALLOWED"}</div>
               </div>
             </div>
           </div>
@@ -150,8 +150,8 @@ export default function ZeroTrustPolicy() {
             <div className="section-title">🔑 Authentication Requirements</div>
             <div className="policy-stat">
               <span className="stat-label">Require Query Token</span>
-              <span className="stat-value" style={{ color: policies.require_query_token ? '#ef4444' : '#22c55e' }}>
-                {policies.require_query_token ? '✓ REQUIRED' : '✗ OPTIONAL'}
+              <span className="stat-value" style={{ color: policies.require_query_token ? "#ef4444" : "#22c55e" }}>
+                {policies.require_query_token ? "✓ REQUIRED" : "✗ OPTIONAL"}
               </span>
             </div>
           </div>
@@ -221,9 +221,9 @@ function calculateRiskLevel(policy: ZeroTrustPolicy): string {
   if (policy.allow_tables) riskScore += 2;
   if (policy.pii_protected_columns) riskScore += 1;
   
-  if (riskScore >= 6) return '🟢 LOW';
-  if (riskScore >= 3) return '🟡 MEDIUM';
-  return '🔴 HIGH';
+  if (riskScore >= 6) return "🟢 LOW";
+  if (riskScore >= 3) return "🟡 MEDIUM";
+  return "🔴 HIGH";
 }
 
 function calculateRiskColor(policy: ZeroTrustPolicy): string {
@@ -236,7 +236,7 @@ function calculateRiskColor(policy: ZeroTrustPolicy): string {
   if (policy.allow_tables) riskScore += 2;
   if (policy.pii_protected_columns) riskScore += 1;
   
-  if (riskScore >= 6) return '#22c55e';
-  if (riskScore >= 3) return '#f59e0b';
-  return '#ef4444';
+  if (riskScore >= 6) return "#22c55e";
+  if (riskScore >= 3) return "#f59e0b";
+  return "#ef4444";
 }

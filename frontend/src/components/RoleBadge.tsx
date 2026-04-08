@@ -1,6 +1,6 @@
-import React from 'react';
-import './RoleBadge.css';
-import { getRoleLabel, getRoleBadgeColor } from '../utils/permissions';
+import React from "react";
+import "./RoleBadge.css";
+import { getRoleLabel, getRoleBadgeColor } from "../utils/permissions";
 
 interface RoleBadgeProps {
   role?: string;

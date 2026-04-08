@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import PageHeader from '@/components/layout/PageHeader';
-import { apiUrl } from '../lib/api';
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import PageHeader from "@/components/layout/PageHeader";
+import { apiUrl } from "../lib/api";
 
 type QueryLogItem = {
   id?: string | number;
@@ -27,9 +27,9 @@ export default function QueryInvestigation() {
 
   useEffect(() => {
     const loadInvestigation = async () => {
-      const companyId = localStorage.getItem('voxcore_company_id') || 'default';
-      const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
-      const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
+      const companyId = localStorage.getItem("voxcore_company_id") || "default";
+      const workspaceId = localStorage.getItem("voxcore_workspace_id") || "default";
+      const token = localStorage.getItem("voxcore_token") || localStorage.getItem("vox_token") || "";
 
       try {
         const response = await fetch(
@@ -48,7 +48,7 @@ export default function QueryInvestigation() {
 
         if (!logs.length) {
           try {
-            const cached = localStorage.getItem('voxcloud_query_logs_cache');
+            const cached = localStorage.getItem("voxcloud_query_logs_cache");
             logs = cached ? JSON.parse(cached) : [];
           } catch {
             logs = [];
@@ -70,50 +70,50 @@ export default function QueryInvestigation() {
   const derived = useMemo(() => {
     if (!item) {
       return {
-        prompt: '--',
-        sql: '--',
-        risk: 'UNKNOWN',
-        policy: 'UNKNOWN',
-        sandbox: 'Unknown',
-        execution: 'Unknown',
-        reasons: ['No reasons captured'],
-        triggeredBy: 'Unknown',
-        touchedData: ['Unknown'],
+        prompt: "--",
+        sql: "--",
+        risk: "UNKNOWN",
+        policy: "UNKNOWN",
+        sandbox: "Unknown",
+        execution: "Unknown",
+        reasons: ["No reasons captured"],
+        triggeredBy: "Unknown",
+        touchedData: ["Unknown"],
       };
     }
 
-    const risk = String(item.risk || 'low').toUpperCase();
+    const risk = String(item.risk || "low").toUpperCase();
     const blocked = isBlocked(item.status);
 
     return {
-      prompt: item.prompt || item.query || '--',
-      sql: item.effective_query || item.generated_sql || item.query || '--',
+      prompt: item.prompt || item.query || "--",
+      sql: item.effective_query || item.generated_sql || item.query || "--",
       risk,
-      policy: blocked ? 'BLOCKED' : 'ALLOWED',
-      sandbox: item.sandbox_status || (blocked ? 'Not executed' : 'Executed in preview mode'),
-      execution: item.execution_status || (blocked ? 'Denied' : 'Completed/Allowed'),
+      policy: blocked ? "BLOCKED" : "ALLOWED",
+      sandbox: item.sandbox_status || (blocked ? "Not executed" : "Executed in preview mode"),
+      execution: item.execution_status || (blocked ? "Denied" : "Completed/Allowed"),
       reasons: item.reasons && item.reasons.length > 0 ? item.reasons : [defaultReason(item.status, risk)],
-      triggeredBy: item.user || item.agent || 'sql_assistant',
+      triggeredBy: item.user || item.agent || "sql_assistant",
       touchedData: item.touched_data && item.touched_data.length > 0 ? item.touched_data : inferTouchedData(item.query),
     };
   }, [item]);
 
   if (loading) {
-    return <div style={{ color: '#dce8ff' }}>Loading query investigation...</div>;
+    return <SkeletonTable />;
   }
 
   if (!item) {
     return (
       <div className="investigation">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <PageHeader title="Query Investigation" subtitle="Replay and analyze an AI query decision trail" />
-          <Link to="/app/query-logs" className="secondary-btn" style={{ textDecoration: 'none' }}>
+          <Link to="/app/query-logs" className="secondary-btn" style={{ textDecoration: "none" }}>
             Back to Query Logs
           </Link>
         </div>
         <div className="card">
           <h3>Investigation Not Found</h3>
-          <p style={{ margin: 0, color: '#9fb3c8' }}>
+          <p style={{ margin: 0, color: "#9fb3c8" }}>
             This log entry is no longer available. Run a new query to generate a fresh forensic trail.
           </p>
         </div>
@@ -127,10 +127,10 @@ export default function QueryInvestigation() {
         <div>
           <PageHeader title="Query Investigation" subtitle="AI Query Replay & Forensics" />
           <p style={{ marginTop: 0 }}>
-            Forensic ID: <strong>{String(item.id)}</strong> • Time: <strong>{item.time || '--:--'}</strong>
+            Forensic ID: <strong>{String(item.id)}</strong> • Time: <strong>{item.time || "--:--"}</strong>
           </p>
         </div>
-        <Link to="/app/query-logs" className="secondary-btn" style={{ textDecoration: 'none' }}>
+        <Link to="/app/query-logs" className="secondary-btn" style={{ textDecoration: "none" }}>
           Back to Query Logs
         </Link>
       </div>
@@ -149,12 +149,12 @@ export default function QueryInvestigation() {
         <section className="card">
           <h3>Risk Analysis</h3>
           <span className={`risk ${riskClass(derived.risk)} investigation-risk`}>{derived.risk}</span>
-          <p style={{ marginTop: 12, color: '#9fb3c8' }}>Reason: {derived.reasons[0]}</p>
+          <p style={{ marginTop: 12, color: "#9fb3c8" }}>Reason: {derived.reasons[0]}</p>
         </section>
 
         <section className="card">
           <h3>Policy Decision</h3>
-          <span className={`investigation-decision ${isBlocked(item.status) ? 'blocked' : 'allowed'}`}>{derived.policy}</span>
+          <span className={`investigation-decision ${isBlocked(item.status) ? "blocked" : "allowed"}`}>{derived.policy}</span>
         </section>
 
         <section className="card">
@@ -186,41 +186,41 @@ export default function QueryInvestigation() {
 }
 
 function buildForensicId(item: QueryLogItem, index: number) {
-  const time = String(item.time || '').replace(/[^0-9]/g, '');
+  const time = String(item.time || "").replace(/[^0-9]/g, "");
   const seed = `${time}-${index}`;
   return seed || String(index);
 }
 
 function isBlocked(status?: string) {
-  const value = (status || '').toLowerCase();
-  return value === 'blocked' || value === 'blocked_sensitive';
+  const value = (status || "").toLowerCase();
+  return value === "blocked" || value === "blocked_sensitive";
 }
 
 function riskClass(value: string) {
   const normalized = value.toLowerCase();
-  if (normalized.includes('high') || normalized.includes('critical')) return 'high';
-  if (normalized.includes('med')) return 'medium';
-  return 'low';
+  if (normalized.includes("high") || normalized.includes("critical")) return "high";
+  if (normalized.includes("med")) return "medium";
+  return "low";
 }
 
 function defaultReason(status: string | undefined, risk: string) {
-  if ((status || '').toLowerCase() === 'blocked_sensitive') {
-    return 'Sensitive column access detected';
+  if ((status || "").toLowerCase() === "blocked_sensitive") {
+    return "Sensitive column access detected";
   }
-  if ((status || '').toLowerCase() === 'blocked') {
-    return 'Blocked by policy or safety validation';
+  if ((status || "").toLowerCase() === "blocked") {
+    return "Blocked by policy or safety validation";
   }
-  if (risk.toLowerCase().includes('high')) {
-    return 'High risk pattern detected';
+  if (risk.toLowerCase().includes("high")) {
+    return "High risk pattern detected";
   }
-  return 'No major policy violations detected';
+  return "No major policy violations detected";
 }
 
 function inferTouchedData(query?: string) {
-  if (!query) return ['Unknown'];
+  if (!query) return ["Unknown"];
   const match = query.match(/from\s+([a-zA-Z0-9_]+)/i);
   if (match?.[1]) {
     return [match[1]];
   }
-  return ['Unknown'];
+  return ["Unknown"];
 }

@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/pages/Home.tsx",
+    "src/pages/Product.tsx",
+    "src/pages/Security.tsx",
+    "src/pages/Pricing.tsx",
+    "src/pages/Login.tsx",
+    "src/components/layout/MarketingLayout.tsx",
+    "src/components/layout/Page.tsx",
+    "src/components/layout/Section.tsx",
+    "src/components/layout/Container.tsx",
+    "src/components/Card.tsx",
+    "src/components/Button.tsx",
+    "src/components/voxcore/RiskItem.tsx"
+  ]
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 
 interface PipelineStep {
   name: string
@@ -14,28 +14,28 @@ export default function LivePipeline() {
     { name: "SQL Generation", status: "pending", duration: 0 },
     { name: "Security Check", status: "pending", duration: 0 },
     { name: "Execution", status: "pending", duration: 0 }
-  ])
+  ]);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setSteps(prev => {
-        const updated = [...prev]
-        const activeIndex = updated.findIndex(s => s.status === "active")
+        const updated = [...prev];
+        const activeIndex = updated.findIndex(s => s.status === "active");
         
         if (activeIndex !== -1 && activeIndex < updated.length - 1) {
-          updated[activeIndex].duration += 50
+          updated[activeIndex].duration += 50;
           if (updated[activeIndex].duration > 200) {
-            updated[activeIndex].status = "complete"
-            updated[activeIndex + 1].status = "active"
+            updated[activeIndex].status = "complete";
+            updated[activeIndex + 1].status = "active";
           }
         }
         
-        return updated
-      })
-    }, 500)
+        return updated;
+      });
+    }, 500);
 
-    return () => clearInterval(timer)
-  }, [])
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <div className="live-pipeline">
@@ -60,5 +60,5 @@ export default function LivePipeline() {
         ))}
       </div>
     </div>
-  )
+  );
 }

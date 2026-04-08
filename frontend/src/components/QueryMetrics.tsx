@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
 interface Metrics {
   executionTime: string;
@@ -9,7 +9,7 @@ interface Metrics {
 
 export const QueryMetrics: React.FC = () => {
   const [metrics] = useState<Metrics>({
-    executionTime: '42 ms',
+    executionTime: "42 ms",
     rowsReturned: 120,
     tablesScanned: 2,
     indexesUsed: true,
@@ -38,7 +38,7 @@ export const QueryMetrics: React.FC = () => {
         <div className="metric">
           <span className="label">Indexes Used</span>
           <span className="value metric-status">
-            {metrics.indexesUsed ? '✓ YES' : '✗ NO'}
+            {metrics.indexesUsed ? "✓ YES" : "✗ NO"}
           </span>
         </div>
       </div>

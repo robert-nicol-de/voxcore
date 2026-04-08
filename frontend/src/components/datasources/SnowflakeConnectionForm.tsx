@@ -1,30 +1,30 @@
-import React, { useState } from 'react';
-import { apiUrl } from '../../lib/api';
+import React, { useState } from "react";
+import { apiUrl } from "../../lib/api";
 
 type Props = {
   onSaved?: () => void;
 };
 
 export default function SnowflakeConnectionForm({ onSaved }: Props) {
-  const [name, setName] = useState('');
-  const [account, setAccount] = useState('');
-  const [warehouse, setWarehouse] = useState('');
-  const [database, setDatabase] = useState('');
-  const [schema, setSchema] = useState('public');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState('');
-  const [queryTimeout, setQueryTimeout] = useState('30');
-  const [poolSize, setPoolSize] = useState('5');
+  const [name, setName] = useState("");
+  const [account, setAccount] = useState("");
+  const [warehouse, setWarehouse] = useState("");
+  const [database, setDatabase] = useState("");
+  const [schema, setSchema] = useState("public");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("");
+  const [queryTimeout, setQueryTimeout] = useState("30");
+  const [poolSize, setPoolSize] = useState("5");
   const [loadingTest, setLoadingTest] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const workspaceId = Number(localStorage.getItem('voxcore_workspace_id') || '1');
-  const orgId = Number(localStorage.getItem('voxcore_org_id') || '1');
+  const workspaceId = Number(localStorage.getItem("voxcore_workspace_id") || "1");
+  const orgId = Number(localStorage.getItem("voxcore_org_id") || "1");
 
   const config = {
-    type: 'snowflake',
+    type: "snowflake",
     account,
     warehouse,
     database,
@@ -32,20 +32,20 @@ export default function SnowflakeConnectionForm({ onSaved }: Props) {
     username,
     password,
     role,
-    query_timeout: Number(queryTimeout || '30'),
-    pool_size: Number(poolSize || '5'),
+    query_timeout: Number(queryTimeout || "30"),
+    pool_size: Number(poolSize || "5"),
   };
 
   const testConnection = async () => {
     setLoadingTest(true);
     setMessage(null);
     try {
-      const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
-      const res = await fetch(apiUrl('/api/v1/datasources/test-connection'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      const token = localStorage.getItem("voxcore_token") || localStorage.getItem("vox_token") || "";
+      const res = await fetch(apiUrl("/api/v1/datasources/test-connection"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          platform: 'snowflake',
+          platform: "snowflake",
           credentials: {
             user: username,
             password,
@@ -58,9 +58,9 @@ export default function SnowflakeConnectionForm({ onSaved }: Props) {
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { valid?: boolean; error?: string };
-      setMessage(data.valid ? 'Connection successful.' : data.error || 'Connection failed.');
+      setMessage(data.valid ? "Connection successful." : data.error || "Connection failed.");
     } catch {
-      setMessage('Connection test failed due to network error.');
+      setMessage("Connection test failed due to network error.");
     } finally {
       setLoadingTest(false);
     }
@@ -68,24 +68,24 @@ export default function SnowflakeConnectionForm({ onSaved }: Props) {
 
   const saveConnection = async () => {
     if (!name || !account || !warehouse || !database || !username || !password) {
-      setMessage('Please fill all required fields.');
+      setMessage("Please fill all required fields.");
       return;
     }
     setLoadingSave(true);
     setMessage(null);
     try {
-      const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
+      const token = localStorage.getItem("voxcore_token") || localStorage.getItem("vox_token") || "";
       const res = await fetch(apiUrl(`/api/v1/datasources?workspace_id=${workspaceId}`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           org_id: orgId,
           workspace_id: workspaceId,
           name,
-          type: 'snowflake',
-          status: 'active',
+          type: "snowflake",
+          status: "active",
           config,
-          platform: 'snowflake',
+          platform: "snowflake",
           credentials: {
             user: username,
             password,
@@ -99,7 +99,7 @@ export default function SnowflakeConnectionForm({ onSaved }: Props) {
       });
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { detail?: string };
-        setMessage(err.detail || 'Save failed.');
+        setMessage(err.detail || "Save failed.");
         return;
       }
       const saved = (await res.json().catch(() => ({}))) as { id?: number };
@@ -108,10 +108,10 @@ export default function SnowflakeConnectionForm({ onSaved }: Props) {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({}));
       }
-      setMessage('Connection saved. Schema discovery started and cache is being prepared.');
+      setMessage("Connection saved. Schema discovery started and cache is being prepared.");
       onSaved?.();
     } catch {
-      setMessage('Save failed due to network error.');
+      setMessage("Save failed due to network error.");
     } finally {
       setLoadingSave(false);
     }
@@ -143,10 +143,10 @@ export default function SnowflakeConnectionForm({ onSaved }: Props) {
 
       <div className="ds-actions">
         <button className="secondary-btn" onClick={testConnection} disabled={loadingTest}>
-          {loadingTest ? 'Testing...' : 'Test Connection'}
+          {loadingTest ? "Testing..." : "Test Connection"}
         </button>
         <button className="primary-btn" onClick={saveConnection} disabled={loadingSave}>
-          {loadingSave ? 'Saving...' : 'Save Connection'}
+          {loadingSave ? "Saving..." : "Save Connection"}
         </button>
       </div>
     </div>

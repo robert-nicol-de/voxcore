@@ -1,28 +1,5 @@
-import React from 'react';
-import './Input.css';
-
-interface InputProps {
-  type?: string;
-  placeholder?: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
-
-const Input: React.FC<InputProps> = ({ type = 'text', placeholder, value, onChange }) => {
-  return (
-    <input
-      type={type}
-      placeholder={placeholder}
-      value={value}
-      onChange={onChange}
-      className="input"
-    />
-  );
-};
-
-export default Input;
-import React from 'react';
-import './Input.css';
+import React from "react";
+import "./Input.css";
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -37,7 +14,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && <label className="input-label">{label}</label>}
         <input
           ref={ref}
-          className={`input ${error ? 'input-error' : ''} ${className || ''}`}
+          className={`input ${error ? "input-error" : ""} ${className || ""}`}
           {...props}
         />
         {error && <span className="input-error-text">{error}</span>}
@@ -47,4 +24,4 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   }
 );
 
-Input.displayName = 'Input';
+Input.displayName = "Input";

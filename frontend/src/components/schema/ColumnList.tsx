@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 type ColumnMeta = {
   name: string;
@@ -21,13 +21,13 @@ export default function ColumnList({ columns }: Props) {
     <div>
       {columns.map((c) => (
         <div key={c.name} className="column-row">
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ color: '#e8f1ff', fontFamily: 'monospace' }}>{c.name}</span>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ color: "#e8f1ff", fontFamily: "monospace" }}>{c.name}</span>
             {c.primary_key && <span className="schema-badge">PK</span>}
             {!c.primary_key && fkHint(c.name) && <span className="schema-badge">FK</span>}
             {c.sensitive && <span className="schema-badge">Sensitive</span>}
           </div>
-          <span style={{ color: '#9ab3cf', fontFamily: 'monospace' }}>{c.type.toUpperCase()}</span>
+          <span style={{ color: "#9ab3cf", fontFamily: "monospace" }}>{c.type.toUpperCase()}</span>
         </div>
       ))}
     </div>

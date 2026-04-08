@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import './VoxCoreHeroAnimation.css';
+import "./VoxCoreHeroAnimation.css";
 
 const nodes = [
   { label: "Query Inspector", icon: "🔍" },
@@ -9,7 +9,7 @@ const nodes = [
   { label: "Production Database", icon: "🗄️" }
 ];
 
-const sqlExample = `SELECT region, SUM(revenue)\nFROM sales\nGROUP BY region`;
+const sqlExample = "SELECT region, SUM(revenue)\nFROM sales\nGROUP BY region";
 
 const prompt = "What was revenue by region last quarter?";
 
@@ -26,13 +26,13 @@ export default function VoxCoreHeroAnimation() {
   const [showShield, setShowShield] = useState(false);
 
   useEffect(() => {
-    let t1 = setTimeout(() => setActiveNode(1), 800);
-    let t2 = setTimeout(() => setActiveNode(2), 1600);
-    let t3 = setTimeout(() => setActiveNode(3), 2400);
-    let t4 = setTimeout(() => { setActiveNode(4); setShowRisk(true); }, 3200);
-    let t5 = setTimeout(() => { setShowRisk(false); setShowSandbox(true); }, 4000);
-    let t6 = setTimeout(() => { setShowSandbox(false); setShowShield(true); }, 4800);
-    let t7 = setTimeout(() => { setShowShield(false); setActiveNode(0); }, 5600);
+    const t1 = setTimeout(() => setActiveNode(1), 800);
+    const t2 = setTimeout(() => setActiveNode(2), 1600);
+    const t3 = setTimeout(() => setActiveNode(3), 2400);
+    const t4 = setTimeout(() => { setActiveNode(4); setShowRisk(true); }, 3200);
+    const t5 = setTimeout(() => { setShowRisk(false); setShowSandbox(true); }, 4000);
+    const t6 = setTimeout(() => { setShowSandbox(false); setShowShield(true); }, 4800);
+    const t7 = setTimeout(() => { setShowShield(false); setActiveNode(0); }, 5600);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5); clearTimeout(t6); clearTimeout(t7); };
   }, [activeNode]);
 
@@ -56,7 +56,7 @@ export default function VoxCoreHeroAnimation() {
         <div className="data-flow-line"></div>
         <div className="inspection-nodes">
           {nodes.map((node, idx) => (
-            <div className={`inspection-node${activeNode === idx ? ' active' : ''}`} key={node.label}>
+            <div className={`inspection-node${activeNode === idx ? " active" : ""}`} key={node.label}>
               <span className="node-icon">{node.icon}</span>
               <span className="node-label">{node.label}</span>
               {activeNode === idx && idx === 4 && showShield && <div className="shield-icon">🛡️</div>}

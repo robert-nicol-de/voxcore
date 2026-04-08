@@ -1,5 +1,5 @@
-import React from 'react';
-import './ValidationSummary.css';
+import React from "react";
+import "./ValidationSummary.css";
 
 interface ValidationSummaryProps {
   validationPassed: boolean;
@@ -31,7 +31,7 @@ export function ValidationSummary({
       {rewritten && (
         <div className="validation-item rewritten">
           <span className="check-icon">◊</span>
-          <span>Rewritten: {rewriteReason || 'SQL optimized'}</span>
+          <span>Rewritten: {rewriteReason || "SQL optimized"}</span>
         </div>
       )}
       {rowLimit && (

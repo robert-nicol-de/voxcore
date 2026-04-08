@@ -1,8 +1,0 @@
-<svg width="256" height="96" viewBox="0 0 256 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <g>
-    <path d="M12 72 L32 12 L52 72 Z" fill="#1F6FEB"/>
-    <path d="M32 12 Q36 48 52 72" stroke="#22C1F1" stroke-width="3" fill="none"/>
-    <text x="60" y="48" font-family="Inter, sans-serif" font-size="40" fill="#fff" font-weight="bold">VoxCore</text>
-    <text x="60" y="80" font-family="Inter, sans-serif" font-size="18" fill="#6B7280">AI Database Governance Platform</text>
-  </g>
-</svg>

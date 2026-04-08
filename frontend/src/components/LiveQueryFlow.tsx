@@ -1,4 +1,4 @@
-export type QueryFlowStatus = 'idle' | 'active' | 'safe' | 'warning' | 'blocked';
+export type QueryFlowStatus = "idle" | "active" | "safe" | "warning" | "blocked";
 
 export type QueryFlowStage = {
   label: string;
@@ -14,29 +14,29 @@ type LiveQueryFlowProps = {
 };
 
 function stageSymbol(status: QueryFlowStatus) {
-  if (status === 'safe') return '✔';
-  if (status === 'warning') return '⚠';
-  if (status === 'blocked') return '✖';
-  if (status === 'active') return '●';
-  return '○';
+  if (status === "safe") return "✔";
+  if (status === "warning") return "⚠";
+  if (status === "blocked") return "✖";
+  if (status === "active") return "●";
+  return "○";
 }
 
 function defaultDetail(status: QueryFlowStatus) {
-  if (status === 'active') return 'In progress';
-  if (status === 'safe') return 'Passed';
-  if (status === 'warning') return 'Warning';
-  if (status === 'blocked') return 'Blocked';
-  return 'Waiting';
+  if (status === "active") return "In progress";
+  if (status === "safe") return "Passed";
+  if (status === "warning") return "Warning";
+  if (status === "blocked") return "Blocked";
+  return "Waiting";
 }
 
 export default function LiveQueryFlow({
-  title = 'AI Query Flow',
+  title = "AI Query Flow",
   subtitle,
   stages,
   compact = false,
 }: LiveQueryFlowProps) {
   return (
-    <section className={`card query-flow-card${compact ? ' query-flow-card--compact' : ''}`}>
+    <section className={`card query-flow-card${compact ? " query-flow-card--compact" : ""}`}>
       <div className="query-flow-header">
         <h3>{title}</h3>
         {subtitle ? <p>{subtitle}</p> : null}

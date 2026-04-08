@@ -1,5 +1,13 @@
-import QuerySandbox from '../components/QuerySandbox';
+import Layout from "../components/ui/Layout";
+import Section from "../components/ui/Section";
+import QuerySandbox from "../components/QuerySandbox";
 
 export default function Sandbox() {
-  return <QuerySandbox />;
+  return (
+    <Layout>
+      <Section>
+        <QuerySandbox />
+      </Section>
+    </Layout>
+  );
 }

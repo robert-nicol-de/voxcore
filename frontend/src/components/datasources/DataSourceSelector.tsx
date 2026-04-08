@@ -1,7 +1,7 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
-export type SourceStatus = 'active' | 'coming';
+export type SourceStatus = "active" | "coming";
 
 export type DataSourceCard = {
   id: string;
@@ -12,12 +12,12 @@ export type DataSourceCard = {
 };
 
 const sources: DataSourceCard[] = [
-  { id: 'snowflake', name: 'Snowflake', subtitle: 'Cloud DW', icon: '❄', status: 'active' },
-  { id: 'semantic', name: 'Semantic Model', subtitle: 'AI Layer', icon: '🧠', status: 'active' },
-  { id: 'sqlserver', name: 'SQL Server', subtitle: 'Microsoft DB', icon: '🗄', status: 'active' },
-  { id: 'postgres', name: 'PostgreSQL', subtitle: 'Open Source', icon: '🐘', status: 'coming' },
-  { id: 'redshift', name: 'Redshift', subtitle: 'AWS DW', icon: '📦', status: 'coming' },
-  { id: 'bigquery', name: 'BigQuery', subtitle: 'Google DW', icon: '🌐', status: 'coming' },
+  { id: "snowflake", name: "Snowflake", subtitle: "Cloud DW", icon: "❄", status: "active" },
+  { id: "semantic", name: "Semantic Model", subtitle: "AI Layer", icon: "🧠", status: "active" },
+  { id: "sqlserver", name: "SQL Server", subtitle: "Microsoft DB", icon: "🗄", status: "active" },
+  { id: "postgres", name: "PostgreSQL", subtitle: "Open Source", icon: "🐘", status: "coming" },
+  { id: "redshift", name: "Redshift", subtitle: "AWS DW", icon: "📦", status: "coming" },
+  { id: "bigquery", name: "BigQuery", subtitle: "Google DW", icon: "🌐", status: "coming" },
 ];
 
 type Props = {
@@ -28,9 +28,9 @@ export default function DataSourceSelector({ onClose }: Props) {
   const navigate = useNavigate();
 
   const handleClick = (source: DataSourceCard) => {
-    if (source.status !== 'active') return;
-    if (source.id === 'semantic') {
-      navigate('/app/semantic-models/new');
+    if (source.status !== "active") return;
+    if (source.id === "semantic") {
+      navigate("/app/semantic-models/new");
       return;
     }
     navigate(`/datasources/new/${source.id}`);
@@ -54,7 +54,7 @@ export default function DataSourceSelector({ onClose }: Props) {
             role="button"
             tabIndex={0}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
+              if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 handleClick(s);
               }
@@ -63,7 +63,7 @@ export default function DataSourceSelector({ onClose }: Props) {
             <div className="source-icon">{s.icon}</div>
             <h3>{s.name}</h3>
             <div className="source-subtitle">{s.subtitle}</div>
-            {s.status === 'coming' && <span className="coming-badge">Coming Soon</span>}
+            {s.status === "coming" && <span className="coming-badge">Coming Soon</span>}
           </div>
         ))}
       </div>

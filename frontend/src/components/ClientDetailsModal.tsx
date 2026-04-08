@@ -1,5 +1,5 @@
-import React from 'react';
-import './ClientDetailsModal.css';
+import React from "react";
+import "./ClientDetailsModal.css";
 
 interface ClientDetailsModalProps {
   isOpen: boolean;
@@ -24,29 +24,29 @@ export const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
   const mockClientData = {
     name: clientName,
     value: clientValue,
-    status: 'Active',
-    joinDate: '2022-03-15',
-    industry: 'Technology',
-    location: 'San Francisco, CA',
-    email: 'contact@' + clientName.toLowerCase().replace(/\s+/g, '') + '.com',
-    phone: '+1 (555) 123-4567',
-    website: 'www.' + clientName.toLowerCase().replace(/\s+/g, '') + '.com',
+    status: "Active",
+    joinDate: "2022-03-15",
+    industry: "Technology",
+    location: "San Francisco, CA",
+    email: "contact@" + clientName.toLowerCase().replace(/\s+/g, "") + ".com",
+    phone: "+1 (555) 123-4567",
+    website: "www." + clientName.toLowerCase().replace(/\s+/g, "") + ".com",
     employees: Math.floor(Math.random() * 5000) + 100,
-    annualRevenue: '$' + (clientValue * 1000).toLocaleString(),
-    accountManager: 'Sarah Johnson',
-    lastContact: '2024-02-28',
-    nextReview: '2024-03-15',
-    notes: 'High-value client with strong growth trajectory. Excellent payment history.',
+    annualRevenue: "$" + (clientValue * 1000).toLocaleString(),
+    accountManager: "Sarah Johnson",
+    lastContact: "2024-02-28",
+    nextReview: "2024-03-15",
+    notes: "High-value client with strong growth trajectory. Excellent payment history.",
     contacts: [
-      { name: 'John Smith', title: 'CEO', email: 'john@example.com', phone: '+1 (555) 111-1111' },
-      { name: 'Jane Doe', title: 'CFO', email: 'jane@example.com', phone: '+1 (555) 222-2222' },
-      { name: 'Mike Wilson', title: 'CTO', email: 'mike@example.com', phone: '+1 (555) 333-3333' },
+      { name: "John Smith", title: "CEO", email: "john@example.com", phone: "+1 (555) 111-1111" },
+      { name: "Jane Doe", title: "CFO", email: "jane@example.com", phone: "+1 (555) 222-2222" },
+      { name: "Mike Wilson", title: "CTO", email: "mike@example.com", phone: "+1 (555) 333-3333" },
     ],
     recentTransactions: [
-      { date: '2024-02-25', type: 'Invoice', amount: '$45,000', status: 'Paid' },
-      { date: '2024-02-15', type: 'Payment', amount: '$45,000', status: 'Completed' },
-      { date: '2024-01-25', type: 'Invoice', amount: '$45,000', status: 'Paid' },
-      { date: '2024-01-15', type: 'Payment', amount: '$45,000', status: 'Completed' },
+      { date: "2024-02-25", type: "Invoice", amount: "$45,000", status: "Paid" },
+      { date: "2024-02-15", type: "Payment", amount: "$45,000", status: "Completed" },
+      { date: "2024-01-25", type: "Invoice", amount: "$45,000", status: "Paid" },
+      { date: "2024-01-15", type: "Payment", amount: "$45,000", status: "Completed" },
     ],
   };
 

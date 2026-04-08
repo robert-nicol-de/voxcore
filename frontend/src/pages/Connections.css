@@ -1,0 +1,72 @@
+.connections-container {
+  max-width: 900px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* FORM */
+.connection-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  background: rgba(255,255,255,0.03);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.connection-form input,
+.connection-form select {
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,0.05);
+  color: white;
+}
+
+.connection-form button {
+  grid-column: span 2;
+  padding: 12px;
+  background: #60A5FA;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* LIST */
+.connection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.connection-card {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px;
+  background: rgba(15,23,42,0.6);
+  border-radius: 10px;
+}
+
+/* STATUS */
+.status {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.status.connected {
+  background: rgba(34,197,94,0.2);
+  color: #22c55e;
+}
+
+.status.error {
+  background: rgba(239,68,68,0.2);
+  color: #ef4444;
+}
+
+.status.testing {
+  background: rgba(250,204,21,0.2);
+  color: #facc15;
+}

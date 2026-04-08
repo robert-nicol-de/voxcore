@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../lib/api';
+import { useState, useEffect } from "react";
+import { apiUrl } from "../lib/api";
 
 export interface PlatformOption {
   code: string;
@@ -35,15 +35,15 @@ export default function DataSourceSelector({ onSelect, onCancel }: DataSourceSel
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(apiUrl('/api/v1/datasources/platforms'));
+        const res = await fetch(apiUrl("/api/v1/datasources/platforms"));
         if (res.ok) {
           const data = (await res.json()) as PlatformOption[];
           setPlatforms(data);
         } else {
-          setError('Failed to load platforms');
+          setError("Failed to load platforms");
         }
       } catch (e) {
-        setError('Network error loading platforms');
+        setError("Network error loading platforms");
       } finally {
         setLoading(false);
       }
@@ -61,27 +61,27 @@ export default function DataSourceSelector({ onSelect, onCancel }: DataSourceSel
   );
 
   const tierLabels: Record<number, string> = {
-    1: '🎯 Tier 1: Essential',
-    2: '⭐ Tier 2: Enterprise',
-    3: '🔧 Tier 3: Additional',
+    1: "🎯 Tier 1: Essential",
+    2: "⭐ Tier 2: Enterprise",
+    3: "🔧 Tier 3: Additional",
   };
 
   return (
     <div
       style={{
-        display: 'flex',
-        flexDirection: 'column',
+        display: "flex",
+        flexDirection: "column",
         gap: 28,
-        padding: '32px',
-        maxWidth: '1000px',
-        margin: '0 auto',
+        padding: "32px",
+        maxWidth: "1000px",
+        margin: "0 auto",
       }}
     >
       <div>
-        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff' }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#fff" }}>
           Select Your Data Platform
         </h2>
-        <p style={{ margin: '8px 0 0 0', color: 'var(--platform-muted)', fontSize: 13 }}>
+        <p style={{ margin: "8px 0 0 0", color: "var(--platform-muted)", fontSize: 13 }}>
           VoxCore supports multiple data platforms. Choose your database or data warehouse below.
         </p>
       </div>
@@ -89,11 +89,11 @@ export default function DataSourceSelector({ onSelect, onCancel }: DataSourceSel
       {error && (
         <div
           style={{
-            background: 'rgba(255,80,80,0.1)',
-            border: '1px solid rgba(255,80,80,0.3)',
+            background: "rgba(255,80,80,0.1)",
+            border: "1px solid rgba(255,80,80,0.3)",
             borderRadius: 8,
-            padding: '12px 16px',
-            color: '#ff5050',
+            padding: "12px 16px",
+            color: "#ff5050",
             fontSize: 13,
           }}
         >
@@ -102,7 +102,7 @@ export default function DataSourceSelector({ onSelect, onCancel }: DataSourceSel
       )}
 
       {loading ? (
-        <div style={{ color: 'var(--platform-muted)', textAlign: 'center', padding: '40px' }}>
+        <div style={{ color: "var(--platform-muted)", textAlign: "center", padding: "40px" }}>
           Loading platforms…
         </div>
       ) : (
@@ -115,12 +115,12 @@ export default function DataSourceSelector({ onSelect, onCancel }: DataSourceSel
               <div key={tier}>
                 <h3
                   style={{
-                    margin: '0 0 12px 0',
+                    margin: "0 0 12px 0",
                     fontSize: 13,
                     fontWeight: 600,
-                    color: 'var(--platform-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
+                    color: "var(--platform-muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
                   }}
                 >
                   {tierLabels[tier]}
@@ -128,8 +128,8 @@ export default function DataSourceSelector({ onSelect, onCancel }: DataSourceSel
 
                 <div
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
                     gap: 14,
                   }}
                 >
@@ -143,36 +143,36 @@ export default function DataSourceSelector({ onSelect, onCancel }: DataSourceSel
                       }}
                       disabled={!platform.available}
                       style={{
-                        background: platform.available ? 'var(--platform-card-bg)' : 'rgba(0,0,0,0.2)',
+                        background: platform.available ? "var(--platform-card-bg)" : "rgba(0,0,0,0.2)",
                         border:
                           platform.available
-                            ? '1px solid var(--platform-border)'
-                            : '1px solid rgba(255,255,255,0.1)',
+                            ? "1px solid var(--platform-border)"
+                            : "1px solid rgba(255,255,255,0.1)",
                         borderRadius: 12,
-                        padding: '20px',
-                        textAlign: 'left',
-                        cursor: platform.available ? 'pointer' : 'not-allowed',
-                        transition: 'all 0.2s',
+                        padding: "20px",
+                        textAlign: "left",
+                        cursor: platform.available ? "pointer" : "not-allowed",
+                        transition: "all 0.2s",
                         opacity: platform.available ? 1 : 0.5,
                       }}
                       onMouseEnter={e => {
                         if (platform.available) {
                           const btn = e.currentTarget as HTMLButtonElement;
-                          btn.style.background = 'rgba(79, 140, 255, 0.12)';
-                          btn.style.borderColor = '#4f8cff';
+                          btn.style.background = "rgba(79, 140, 255, 0.12)";
+                          btn.style.borderColor = "#4f8cff";
                         }
                       }}
                       onMouseLeave={e => {
                         const btn = e.currentTarget as HTMLButtonElement;
-                        btn.style.background = 'var(--platform-card-bg)';
-                        btn.style.borderColor = 'var(--platform-border)';
+                        btn.style.background = "var(--platform-card-bg)";
+                        btn.style.borderColor = "var(--platform-border)";
                       }}
                     >
                       <div
                         style={{
                           fontSize: 16,
                           fontWeight: 700,
-                          color: platform.available ? '#e2e8f0' : 'var(--platform-muted)',
+                          color: platform.available ? "#e2e8f0" : "var(--platform-muted)",
                           marginBottom: 8,
                         }}
                       >
@@ -181,7 +181,7 @@ export default function DataSourceSelector({ onSelect, onCancel }: DataSourceSel
                       <div
                         style={{
                           fontSize: 12,
-                          color: 'var(--platform-muted)',
+                          color: "var(--platform-muted)",
                           lineHeight: 1.4,
                           marginBottom: 12,
                         }}
@@ -192,10 +192,10 @@ export default function DataSourceSelector({ onSelect, onCancel }: DataSourceSel
                         <div
                           style={{
                             fontSize: 11,
-                            color: '#ffa500',
+                            color: "#ffa500",
                             fontWeight: 600,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
                           }}
                         >
                           Coming Soon
@@ -205,7 +205,7 @@ export default function DataSourceSelector({ onSelect, onCancel }: DataSourceSel
                         <div
                           style={{
                             fontSize: 11,
-                            color: '#4f8cff',
+                            color: "#4f8cff",
                             fontWeight: 600,
                           }}
                         >
@@ -222,17 +222,17 @@ export default function DataSourceSelector({ onSelect, onCancel }: DataSourceSel
       )}
 
       {onCancel && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
           <button
             onClick={onCancel}
             style={{
-              background: 'transparent',
-              border: '1px solid var(--platform-border)',
-              color: 'var(--platform-muted)',
+              background: "transparent",
+              border: "1px solid var(--platform-border)",
+              color: "var(--platform-muted)",
               borderRadius: 8,
-              padding: '10px 16px',
+              padding: "10px 16px",
               fontSize: 13,
-              cursor: 'pointer',
+              cursor: "pointer",
               fontWeight: 500,
             }}
           >

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { apiUrl } from '../lib/api';
-import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from '../lib/polling';
+import { useEffect, useState } from "react";
+import { apiUrl } from "../lib/api";
+import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from "../lib/polling";
 
 type QueryLog = {
   status?: string;
@@ -26,9 +26,9 @@ export default function QueryFirewall() {
     };
 
     const loadStats = async () => {
-      const companyId = localStorage.getItem('voxcore_company_id') || 'default';
-      const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
-      const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
+      const companyId = localStorage.getItem("voxcore_company_id") || "default";
+      const workspaceId = localStorage.getItem("voxcore_workspace_id") || "default";
+      const token = localStorage.getItem("voxcore_token") || localStorage.getItem("vox_token") || "";
 
       try {
         const response = await fetch(
@@ -53,10 +53,10 @@ export default function QueryFirewall() {
         let sandboxed = 0;
 
         logs.forEach((entry) => {
-          const status = (entry.status || '').toLowerCase();
-          if (status === 'allowed') allowed += 1;
-          if (status === 'blocked' || status === 'blocked_sensitive') blocked += 1;
-          if (status === 'sandboxed') sandboxed += 1;
+          const status = (entry.status || "").toLowerCase();
+          if (status === "allowed") allowed += 1;
+          if (status === "blocked" || status === "blocked_sensitive") blocked += 1;
+          if (status === "sandboxed") sandboxed += 1;
         });
 
         setStats({ allowed, blocked, sandboxed });

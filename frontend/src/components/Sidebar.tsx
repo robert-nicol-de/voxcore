@@ -1,85 +1,56 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useWorkspace } from '../context/WorkspaceContext';
-import { canAccessControlCenter } from '../utils/permissions';
+        <li>
+          <a href="/dashboard/auto" className="block px-4 py-2 hover:bg-blue-100 rounded">
+            Auto Dashboard
+          </a>
+        </li>;
+import { NavLink } from "react-router-dom";
 
-const primaryLinks = [
-  { to: '/app/dashboard',     label: 'Dashboard' },
-  { to: '/app',               label: 'SQL Assistant' },
-  { to: '/app/policies',      label: 'Policies' },
-  { to: '/app/query-logs',    label: 'Query Logs' },
-  { to: '/app/sandbox',       label: 'Sandbox' },
-  { to: '/app/architecture',  label: 'Architecture' },
-  { to: '/app/agents',        label: 'AI Agents' },
-  { to: '/app/settings',      label: 'Settings' },
-];
-
-const dataLinks = [
-  { to: '/app/datasources', label: 'Data Sources' },
-  { to: '/app/semantic-models', label: 'Semantic Models' },
-  { to: '/app/schema', label: 'Schema Explorer' },
-];
-
-export const Sidebar: React.FC = () => {
-  const location = useLocation();
-  const { org, role, isSuperAdmin, workspaces, currentWorkspace, setCurrentWorkspaceId } = useWorkspace();
-  const showControlCenter = canAccessControlCenter(role, isSuperAdmin);
-  const platformLinks = showControlCenter
-    ? [...primaryLinks, { to: '/app/control-center', label: 'VoxCore Control Center' }]
-    : primaryLinks;
-
+export default function Sidebar() {
   return (
-    <aside className="sidebar bg-surface-elevated border-default shadow-md" style={{ width: 'var(--sidebar-desktop)', minHeight: '100vh', padding: 'var(--spacing-3)' }}>
-      <div className="flex items-center gap-2 mb-2">
-        <img src="/assets/vc_logo.png" alt="VoxCloud" style={{ width: 30, height: 30, objectFit: 'contain' }} />
-        <div className="text-xl font-semibold text-primary">VoxCloud</div>
-      </div>
-      <div className="text-xs uppercase tracking-wide text-muted mb-2">Platform</div>
-      <div className="text-xs text-muted mb-4">Org: {org?.name || 'Organization'}</div>
-      <label className="text-xs text-muted block mb-1">Workspace</label>
-      <select
-        value={currentWorkspace?.id ?? ''}
-        onChange={(e) => setCurrentWorkspaceId(Number(e.target.value))}
-        className="w-full mb-6 rounded-sm border-default bg-surface text-secondary px-3 py-2 text-sm"
-      >
-        {workspaces.map((ws) => (
-          <option key={ws.id} value={ws.id}>
-            {ws.name}
-          </option>
-        ))}
-      </select>
-      <div className="text-xs uppercase tracking-wide text-muted mb-2">Data</div>
-      <nav className="flex flex-col gap-2 mb-4">
-        {dataLinks.map((item) => {
-          const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`sidebar-item${active ? ' active' : ''}`}
-              tabIndex={0}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
+    <div className="w-64 bg-[#0B0F1A] border-r border-white/5 p-6">
+      <div className="text-lg font-semibold mb-10">VoxCore</div>
+      <nav className="space-y-6 text-sm">
+        <Group title="Platform">
+          <Item to="/app">Dashboard</Item>
+          <Item to="/app/playground">Playground</Item>
+        </Group>
+        <Group title="Governance">
+          <Item to="/app/logs">Query Logs</Item>
+          <Item to="/app/policies">Policies</Item>
+        </Group>
+        <Group title="System">
+          <Item to="/app/settings">Settings</Item>
+          <Item to="/pr-system">🧠 PR Command Center</Item>
+        </Group>
       </nav>
-      <div className="text-xs uppercase tracking-wide text-muted mb-2">Platform</div>
-      <nav className="flex flex-col gap-2">
-        {platformLinks.map((item) => {
-          const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`sidebar-item${active ? ' active' : ''}`}
-              tabIndex={0}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-    </aside>
+    </div>
   );
-};
+}
+
+function Group({ title, children }) {
+  return (
+    <div>
+      <div className="text-xs text-gray-500 mb-2 uppercase tracking-wider">
+        {title}
+      </div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function Item({ to, children }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `block px-3 py-2 rounded-lg transition ${
+          isActive
+            ? "bg-blue-600/20 text-blue-400"
+            : "text-gray-400 hover:bg-white/5 hover:text-white"
+        }`
+      }
+    >
+      {children}
+    </NavLink>
+  );
+}

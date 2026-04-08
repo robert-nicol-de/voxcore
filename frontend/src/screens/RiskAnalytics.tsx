@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Card } from '@/components/core/Card';
-import { Badge } from '@/components/Badge';
-import './RiskAnalytics.css';
-import { apiUrl } from '../lib/api';
+import React, { useEffect, useState } from "react";
+import { Card } from "@/components/core/Card";
+import { Badge } from "@/components/Badge";
+import "./RiskAnalytics.css";
+import { apiUrl } from "../lib/api";
 
 interface TableStats {
   table: string;
@@ -24,7 +24,7 @@ interface Anomaly {
   type: string;
   user: string;
   description: string;
-  severity: 'low' | 'medium' | 'high';
+  severity: "low" | "medium" | "high";
   timestamp: string;
   action_recommended: string;
 }
@@ -40,13 +40,13 @@ export const RiskAnalytics: React.FC = () => {
     const fetchAnalytics = async () => {
       try {
         const [tablesRes, patternsRes, anomaliesRes] = await Promise.all([
-          fetch(apiUrl('/api/governance/analytics/tables?limit=10')),
-          fetch(apiUrl('/api/governance/analytics/patterns')),
-          fetch(apiUrl('/api/governance/analytics/anomalies')),
+          fetch(apiUrl("/api/governance/analytics/tables?limit=10")),
+          fetch(apiUrl("/api/governance/analytics/patterns")),
+          fetch(apiUrl("/api/governance/analytics/anomalies")),
         ]);
 
         if (!tablesRes.ok || !patternsRes.ok || !anomaliesRes.ok) {
-          throw new Error('Failed to fetch analytics');
+          throw new Error("Failed to fetch analytics");
         }
 
         const tablesData = await tablesRes.json();
@@ -57,7 +57,7 @@ export const RiskAnalytics: React.FC = () => {
         setPatterns(patternsData);
         setAnomalies(anomaliesData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -68,18 +68,23 @@ export const RiskAnalytics: React.FC = () => {
 
   const getSeverityBadgeVariant = (severity: string) => {
     switch (severity) {
-      case 'low':
-        return 'safe';
-      case 'medium':
-        return 'warning';
-      case 'high':
-        return 'danger';
+      case "low":
+        return "safe";
+      case "medium":
+        return "warning";
+      case "high":
+        return "danger";
       default:
-        return 'info';
+        return "info";
     }
   };
 
-  if (loading) return <div className="analytics-loading">Loading risk analytics...</div>;
+  if (loading) return (
+    <>
+      <SkeletonTable />
+      <SkeletonChart />
+    </>
+  );
   if (error) return <div className="analytics-error">Error: {error}</div>;
 
   return (
@@ -171,7 +176,7 @@ export const RiskAnalytics: React.FC = () => {
             {anomalies.map((anomaly) => (
               <div key={anomaly.id} className="anomaly-item">
                 <div className="anomaly-header">
-                  <div className="anomaly-type">{anomaly.type.replace(/_/g, ' ')}</div>
+                  <div className="anomaly-type">{anomaly.type.replace(/_/g, " ")}</div>
                   <Badge variant={getSeverityBadgeVariant(anomaly.severity)}>
                     {anomaly.severity.toUpperCase()}
                   </Badge>

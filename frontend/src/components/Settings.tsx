@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import './Settings.css';
+import React, { useState } from "react";
+import "./Settings.css";
 
 interface SettingsProps {
   onClose: () => void;
@@ -8,7 +8,7 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [showSQL, setShowSQL] = useState(true);
   const [showResults, setShowResults] = useState(true);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   return (
     <div className="settings-overlay" onClick={onClose}>
@@ -48,8 +48,8 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                 <input
                   type="radio"
                   value="dark"
-                  checked={theme === 'dark'}
-                  onChange={(e) => setTheme(e.target.value as 'dark')}
+                  checked={theme === "dark"}
+                  onChange={(e) => setTheme(e.target.value as "dark")}
                 />
                 <span>Dark</span>
               </label>
@@ -57,8 +57,8 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                 <input
                   type="radio"
                   value="light"
-                  checked={theme === 'light'}
-                  onChange={(e) => setTheme(e.target.value as 'light')}
+                  checked={theme === "light"}
+                  onChange={(e) => setTheme(e.target.value as "light")}
                 />
                 <span>Light</span>
               </label>

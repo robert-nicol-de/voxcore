@@ -1,0 +1,29 @@
+.insight-card {
+  background: rgba(59,130,246,0.1);
+  border: 1px solid rgba(59,130,246,0.3);
+  padding: 20px;
+  border-radius: 16px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px 0 rgba(59,130,246,0.04);
+}
+.insight-summary {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 12px 0 8px 0;
+  color: #3b82f6;
+}
+.insight-takeaway {
+  background: #fffbe6;
+  color: #b45309;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-top: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  display: inline-block;
+}
+.confidence-bar {
+  font-size: 0.95rem;
+  color: #64748b;
+}

@@ -1,13 +1,17 @@
-import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import './Chat.css';
-import ConnectionHeader from './ConnectionHeader';
-import ChartRenderer from './ChartRenderer';
-import { ClientDetailsModal } from './ClientDetailsModal';
-import { apiUrl, API_BASE_URL } from '../lib/api';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
+import "./Chat.css";
+
+import ConnectionHeader from "./ConnectionHeader";
+import ChartRenderer from "./ChartRenderer";
+import { ClientDetailsModal } from "./ClientDetailsModal";
+import { apiUrl, API_BASE_URL } from "../lib/api";
+import AuditPanel from "./AuditPanel";
+import SchemaTrustBadge from "./SchemaTrustBadge";
+import LearningSignal from "./LearningSignal";
 
 interface Message {
   id: string;
-  type: 'user' | 'assistant';
+  type: "user" | "assistant";
   text: string;
   timestamp: Date;
   sql?: string;
@@ -38,14 +42,15 @@ interface ChatProps {
 const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = false }, ref) => {
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: '0',
-      type: 'assistant',
-      text: '👋 Welcome! I\'m your SQL Assistant. Ask me anything about your data in plain English, and I\'ll generate the SQL for you.',
+      id: "0",
+      type: "assistant",
+      text: "👋 Welcome! I'm your SQL Assistant. Ask me anything about your data in plain English, and I'll generate the SQL for you.",
       timestamp: new Date(),
     }
   ]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [govResponse, setGovResponse] = useState<any | null>(null);
   const [enlargedChart, setEnlargedChart] = useState<EnlargedChart | null>(null);
   const [clientDetails, setClientDetails] = useState<ClientDetails | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -53,7 +58,7 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -62,16 +67,16 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
 
   useEffect(() => {
     if (inputRef.current) {
-      inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + 'px';
+      inputRef.current.style.height = "auto";
+      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + "px";
     }
   }, [input]);
 
   // Check connection status on mount and when it changes
   useEffect(() => {
     const checkConnectionStatus = () => {
-      const status = localStorage.getItem('dbConnectionStatus');
-      setIsConnected(status === 'connected');
+      const status = localStorage.getItem("dbConnectionStatus");
+      setIsConnected(status === "connected");
     };
 
     checkConnectionStatus();
@@ -81,8 +86,8 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
       checkConnectionStatus();
     };
 
-    window.addEventListener('connectionStatusChanged', handleConnectionChange);
-    return () => window.removeEventListener('connectionStatusChanged', handleConnectionChange);
+    window.addEventListener("connectionStatusChanged", handleConnectionChange);
+    return () => window.removeEventListener("connectionStatusChanged", handleConnectionChange);
   }, []);
 
   const handleQuestionSelect = (question: string) => {
@@ -91,8 +96,8 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
       inputRef.current.focus();
       setTimeout(() => {
         if (inputRef.current) {
-          inputRef.current.style.height = 'auto';
-          inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + 'px';
+          inputRef.current.style.height = "auto";
+          inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + "px";
         }
       }, 0);
     }
@@ -111,268 +116,94 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
     });
   };
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+  // PHASE 4: Get activeConnectionId from SchemaContext
+  const { activeConnectionId, schema } = useSchema ? useSchema() : { activeConnectionId: null, schema: null };
 
-    // Check if database is connected
-    const dbConnectionStatus = localStorage.getItem('dbConnectionStatus');
-    const selectedDatabase = localStorage.getItem('selectedDatabase');
-    
-    if (dbConnectionStatus !== 'connected' || !selectedDatabase) {
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        type: 'assistant',
-        text: '⚠️ Please connect to a database first. Click the "Connect" button in the header to establish a connection.',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
-      return;
+  // --- Connection lock (advanced UX guard) ---
+  const [sessionConnectionId, setSessionConnectionId] = useState<string | null>(null);
+  useEffect(() => {
+    if (activeConnectionId && !sessionConnectionId) {
+      setSessionConnectionId(activeConnectionId);
     }
-
-    const questionText = input;
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      text: questionText,
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setLoading(true);
-
-    try {
-      const sandboxResponse = await fetch(apiUrl('/api/v1/query/sandbox'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: questionText,
-        }),
-      });
-
-      if (!sandboxResponse.ok) {
-        const sandboxError = await sandboxResponse.json().catch(() => ({}));
-        throw new Error(sandboxError.detail || `Sandbox error: ${sandboxResponse.status}`);
-      }
-
-      const sandboxData = await sandboxResponse.json();
-      if (sandboxData.status === 'sandboxed') {
-        const sandboxPreviewMessage: Message = {
-          id: `${Date.now()}-sandbox`,
-          type: 'assistant',
-          text: `🧪 Sandbox preview ready (${sandboxData.rows} rows, showing first ${sandboxData.preview?.length || 0})`,
-          timestamp: new Date(),
-          sandboxPreview: sandboxData.preview || [],
-          results: sandboxData.preview || [],
-        };
-        setMessages(prev => [...prev, sandboxPreviewMessage]);
-      }
-
-      const riskResponse = await fetch(apiUrl('/api/v1/query/risk'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: questionText,
-        }),
-      });
-
-      if (!riskResponse.ok) {
-        const riskError = await riskResponse.json().catch(() => ({}));
-        throw new Error(riskError.detail || `Risk engine error: ${riskResponse.status}`);
-      }
-
-      const riskData = await riskResponse.json();
-      const riskInfoMessage: Message = {
-        id: `${Date.now()}-risk`,
-        type: 'assistant',
-        text: `🛡 Risk Level: ${(riskData.risk_level || 'unknown').toUpperCase()}${riskData.reasons?.length ? `\nReason: ${riskData.reasons.join(', ')}` : ''}`,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, riskInfoMessage]);
-
-      if (riskData.risk_level === 'high') {
-        const proceed = window.confirm(
-          `Risk Level: HIGH\nReason: ${(riskData.reasons || []).join(', ') || 'High-risk pattern detected'}\n\nExecute anyway?`
-        );
-        if (!proceed) {
-          const cancelledMessage: Message = {
-            id: `${Date.now()}-risk-cancel`,
-            type: 'assistant',
-            text: 'Execution cancelled due to high risk query warning.',
-            timestamp: new Date(),
-          };
-          setMessages(prev => [...prev, cancelledMessage]);
-          return;
-        }
-      }
-
-      const inspectionResponse = await fetch(apiUrl('/api/v1/query/inspect'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: questionText,
-        }),
-      });
-
-      if (!inspectionResponse.ok) {
-        const inspectionError = await inspectionResponse.json().catch(() => ({}));
-        throw new Error(inspectionError.detail || `Inspector error: ${inspectionResponse.status}`);
-      }
-
-      const inspectionData = await inspectionResponse.json();
-      if (!inspectionData.allowed) {
-        const blockedMessage: Message = {
-          id: Date.now().toString(),
-          type: 'assistant',
-          text: `✖ Query blocked by VoxCore Inspector: ${inspectionData.reason || 'Blocked by policy'}`,
-          timestamp: new Date(),
-        };
-        setMessages(prev => [...prev, blockedMessage]);
-        return;
-      }
-
-      const response = await fetch(apiUrl('/api/v1/query'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          company_id: localStorage.getItem('voxcore_company_id') || 'default',
-          workspace_id: localStorage.getItem('voxcore_workspace_id') || 'default',
-          query: questionText,
-          agent: 'sql_assistant',
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'queued' && data.job_id) {
-          const queuedMessage: Message = {
-            id: `${Date.now()}-queued`,
-            type: 'assistant',
-            text: `⏳ Query queued for worker execution (job: ${data.job_id})`,
-            timestamp: new Date(),
-          };
-          setMessages(prev => [...prev, queuedMessage]);
-
-          let finalJob: any = null;
-          for (let attempt = 0; attempt < 25; attempt++) {
-            await new Promise((resolve) => setTimeout(resolve, 800));
-            const jobRes = await fetch(apiUrl(`/api/v1/query/jobs/${data.job_id}`));
-            if (!jobRes.ok) {
-              continue;
-            }
-            const jobData = await jobRes.json();
-            if (jobData.status === 'completed' || jobData.status === 'blocked' || jobData.status === 'failed') {
-              finalJob = jobData;
-              break;
-            }
-          }
-
-          if (!finalJob) {
-            const pendingMessage: Message = {
-              id: `${Date.now()}-pending`,
-              type: 'assistant',
-              text: `⏳ Job ${data.job_id} is still running. Check Query Logs for live status.`,
-              timestamp: new Date(),
-            };
-            setMessages(prev => [...prev, pendingMessage]);
-            return;
-          }
-
-          if (finalJob.status === 'failed') {
-            throw new Error(finalJob.error || 'Worker execution failed');
-          }
-
-          if (finalJob.status === 'blocked') {
-            const blockedMessage: Message = {
-              id: `${Date.now()}-blocked`,
-              type: 'assistant',
-              text: `✖ Worker blocked query execution`,
-              timestamp: new Date(),
-              results: finalJob.result?.analysis ? [finalJob.result.analysis] : undefined,
-            };
-            setMessages(prev => [...prev, blockedMessage]);
-            return;
-          }
-
-          const workerResult = finalJob.result || {};
-          const workerMessage: Message = {
-            id: `${Date.now()}-worker-result`,
-            type: 'assistant',
-            text: `✓ Worker completed query successfully\n\nStatus: ${workerResult.status || 'allowed'}\nRisk Level: ${workerResult.risk_level || 'N/A'}`,
-            timestamp: new Date(),
-            sql: workerResult.effective_query,
-            results: workerResult.analysis ? [workerResult.analysis] : [],
-          };
-          setMessages(prev => [...prev, workerMessage]);
-          return;
-        }
-
-        let messageText = `✓ Query executed successfully\n\n`;
-        if (data.sql) {
-          messageText += `SQL: ${data.sql}\n`;
-        }
-        if (data.execution_time_ms !== undefined) {
-          messageText += `Execution Time: ${data.execution_time_ms}ms\n`;
-        }
-        if (data.row_count !== undefined) {
-          messageText += `Rows Returned: ${data.row_count}\n`;
-        }
-        if (data.error) {
-          messageText += `\n⚠️ ${data.error}`;
-        }
-        if (data.message) {
-          messageText += `\n💡 ${data.message}`;
-        }
-        
-        const assistantMessage: Message = {
-          id: Date.now().toString(),
-          type: 'assistant',
-          text: messageText,
-          timestamp: new Date(),
-          sql: data.sql,
-          results: data.data,
-          chart: data.chart,
-          column_mapping: data.column_mapping || {},
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || errorData.error || `API error: ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      let errorText = `⚠️ Backend connection error. Make sure the API server is running on ${API_BASE_URL}`;
-      
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          errorText = '⏱️ Query timeout - server took too long to respond (10 seconds)';
-        } else {
-          errorText = `⚠️ Error: ${error.message}`;
-        }
-      }
-      
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        type: 'assistant',
-        text: errorText,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setLoading(false);
+    if (sessionConnectionId && activeConnectionId && sessionConnectionId !== activeConnectionId) {
+      // Option A: warn and block
+      alert("Start a new session to change connection.");
+      // Option B: auto-reset chat (uncomment to enable)
+      // setMessages([messages[0]]);
+      // setSessionConnectionId(activeConnectionId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConnectionId]);
+
+  // --- Lightweight schema shape validator ---
+  const isValidSchema = (schema: any) => {
+    return (
+      schema &&
+      Array.isArray(schema.tables) &&
+      Array.isArray(schema.columns)
+    );
   };
 
+  const handleSendMessage = async () => {
+  if (!input.trim()) return;
+
+  setLoading(true);
+  setGovResponse(null);
+
+  const userMessage = {
+    id: Date.now().toString(),
+    type: "user",
+    text: input,
+    timestamp: new Date(),
+  };
+
+  setMessages((prev) => [...prev, userMessage]);
+
+  try {
+    const res = await fetch("http://localhost:8000/api/v1/query", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        question: input,
+        connection_id: activeConnectionId || "mock-1",
+        schema: schema || null,
+      }),
+    });
+
+    const data = await res.json();
+    setGovResponse(data);
+
+    const assistantMessage = {
+      id: `${Date.now()}-assistant`,
+      type: "assistant",
+      text: data?.message || "Response received",
+      timestamp: new Date(),
+      sql: data?.final_sql || data?.generated_sql || "",
+      results: data?.results || data?.data || [],
+    };
+
+    setMessages((prev) => [...prev, assistantMessage]);
+  } catch (err) {
+    console.error(err);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-error`,
+        type: "assistant",
+        text: "Error contacting VoxCore",
+        timestamp: new Date(),
+      },
+    ]);
+  } finally {
+    setLoading(false);
+    setInput("");
+  }
+};
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -385,23 +216,23 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
     if (headers.length === 0) return;
     
     const csvContent = [
-      headers.join(','),
+      headers.join(","),
       ...results.map(row => 
         headers.map(header => {
           const value = row?.[header];
-          if (value === null || value === undefined) return '';
-          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-            return `"${value.replace(/"/g, '""')}"`;
+          if (value === null || value === undefined) return "";
+          if (typeof value === "string" && (value.includes(",") || value.includes("\""))) {
+            return `"${value.replace(/"/g, "\"\"")}"`;
           }
           return String(value);
-        }).join(',')
+        }).join(",")
       )
-    ].join('\n');
+    ].join("\n");
     
-    const element = document.createElement('a');
-    element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
-    element.setAttribute('download', 'results_' + new Date().getTime() + '.csv');
-    element.style.display = 'none';
+    const element = document.createElement("a");
+    element.setAttribute("href", "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent));
+    element.setAttribute("download", "results_" + new Date().getTime() + ".csv");
+    element.style.display = "none";
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
@@ -445,7 +276,7 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
           
           <div class="sql-section">
             <div class="sql-label">📝 SQL Query</div>
-            <pre><code>${sql.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
+            <pre><code>${sql.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>
           </div>
           
           ${results && results.length > 0 ? `
@@ -454,22 +285,22 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
               <table>
                 <thead>
                   <tr>
-                    ${Object.keys(results[0] || {}).map(key => `<th>${key}</th>`).join('')}
+                    ${Object.keys(results[0] || {}).map(key => `<th>${key}</th>`).join("")}
                   </tr>
                 </thead>
                 <tbody>
                   ${results.map((row: any) => `
                     <tr>
                       ${Object.values(row || {}).map(val => {
-                        const displayVal = val === null || val === undefined ? '-' : (typeof val === 'number' ? val.toLocaleString() : String(val));
+                        const displayVal = val === null || val === undefined ? "-" : (typeof val === "number" ? val.toLocaleString() : String(val));
                         return `<td>${displayVal}</td>`;
-                      }).join('')}
+                      }).join("")}
                     </tr>
-                  `).join('')}
+                  `).join("")}
                 </tbody>
               </table>
             </div>
-          ` : '<div class="no-results">No results to display</div>'}
+          ` : "<div class=\"no-results\">No results to display</div>"}
           
           <button class="print-button" onclick="window.print()">🖨️ Print Report</button>
         </div>
@@ -477,10 +308,33 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
       </html>
     `;
     
-    const reportWindow = window.open('', '_blank');
+    const reportWindow = window.open("", "_blank");
     reportWindow?.document.write(reportHtml);
     reportWindow?.document.close();
   };
+
+  // UI GUARD: Block all chat UI if no connection or no schema loaded
+  if (!activeConnectionId) {
+    return (
+      <div className="chat-empty-state">
+        <div style={{padding: 48, textAlign: "center", color: "#9ab3cf", fontSize: 20}}>
+          <strong>Select a connection to start</strong>
+          <p style={{marginTop: 12, fontSize: 15}}>Go to <b>Connections</b> and choose a data source to unlock chat and insights.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!schema) {
+    return (
+      <div className="chat-empty-state">
+        <div style={{padding: 48, textAlign: "center", color: "#9ab3cf", fontSize: 20}}>
+          <strong>Load schema to enable intelligent querying</strong>
+          <p style={{marginTop: 12, fontSize: 15}}>Please discover or refresh the schema in the Databases page.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chat">
@@ -491,118 +345,88 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
         </div>
       )}
       <ConnectionHeader onDisconnect={onBackToDashboard} isPreviewMode={isPreviewMode} />
-      <div className="messages">
-        {messages.map(msg => (
-          <div key={msg.id} className={`message ${msg.type}`}>
-            <div className="message-avatar">
-              {msg.type === 'user' ? '👤' : '🤖'}
-            </div>
-            <div className="message-content">
-              <p className="message-text">{msg.text}</p>
-              
-              {msg.sql && (
-                <div className="sql-block">
-                  <div className="sql-header">📝 Generated SQL</div>
-                  <pre><code>{msg.sql || ''}</code></pre>
-                  <div className="sql-tabs">
-                    <button className="sql-tab" onClick={() => {
-                      if (msg.sql) {
-                        navigator.clipboard.writeText(msg.sql);
-                        alert('✓ SQL copied to clipboard!');
-                      }
-                    }}>📋 Copy</button>
-                    <button className="sql-tab" onClick={() => generateReport(msg.sql || '', msg.results || [])}>📊 Report</button>
-                    <button className="sql-tab" onClick={() => {
-                      const subject = 'SQL Query Report';
-                      const body = encodeURIComponent('Here is the SQL query:\n\n' + (msg.sql || '') + '\n\nResults:\n' + JSON.stringify(msg.results, null, 2));
-                      window.location.href = `mailto:?subject=${subject}&body=${body}`;
-                    }}>📧 Email</button>
-                    <button className="sql-tab" onClick={() => exportToCSV(msg.results || [])}>📥 Export CSV</button>
-                  </div>
-                </div>
-              )}
 
-              {msg.results && msg.results.length > 0 && (
-                <div className="results-block">
-                  <div className="results-header">📊 Results ({msg.results.length} rows)</div>
-                  <div className="results-table">
-                    <table>
-                      <thead>
-                        <tr>
-                          {Object.keys(msg.results[0] || {}).map(key => (
-                            <th key={key}>{msg.column_mapping?.[key] || key}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {msg.results.map((row, idx) => (
-                          <tr key={idx}>
-                            {Object.values(row || {}).map((val: any, i) => (
-                              <td key={i}>{val !== null && val !== undefined ? String(val) : '-'}</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+      <div className="mb-6 p-4 bg-[#0b1220] border border-[#1e293b] rounded-xl">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm text-gray-400">VoxCore Governance Status</div>
+          <div className="text-xs text-green-400">● Active</div>
+        </div>
 
-              {msg.chart && (
-                <div className="charts-grid-container">
-                  <div className="charts-grid">
-                    {msg.chart && msg.chart.type === 'bar' && (
-                      <div className="chart-grid-item">
-                        <div className="chart-grid-header" style={{cursor: 'pointer'}} onClick={() => setEnlargedChart({type: 'bar', title: msg.chart.title, data: msg.chart})}>📊 Bar</div>
-                        <ChartRenderer chart={msg.chart} onItemClick={handleChartItemClick} />
-                      </div>
-                    )}
-                    
-                    {msg.chart && msg.chart.type === 'bar' && msg.chart.series && msg.chart.series[0] && (
-                      <div className="chart-grid-item">
-                        <div className="chart-grid-header" style={{cursor: 'pointer'}} onClick={() => setEnlargedChart({type: 'pie', title: 'Proportion', data: {type: 'pie', title: 'Proportion', data: msg.chart.series[0].data.map((val: number, idx: number) => ({value: Number(val) || 0, name: msg.chart.xAxis.data[idx] || `Item ${idx + 1}`}))}})}>🥧 Pie</div>
-                        <ChartRenderer chart={{
-                          type: 'pie',
-                          title: 'Proportion',
-                          data: msg.chart.series[0].data.map((val: number, idx: number) => ({
-                            value: Number(val) || 0,
-                            name: msg.chart.xAxis.data[idx] || `Item ${idx + 1}`
-                          }))
-                        }} onItemClick={handleChartItemClick} />
-                      </div>
-                    )}
-                    
-                    {msg.chart && msg.chart.type === 'bar' && msg.chart.xAxis && msg.chart.series && (
-                      <div className="chart-grid-item">
-                        <div className="chart-grid-header" style={{cursor: 'pointer'}} onClick={() => setEnlargedChart({type: 'line', title: 'Trend - ' + msg.chart.title, data: {type: 'line', title: 'Trend - ' + msg.chart.title, xAxis: msg.chart.xAxis, yAxis: msg.chart.yAxis, series: msg.chart.series}})}>📈 Line</div>
-                        <ChartRenderer chart={{
-                          type: 'line',
-                          title: 'Trend - ' + msg.chart.title,
-                          xAxis: msg.chart.xAxis,
-                          yAxis: msg.chart.yAxis,
-                          series: msg.chart.series
-                        }} onItemClick={handleChartItemClick} />
-                      </div>
-                    )}
-                    
-                    {msg.chart && msg.chart.type === 'bar' && msg.chart.xAxis && msg.chart.series && (
-                      <div className="chart-grid-item">
-                        <div className="chart-grid-header" style={{cursor: 'pointer'}} onClick={() => setEnlargedChart({type: 'bar', title: 'Comparison - ' + msg.chart.title, data: msg.chart})}>📊 Comparison</div>
-                        <ChartRenderer chart={{
-                          type: 'bar',
-                          title: 'Comparison - ' + msg.chart.title,
-                          xAxis: msg.chart.xAxis,
-                          yAxis: msg.chart.yAxis,
-                          series: msg.chart.series
-                        }} onItemClick={handleChartItemClick} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+        <div className="text-xs text-blue-400 mb-3">Schema-aware query</div>
+
+        {govResponse?.risk_score !== undefined && (
+          <div className="mb-3">
+            <div className="text-xs text-gray-400 mb-1">Risk Level</div>
+            <div className="w-full h-2 bg-[#1e293b] rounded">
+              <div
+                className={`h-2 rounded ${
+                  govResponse.risk_score > 70
+                    ? "bg-red-500"
+                    : govResponse.risk_score > 40
+                    ? "bg-yellow-500"
+                    : "bg-green-500"
+                }`}
+                style={{ width: `${govResponse.risk_score}%` }}
+              />
             </div>
           </div>
-        ))}
+        )}
+
+        <div className="flex gap-4 text-xs mb-3">
+          <div className="text-green-400">✔ Destructive Blocking</div>
+          <div className="text-green-400">✔ SQL Validation</div>
+          <div className="text-green-400">✔ Risk Scoring</div>
+        </div>
+
+        {govResponse?.success === false && (
+          <div className="mt-3 text-red-400 text-sm">🚫 Execution blocked by policy</div>
+        )}
+
+        {govResponse?.risk_score !== undefined && (
+          <div className="mt-3 text-xs text-gray-400">
+            Last query evaluated at risk level {govResponse.risk_score}
+          </div>
+        )}
+      </div>
+
+      <div className="messages">
+        {messages.map((msg, idx) => {
+          // Try to surface intelligence for assistant messages with audit/schema_trust/learning
+          let auditPanel = null;
+          let trustBadge = null;
+          let learningSignal = null;
+          let parsed = {};
+          try {
+            parsed = typeof msg.results === "object" && msg.results && msg.results[0] && typeof msg.results[0] === "object" ? msg.results[0] : {};
+          } catch {}
+          // Prefer explicit response fields if present
+          const audit = msg.audit || parsed.audit;
+          const schemaTrust = msg.schema_trust || parsed.schema_trust;
+          const learned = msg.learning_applied || parsed.learning_applied;
+          if (audit) {
+            auditPanel = <AuditPanel audit={audit} />;
+          }
+          if (schemaTrust) {
+            trustBadge = <SchemaTrustBadge grade={schemaTrust.grade} score={schemaTrust.score} warnings={schemaTrust.warnings || []} />;
+          }
+          if (learned) {
+            learningSignal = <LearningSignal subtle={true} />;
+          }
+          return (
+            <div key={msg.id} className={`message ${msg.type}`}>
+              <div className="message-avatar">
+                {msg.type === "user" ? "👤" : "🤖"}
+              </div>
+              <div className="message-content">
+                <p className="message-text">{msg.text}</p>
+                {/* --- INTELLIGENCE SURFACING --- */}
+                {trustBadge}
+                {auditPanel}
+                {learningSignal}
+              </div>
+            </div>
+          );
+        })}
         {loading && (
           <div className="message assistant">
             <div className="message-avatar">🤖</div>
@@ -616,14 +440,52 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
         <div ref={messagesEndRef} />
       </div>
 
-      {enlargedChart && (
-        <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999}} onClick={() => setEnlargedChart(null)}>
-          <div style={{background: 'var(--bg-primary)', borderRadius: '8px', padding: '20px', width: '90%', height: '90%', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.3)', overflowY: 'auto'}} onClick={(e) => e.stopPropagation()}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-              <h2 style={{margin: 0, color: 'var(--text-primary)'}}>{enlargedChart.title}</h2>
-              <button onClick={() => setEnlargedChart(null)} style={{background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: 'var(--text-secondary)'}}>×</button>
+      {govResponse && (
+        <div className="gov-response-panel" style={{ margin: "12px 16px", padding: "12px", borderRadius: "8px", background: "#0b1221", border: "1px solid #1e2a42", color: "#e2e8f0" }}>
+          <div style={{ marginBottom: 8, fontWeight: 600 }}>Governance Metadata</div>
+          {govResponse.final_sql && (
+            <div style={{ marginBottom: 6 }}>
+              <div className="text-gray-400 text-xs">Final SQL</div>
+              <pre style={{ background: "#020617", color: "#8affb4", padding: 8, borderRadius: 4, overflowX: "auto" }}>{govResponse.final_sql}</pre>
             </div>
-            <div style={{flex: 1, width: '100%'}}>
+          )}
+          {govResponse.generated_sql && !govResponse.final_sql && (
+            <div style={{ marginBottom: 6 }}>
+              <div className="text-gray-400 text-xs">Generated SQL</div>
+              <pre style={{ background: "#020617", color: "#8affb4", padding: 8, borderRadius: 4, overflowX: "auto" }}>{govResponse.generated_sql}</pre>
+            </div>
+          )}
+          {govResponse.risk_score !== undefined && govResponse.risk_score !== null && (
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>
+              Risk Score:{" "}
+              <span style={{ color: govResponse.risk_score > 70 ? "#f87171" : govResponse.risk_score > 40 ? "#facc15" : "#34d399" }}>
+                {govResponse.risk_score}
+              </span>
+            </div>
+          )}
+          {govResponse.success === false && (
+            <div style={{ color: "#f87171", marginBottom: 6 }}>🚫 Query blocked by VoxCore</div>
+          )}
+          {govResponse.was_rewritten && (
+            <div style={{ color: "#38bdf8", fontSize: 12, marginBottom: 6 }}>🔄 SQL was rewritten for compatibility</div>
+          )}
+          {govResponse.results && Array.isArray(govResponse.results) && (
+            <div style={{ marginBottom: 0 }}>
+              <div className="text-gray-400 text-xs">Results</div>
+              <pre style={{ background: "#020617", color: "#cbd5e1", padding: 8, borderRadius: 4, overflowX: "auto" }}>{JSON.stringify(govResponse.results, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {enlargedChart && (
+        <div style={{position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999}} onClick={() => setEnlargedChart(null)}>
+          <div style={{background: "var(--bg-primary)", borderRadius: "8px", padding: "20px", width: "90%", height: "90%", display: "flex", flexDirection: "column", boxShadow: "0 10px 40px rgba(0,0,0,0.3)", overflowY: "auto"}} onClick={(e) => e.stopPropagation()}>
+            <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px"}}>
+              <h2 style={{margin: 0, color: "var(--text-primary)"}}>{enlargedChart.title}</h2>
+              <button onClick={() => setEnlargedChart(null)} style={{background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "var(--text-secondary)"}}>×</button>
+            </div>
+            <div style={{flex: 1, width: "100%"}}>
               <ChartRenderer chart={enlargedChart.data} onItemClick={handleChartItemClick} />
             </div>
           </div>
@@ -632,10 +494,10 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
 
       <ClientDetailsModal
         isOpen={!!clientDetails}
-        clientName={clientDetails?.name || ''}
+        clientName={clientDetails?.name || ""}
         clientValue={clientDetails?.value || 0}
-        chartType={clientDetails?.chartType || ''}
-        chartTitle={clientDetails?.chartTitle || ''}
+        chartType={clientDetails?.chartType || ""}
+        chartTitle={clientDetails?.chartTitle || ""}
         onClose={() => setClientDetails(null)}
       />
 
@@ -648,14 +510,15 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
             onKeyDown={handleKeyDown}
             placeholder="Ask anything... (e.g., 'Show top 10 customers by revenue')"
             rows={1}
+            disabled={!activeConnectionId}
           />
           <button 
             onClick={handleSendMessage}
-            disabled={!input.trim() || loading || !isConnected}
+            disabled={!input.trim() || loading || !activeConnectionId}
             className="send-btn"
-            title={!isConnected ? 'Connect to a database first' : ''}
+            title={!activeConnectionId ? "Select a connection first" : ""}
           >
-            {loading ? '⏳' : '➤'}
+            {loading ? "⏳" : "➤"}
           </button>
         </div>
         <p className="input-hint">💡 Tip: Press Enter to send, Shift+Enter for new line</p>
@@ -664,5 +527,5 @@ const Chat = forwardRef<any, ChatProps>(({ onBackToDashboard, isPreviewMode = fa
   );
 });
 
-Chat.displayName = 'Chat';
+Chat.displayName = "Chat";
 export default Chat;

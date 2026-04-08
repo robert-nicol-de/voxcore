@@ -1,205 +1,90 @@
-import { useEffect, useState } from 'react';
-import FirewallStats from '@/components/FirewallStats';
-import LiveActivity from '@/components/LiveActivity';
-import LiveQueryFlow, { type QueryFlowStage } from '@/components/LiveQueryFlow';
-import PageHeader from '@/components/layout/PageHeader';
-import { apiUrl } from '../lib/api';
-import { BASE_POLL_MS, isRetryableHttpFailure, nextPollDelayMs } from '../lib/polling';
-import PipelineAnimation from '@/components/governance/PipelineAnimation';
-import AnimatedKPI from '@/components/data/AnimatedKPI';
-import InsightCard from '@/components/feedback/InsightCard';
-import SmartLoading from '@/components/feedback/SmartLoading';
-import ErrorFeedback from '@/components/feedback/ErrorFeedback';
-import SignatureApproval from '@/components/feedback/SignatureApproval';
-import '@/components/motion/HoverMotion.css';
-import '@/components/motion/MotionSystem.css';
 
-type QueryActivity = {
-  time: string;
-  query: string;
-  risk?: "high" | "medium" | "low" | string;
-  status?: "allowed" | "blocked" | "blocked_sensitive" | "sensitive" | string;
-};
 
-type DashboardStats = {
-  databases: number;
-  queriesToday: number;
-  blockedQueries: number;
-  riskAlerts: number;
-};
+"use client";
+import { useEffect, useState } from "react";
+import StatusStack from "@/components/StatusStack";
+import { buildStatusStack } from "@/utils/buildStatusStack";
+
+function sortTasks(tasks: any[]) {
+  const priority = {
+    blocked: 4,
+    "in-progress": 3,
+    "not-started": 2,
+    done: 1,
+  };
+  return [...tasks].sort((a, b) => priority[b.status] - priority[a.status]);
+}
+
+function TaskDrawer({ task, onClose }: any) {
+  if (!task) return null;
+  return (
+    <div className="fixed right-0 top-0 w-[400px] h-full bg-zinc-900 p-6 z-50 shadow-xl">
+      <button onClick={onClose} className="mb-4 text-sm text-gray-400">Close</button>
+      <h2 className="text-xl font-bold mt-4">{task.description}</h2>
+      <div className="mt-4">
+        <p>Status: {task.status}</p>
+        <p>Owner: {task.owner || "human"}</p>
+      </div>
+      {task.definition_of_done && (
+        <div className="mt-4">
+          <h3 className="font-semibold mb-1">Definition of Done</h3>
+          <ul className="list-disc ml-4">
+            {task.definition_of_done.map((d: string, i: number) => (
+              <li key={i}>{d}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {task.owner === "ai" && task.reason && (
+        <div className="text-xs text-purple-300 mt-4">
+          🧠 {task.reason}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    databases: 0,
-    queriesToday: 0,
-    blockedQueries: 0,
-    riskAlerts: 0,
-  });
-  const [latestFlow, setLatestFlow] = useState<QueryFlowStage[]>(defaultDashboardFlow());
+  const [phases, setPhases] = useState<any[]>([]);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+
+  const fetchStatus = async () => {
+    const res = await fetch("/api/build/status");
+    const data = await res.json();
+    setPhases(data.phases);
+  };
 
   useEffect(() => {
-    let cancelled = false;
-    let timerId: number | undefined;
-    let failureStreak = 0;
-
-    const scheduleNext = () => {
-      if (cancelled) return;
-      timerId = window.setTimeout(() => {
-        void refreshDashboard();
-      }, nextPollDelayMs(failureStreak, BASE_POLL_MS));
-    };
-
-    const refreshDashboard = async () => {
-      const companyId = localStorage.getItem('voxcore_company_id') || 'default';
-      const workspaceId = localStorage.getItem('voxcore_workspace_id') || 'default';
-      const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
-
-      let databases = 0;
-      try {
-        const storedDatabases = localStorage.getItem('voxcloud_connected_databases');
-        databases = storedDatabases ? JSON.parse(storedDatabases).length : 0;
-      } catch {
-        databases = 0;
-      }
-
-      try {
-        const storedFlow = localStorage.getItem('voxcloud_latest_query_flow');
-        if (storedFlow) {
-          setLatestFlow(JSON.parse(storedFlow));
-        }
-
-        const logsResponse = await fetch(
-          apiUrl(`/api/v1/query/logs?company_id=${encodeURIComponent(companyId)}&workspace_id=${encodeURIComponent(workspaceId)}`),
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-
-        if (!logsResponse.ok) {
-          if (isRetryableHttpFailure(logsResponse.status)) {
-            failureStreak += 1;
-          } else {
-            failureStreak = 0;
-          }
-          setStats({
-            databases,
-            queriesToday: 0,
-            blockedQueries: 0,
-            riskAlerts: 0,
-          });
-          scheduleNext();
-          return;
-        }
-
-        const logsData = await logsResponse.json();
-        const fetchedLogs: QueryActivity[] = logsData.logs || [];
-
-        const blockedQueries = fetchedLogs.filter((q) => {
-          const status = (q.status || '').toLowerCase();
-          return status === 'blocked' || status === 'blocked_sensitive';
-        }).length;
-
-        const riskAlerts = fetchedLogs.filter((q) => (q.risk || '').toLowerCase() === 'high').length;
-
-        setStats({
-          databases,
-          queriesToday: fetchedLogs.length,
-          blockedQueries,
-          riskAlerts,
-        });
-
-        failureStreak = 0;
-        scheduleNext();
-      } catch {
-        failureStreak += 1;
-        setStats({
-          databases,
-          queriesToday: 0,
-          blockedQueries: 0,
-          riskAlerts: 0,
-        });
-        scheduleNext();
-      }
-    };
-
-    void refreshDashboard();
-
-    return () => {
-      cancelled = true;
-      if (timerId) {
-        window.clearTimeout(timerId);
-      }
-    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 5000);
+    return () => clearInterval(interval);
   }, []);
 
+  const tasks = sortTasks(buildStatusStack(phases));
+  const blockedCount = tasks.filter((t) => t.status === "blocked").length;
+
   return (
-    <div className="dashboard flex flex-col gap-6 p-0 relative overflow-hidden">
-      <PageHeader title="Dashboard" subtitle="AI Database Activity & Risk Monitoring" />
+    <div className="p-6 bg-black text-white min-h-screen">
+      <h1 className="text-3xl font-bold mb-6">VoxCore Build OS</h1>
 
-      {/* Demo: Smart Loading State */}
-      <SmartLoading />
-
-      {/* Demo: Animated Governance Pipeline */}
-      <div style={{ margin: '32px 0' }}>
-        <PipelineAnimation activeStep={2} />
-      </div>
-
-      {/* Demo: Animated KPI Cards */}
-      <div className="dashboard-cards grid grid-cols-4 gap-5">
-        <div className="card dashboard-metric-card">
-          <h4 className="text-muted text-xs uppercase tracking-wide font-semibold mb-1">Connected Databases</h4>
-          <AnimatedKPI value={stats.databases} />
+      {/* 🚨 Alerts */}
+      {blockedCount > 0 && (
+        <div className="bg-red-900 p-3 rounded mb-4">
+          🚨 {blockedCount} blocked tasks need attention
         </div>
-        <div className="card dashboard-metric-card">
-          <h4 className="text-muted text-xs uppercase tracking-wide font-semibold mb-1">Queries Today</h4>
-          <AnimatedKPI value={stats.queriesToday} />
-        </div>
-        <div className="card dashboard-metric-card">
-          <h4 className="text-muted text-xs uppercase tracking-wide font-semibold mb-1">Blocked Queries</h4>
-          <AnimatedKPI value={stats.blockedQueries} />
-        </div>
-        <div className="card dashboard-metric-card">
-          <h4 className="text-muted text-xs uppercase tracking-wide font-semibold mb-1">Risk Alerts</h4>
-          <AnimatedKPI value={stats.riskAlerts} />
-        </div>
-      </div>
+      )}
 
-      {/* Demo: AI Insight Highlights */}
-      <InsightCard type="risk" title="High Risk Query Detected" message="DROP TABLE orders\nBlocked by policy" />
-      <InsightCard type="success" title="Query Approved" message="Policy checks passed. Safe for production." />
-
-      {/* Demo: Error Feedback */}
-      <ErrorFeedback reason="Destructive SQL detected" />
-
-      {/* Demo: Signature Approval Animation */}
-      <SignatureApproval />
-
-      {/* Original components */}
-      <LiveQueryFlow
-        title="AI Query Flow"
-        subtitle="Latest query moving through the VoxCore security pipeline."
-        stages={latestFlow}
+      <StatusStack
+        tasks={tasks}
+        onSelectTask={setSelectedTask}
       />
-      <FirewallStats />
-      <LiveActivity />
+
+      {selectedTask && (
+        <TaskDrawer
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+        />
+      )}
     </div>
   );
-}
-
-function Metric({ title, value, danger = false }: { title: string; value: number; danger?: boolean }) {
-  return (
-    <div className="card dashboard-metric-card bg-surface border-default rounded-md p-6 flex flex-col gap-2 shadow-sm">
-      <h4 className="text-muted text-xs uppercase tracking-wide font-semibold mb-1">{title}</h4>
-      <span className={`card-number${danger ? ' danger' : ''} text-2xl font-bold ${danger ? 'text-error' : 'text-accent-primary'}`}>{value}</span>
-    </div>
-  );
-}
-
-function defaultDashboardFlow(): QueryFlowStage[] {
-  return [
-    { label: 'User Prompt', status: 'idle', detail: 'Run a query from SQL Assistant' },
-    { label: 'AI Generated SQL', status: 'idle', detail: 'Waiting for generation' },
-    { label: 'Risk Engine', status: 'idle', detail: 'Waiting for analysis' },
-    { label: 'Policy Engine', status: 'idle', detail: 'Waiting for policy check' },
-    { label: 'Sandbox', status: 'idle', detail: 'Waiting for preview' },
-    { label: 'Database', status: 'idle', detail: 'Waiting for execution' },
-  ];
 }

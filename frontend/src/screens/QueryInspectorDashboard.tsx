@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { apiUrl } from '../lib/api';
+import React, { useEffect, useState, useCallback } from "react";
+import { apiUrl } from "../lib/api";
+import Table from "../components/Table";
 
 interface RecentQuery {
   id: number;
@@ -64,32 +65,32 @@ interface Props {
 }
 
 const RISK_COLORS: Record<string, string> = {
-  LOW: '#22c55e',
-  MEDIUM: '#f59e0b',
-  HIGH: '#f97316',
-  CRITICAL: '#ef4444',
+  LOW: "#22c55e",
+  MEDIUM: "#f59e0b",
+  HIGH: "#f97316",
+  CRITICAL: "#ef4444",
 };
 
 const RISK_BG: Record<string, string> = {
-  LOW: 'rgba(34,197,94,0.15)',
-  MEDIUM: 'rgba(245,158,11,0.15)',
-  HIGH: 'rgba(249,115,22,0.15)',
-  CRITICAL: 'rgba(239,68,68,0.15)',
+  LOW: "rgba(34,197,94,0.15)",
+  MEDIUM: "rgba(245,158,11,0.15)",
+  HIGH: "rgba(249,115,22,0.15)",
+  CRITICAL: "rgba(239,68,68,0.15)",
 };
 
 function RiskBadge({ level }: { level: string | null }) {
-  const l = (level || 'UNKNOWN').toUpperCase();
+  const l = (level || "UNKNOWN").toUpperCase();
   return (
     <span
       style={{
-        display: 'inline-block',
-        padding: '2px 10px',
+        display: "inline-block",
+        padding: "2px 10px",
         borderRadius: 12,
         fontSize: 12,
         fontWeight: 700,
-        color: RISK_COLORS[l] || '#94a3b8',
-        background: RISK_BG[l] || 'rgba(148,163,184,0.1)',
-        border: `1px solid ${RISK_COLORS[l] || '#94a3b8'}`,
+        color: RISK_COLORS[l] || "#94a3b8",
+        background: RISK_BG[l] || "rgba(148,163,184,0.1)",
+        border: `1px solid ${RISK_COLORS[l] || "#94a3b8"}`,
         letterSpacing: 0.5,
       }}
     >
@@ -109,61 +110,63 @@ function MetricCard({
   sub?: string;
   accent?: string;
 }) {
+  return (
+    <div
+      style={{
+        padding: "16px 20px",
+        borderRadius: 12,
+        border: `1px solid ${accent || "#64748b"}33`,
+        background: `${accent || "#64748b"}08`,
+      }}
+    >
+      <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 700, marginBottom: sub ? 4 : 0 }}>
+        {value}
+      </div>
+      {sub && <div style={{ fontSize: 11, color: "#64748b" }}>{sub}</div>}
+    </div>
+  );
+}
+
+function QueryInspectorDashboard({ token }: Props) {
+  const [data, setData] = useState<InspectorData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [actionMsg, setActionMsg] = useState("");
+
+  const metrics = data?.system_metrics || {
+    queries_today: 0,
+    blocked_total: 0,
+    avg_latency_ms: 0,
+    pending_approvals: 0,
+  };
+  const dist = data?.risk_distribution || { total: 0, distribution: {} };
+  const orders = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/query-inspector`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = (await res.json()) as InspectorData;
+      setData(json);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return (
+    <div style={{ padding: "32px 24px", background: "#0f172a", color: "#e2e8f0" }}>
       {/* Recent Queries Table */}
       <section>
         <h2 className="text-base font-semibold mb-3 text-muted">Recent Queries (last 50)</h2>
-        <div className="bg-platform-card border border-platform-border rounded-xl overflow-hidden">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-platform-card/80">
-                {['Time', 'Agent', 'Risk', 'Latency', 'Blocked', 'Query'].map((h) => (
-                  <th
-                    key={h}
-                    className="py-3 px-4 text-left text-muted font-semibold border-b border-platform-border"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data!.recent_queries.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-6 px-4 text-center text-muted">No queries logged yet.</td>
-                </tr>
-              ) : (
-                data!.recent_queries.map((row, i) => (
-                  <tr
-                    key={row.id}
-                    className={i % 2 === 0 ? '' : 'bg-platform-card/80'}
-                  >
-                    <td className="py-2 px-4 text-muted whitespace-nowrap">{new Date(row.created_at).toLocaleString()}</td>
-                    <td className="py-2 px-4">{row.user_id || '—'}</td>
-                    <td className="py-2 px-4"><RiskBadge level={row.risk_level} /></td>
-                    <td className="py-2 px-4 text-muted">
-                      {row.execution_time != null
-                        ? `${Math.round(row.execution_time * 1000)} ms`
-                        : '—'}
-                    </td>
-                    <td className="py-2 px-4">
-                      {row.blocked ? (
-                        <span className="text-error font-bold">✕</span>
-                      ) : (
-                        <span className="text-success">✓</span>
-                      )}
-                    </td>
-                    <td
-                      className="py-2 px-4 max-w-[340px] truncate font-mono text-primary-content"
-                      title={row.query}
-                    >
-                      {row.query}
-                    </td>
-                  </tr>
-                ))}
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table data={data ? data.recent_queries : []} loading={!data} />
       </section>
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
@@ -183,7 +186,7 @@ function MetricCard({
 
       {actionMsg && (
         <div
-          className={`rounded-lg px-5 py-3 mb-6 text-sm font-semibold border ${actionMsg.startsWith('Error') ? 'bg-error/10 border-error/30 text-error' : 'bg-success/10 border-success/30 text-success'}`}
+          className={`rounded-lg px-5 py-3 mb-6 text-sm font-semibold border ${actionMsg.startsWith("Error") ? "bg-error/10 border-error/30 text-error" : "bg-success/10 border-success/30 text-success"}`}
         >
           {actionMsg}
         </div>
@@ -197,7 +200,7 @@ function MetricCard({
         </div>
         <div className="card bg-platform-card border border-platform-border rounded-xl p-6 flex-1 min-w-[150px]">
           <div className="text-sm text-muted mb-1">Blocked Queries</div>
-          <div className={`text-2xl font-bold ${metrics.blocked_total > 0 ? 'text-error' : 'text-primary-content'}`}>{metrics.blocked_total}</div>
+          <div className={`text-2xl font-bold ${metrics.blocked_total > 0 ? "text-error" : "text-primary-content"}`}>{metrics.blocked_total}</div>
         </div>
         <div className="card bg-platform-card border border-platform-border rounded-xl p-6 flex-1 min-w-[150px]">
           <div className="text-sm text-muted mb-1">Avg Latency</div>
@@ -205,7 +208,7 @@ function MetricCard({
         </div>
         <div className="card bg-platform-card border border-platform-border rounded-xl p-6 flex-1 min-w-[150px]">
           <div className="text-sm text-muted mb-1">Pending Approvals</div>
-          <div className={`text-2xl font-bold ${metrics.pending_approvals > 0 ? 'text-warning' : 'text-primary-content'}`}>{metrics.pending_approvals}</div>
+          <div className={`text-2xl font-bold ${metrics.pending_approvals > 0 ? "text-warning" : "text-primary-content"}`}>{metrics.pending_approvals}</div>
         </div>
       </div>
 
@@ -247,140 +250,42 @@ function MetricCard({
       </section>
 
       {/* Pending Approvals */}
-      {data!.pending_approvals.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-base font-semibold mb-3 text-warning">⏳ Pending Approvals ({data!.pending_approvals.length})</h2>
-          <div className="bg-platform-card border border-warning/30 rounded-xl overflow-hidden">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="bg-warning/10">
-                  {['#', 'Agent', 'Risk', 'Score', 'Query', 'Submitted', 'Actions'].map((h) => (
-                    <th
-                      key={h}
-                      className="py-3 px-4 text-left text-muted font-semibold border-b border-platform-border"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data!.pending_approvals.map((row, i) => (
-                  <tr
-                    key={row.id}
-                    className={i % 2 === 0 ? '' : 'bg-platform-card/80'}
-                  >
-                    <td className="py-3 px-4 text-muted">{row.id}</td>
-                    <td className="py-3 px-4">{row.ai_agent || row.user_id || 'anonymous'}</td>
-                    <td className="py-3 px-4"><RiskBadge level={row.risk_level} /></td>
-                    <td className="py-3 px-4 text-warning font-bold">{row.risk_score}</td>
-                    <td
-                      className="py-3 px-4 max-w-[280px] truncate font-mono text-primary-content"
-                      title={row.query}
-                    >
-                      {row.query || row.query_text || '—'}
-                    </td>
-                    <td className="py-3 px-4 text-muted whitespace-nowrap">{new Date(row.submitted_at).toLocaleString()}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleApproval(row.id, 'approve')}
-                          className="px-4 py-1 rounded-md border border-success bg-success/10 text-success text-xs font-semibold hover:bg-success/20 transition"
-                        >
-                          ✓ Approve
-                        </button>
-                        <button
-                          onClick={() => handleApproval(row.id, 'reject')}
-                          className="px-4 py-1 rounded-md border border-error bg-error/10 text-error text-xs font-semibold hover:bg-error/20 transition"
-                        >
-                          ✕ Reject
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+      <section className="mb-8">
+        <h2 className="text-base font-semibold mb-3 text-warning">⏳ Pending Approvals ({data ? data.pending_approvals.length : 0})</h2>
+        <Table data={data ? data.pending_approvals : []} loading={!data} />
+      </section>
 
       {/* Firewall Audit */}
       <section className="mb-8">
         <h2 className="text-base font-semibold mb-3 text-muted">🛡 Firewall Audit Log</h2>
-        <div className="bg-platform-card border border-platform-border rounded-xl overflow-hidden">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-platform-card/80">
-                {['Time', 'Agent', 'Stage', 'Status', 'Type', 'Query'].map((h) => (
-                  <th
-                    key={h}
-                    className="py-3 px-4 text-left text-muted font-semibold border-b border-platform-border"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {!data!.firewall_audit || data!.firewall_audit.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-4 px-4 text-center text-muted">No firewall audit events yet.</td>
-                </tr>
-              ) : (
-                data!.firewall_audit.map((evt, i) => (
-                  <tr
-                    key={`${evt.timestamp}-${i}`}
-                    className={i % 2 === 0 ? '' : 'bg-platform-card/80'}
-                  >
-                    <td className="py-2 px-4 text-muted whitespace-nowrap">{new Date(evt.timestamp).toLocaleString()}</td>
-                    <td className="py-2 px-4">{evt.agent || 'anonymous'}</td>
-                    <td className="py-2 px-4 text-primary-content">{evt.stage || '—'}</td>
-                    <td className="py-2 px-4">
-                      <span className={`text-xs font-bold ${evt.status === 'allowed' ? 'text-success' : evt.status === 'approval_required' ? 'text-warning' : 'text-error'}`}>
-                        {(evt.status || 'unknown').toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="py-2 px-4">{evt.query_type || '—'}</td>
-                    <td
-                      className="py-2 px-4 max-w-[360px] truncate font-mono text-primary-content"
-                      title={evt.query}
-                    >
-                      {evt.query || '—'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table data={data ? data.firewall_audit : []} loading={!data} />
       </section>
 
       {/* Recent Queries Table */}
       <section>
-        <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 14px', color: '#cbd5e1' }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 14px", color: "#cbd5e1" }}>
           Recent Queries (last 50)
         </h2>
         <div
           style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 12,
-            overflow: 'hidden',
+            overflow: "hidden",
           }}
         >
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
-              <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
-                {['Time', 'Agent', 'Risk', 'Latency', 'Blocked', 'Query'].map((h) => (
+              <tr style={{ background: "rgba(255,255,255,0.04)" }}>
+                {["Time", "Agent", "Risk", "Latency", "Blocked", "Query"].map((h) => (
                   <th
                     key={h}
                     style={{
-                      padding: '10px 14px',
-                      textAlign: 'left',
-                      color: '#94a3b8',
+                      padding: "10px 14px",
+                      textAlign: "left",
+                      color: "#94a3b8",
                       fontWeight: 600,
-                      borderBottom: '1px solid rgba(255,255,255,0.06)',
+                      borderBottom: "1px solid rgba(255,255,255,0.06)",
                     }}
                   >
                     {h}
@@ -393,7 +298,7 @@ function MetricCard({
                 <tr>
                   <td
                     colSpan={6}
-                    style={{ padding: '24px 14px', textAlign: 'center', color: '#64748b' }}
+                    style={{ padding: "24px 14px", textAlign: "center", color: "#64748b" }}
                   >
                     No queries logged yet.
                   </td>
@@ -403,38 +308,38 @@ function MetricCard({
                   <tr
                     key={row.id}
                     style={{
-                      borderBottom: '1px solid rgba(255,255,255,0.04)',
-                      background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)',
+                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)",
                     }}
                   >
-                    <td style={{ padding: '9px 14px', color: '#64748b', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: "9px 14px", color: "#64748b", whiteSpace: "nowrap" }}>
                       {new Date(row.created_at).toLocaleString()}
                     </td>
-                    <td style={{ padding: '9px 14px' }}>{row.user_id || '—'}</td>
-                    <td style={{ padding: '9px 14px' }}>
+                    <td style={{ padding: "9px 14px" }}>{row.user_id || "—"}</td>
+                    <td style={{ padding: "9px 14px" }}>
                       <RiskBadge level={row.risk_level} />
                     </td>
-                    <td style={{ padding: '9px 14px', color: '#94a3b8' }}>
+                    <td style={{ padding: "9px 14px", color: "#94a3b8" }}>
                       {row.execution_time != null
                         ? `${Math.round(row.execution_time * 1000)} ms`
-                        : '—'}
+                        : "—"}
                     </td>
-                    <td style={{ padding: '9px 14px' }}>
+                    <td style={{ padding: "9px 14px" }}>
                       {row.blocked ? (
-                        <span style={{ color: '#ef4444', fontWeight: 700 }}>✕</span>
+                        <span style={{ color: "#ef4444", fontWeight: 700 }}>✕</span>
                       ) : (
-                        <span style={{ color: '#22c55e' }}>✓</span>
+                        <span style={{ color: "#22c55e" }}>✓</span>
                       )}
                     </td>
                     <td
                       style={{
-                        padding: '9px 14px',
+                        padding: "9px 14px",
                         maxWidth: 340,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        fontFamily: 'monospace',
-                        color: '#cbd5e1',
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        fontFamily: "monospace",
+                        color: "#cbd5e1",
                       }}
                       title={row.query}
                     >

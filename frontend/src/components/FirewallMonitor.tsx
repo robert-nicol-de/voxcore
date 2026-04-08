@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import './FirewallMonitor.css';
+import React, { useState, useEffect } from "react";
+import "./FirewallMonitor.css";
 
 interface FirewallStats {
   queriesScanned: number;
@@ -32,7 +32,7 @@ export const FirewallMonitor: React.FC = () => {
 
   const blockRate = stats.queriesScanned > 0 
     ? ((stats.blocked / stats.queriesScanned) * 100).toFixed(1) 
-    : '0.0';
+    : "0.0";
 
   return (
     <div className="firewall-monitor">

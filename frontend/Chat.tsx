@@ -1,183 +1,146 @@
-"""Frontend React component - Chat interface"""
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
+import { sendMessage } from '../api/voxcoreClient';
+import { getSessionId } from '../api/session';
+import ChartRenderer from '../components/ChartRenderer';
 import './Chat.css';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-  sql?: string;
+type VoxResponse = {
+  message: string;
   data?: any[];
   chart?: any;
-}
+  suggestions?: string[];
+};
 
-export const Chat: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
+const Chat: React.FC = () => {
+  const [messages, setMessages] = useState<VoxResponse[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedWarehouse, setSelectedWarehouse] = useState('snowflake');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [streamingMessage, setStreamingMessage] = useState<string | null>(null);
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  const sessionId = getSessionId();
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  function streamText(fullText: string, onUpdate: (text: string) => void) {
+    let index = 0;
+
+    const interval = setInterval(() => {
+      index += 1;
+      onUpdate(fullText.slice(0, index));
+
+      if (index >= fullText.length) {
+        clearInterval(interval);
+      }
+    }, 10);
+  }
+
+  async function handleSendMessage(e: React.FormEvent) {
     e.preventDefault();
-    
     if (!input.trim()) return;
 
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
     setLoading(true);
+    setError(null);
 
     try {
-      // Call API
-      const response = await fetch('/api/v1/query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: input,
-          warehouse: selectedWarehouse,
-          execute: true,
-          dry_run: true,
-          format: 'table',
-        }),
+      const res = await sendMessage({
+        sessionId,
+        message: input
       });
 
-      const result = await response.json();
+      setStreamingMessage("");
 
-      // Add assistant message
-      const assistantMessage: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: result.explanation || 'Query executed successfully',
-        timestamp: new Date(),
-        sql: result.sql,
-        data: result.data,
-        chart: result.chart,
-      };
+      streamText(res.message, (partial) => {
+        setStreamingMessage(partial);
+      });
 
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: 'Sorry, there was an error processing your request.',
-        timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
+      setInput('');
+
+      setTimeout(() => {
+        setMessages(prev => [...prev, res]);
+        setStreamingMessage(null);
+      }, res.message.length * 10);
+
+    } catch {
+      setError("Something went wrong. Try again.");
+      setStreamingMessage(null);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <div className="chat-container">
-      <div className="chat-header">
-        <h1>VoxQuery</h1>
-        <select 
-          value={selectedWarehouse}
-          onChange={(e) => setSelectedWarehouse(e.target.value)}
-          className="warehouse-selector"
-        >
-          <option value="snowflake">Snowflake</option>
-          <option value="redshift">AWS Redshift</option>
-          <option value="bigquery">Google BigQuery</option>
-          <option value="postgres">PostgreSQL</option>
-          <option value="sqlserver">SQL Server</option>
-        </select>
-      </div>
 
-      <div className="messages">
-        {messages.map(msg => (
-          <div key={msg.id} className={`message ${msg.role}`}>
-            <div className="message-content">
-              <p>{msg.content}</p>
-              
-              {msg.sql && (
-                <div className="sql-display">
-                  <details>
-                    <summary>Generated SQL</summary>
-                    <pre><code>{msg.sql}</code></pre>
-                  </details>
-                </div>
-              )}
-
-              {msg.data && (
-                <div className="results-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        {Object.keys(msg.data[0]).map(col => (
-                          <th key={col}>{col}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {msg.data.slice(0, 10).map((row, idx) => (
-                        <tr key={idx}>
-                          {Object.values(row).map((val, idx) => (
-                            <td key={idx}>{String(val)}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {msg.data.length > 10 && (
-                    <p className="row-count">Showing 10 of {msg.data.length} rows</p>
-                  )}
-                </div>
-              )}
-
-              {msg.chart && (
-                <div className="chart-container">
-                  {/* Render Vega-Lite chart here using vega-embed library */}
-                  <p>Chart would render here</p>
-                </div>
-              )}
-            </div>
-            <span className="timestamp">{msg.timestamp.toLocaleTimeString()}</span>
-          </div>
-        ))}
-        
-        {loading && (
-          <div className="message assistant">
-            <div className="loading">
-              <span></span><span></span><span></span>
-            </div>
-          </div>
-        )}
-        
-        <div ref={messagesEndRef} />
-      </div>
-
+      {/* INPUT */}
       <form onSubmit={handleSendMessage} className="input-form">
         <input
-          type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question... e.g., 'Show top 10 clients by revenue'"
+          placeholder="Ask VoxCore..."
           disabled={loading}
         />
         <button type="submit" disabled={loading}>
-          Send
+          {loading ? "Thinking..." : "Ask"}
         </button>
       </form>
+
+      {/* ERROR */}
+      {error && <div className="error">{error}</div>}
+
+      {/* MESSAGES */}
+      <div className="messages">
+
+        {/* STREAMING MESSAGE */}
+        {streamingMessage && (
+          <div className="message">
+            <div className="narrative">
+              {streamingMessage}
+              <span className="cursor">|</span>
+            </div>
+          </div>
+        )}
+
+        {/* FINAL MESSAGES */}
+        {messages.map((msg, i) => (
+          <div key={i} className="message">
+
+            <div className="narrative">
+              {msg.message}
+            </div>
+
+            {msg.data && (
+              <div className="data">
+                <pre>{JSON.stringify(msg.data, null, 2)}</pre>
+              </div>
+            )}
+
+            {msg.chart && (
+              <ChartRenderer chart={msg.chart} />
+            )}
+
+            {msg.suggestions && (
+              <div className="suggestions">
+                {msg.suggestions.map((s, i) => (
+                  <button key={i} onClick={() => setInput(s)}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+
+          </div>
+        ))}
+
+        {/* LOADING */}
+        {loading && !streamingMessage && (
+          <div className="loading">
+            <span className="dot"></span>
+            <span className="dot"></span>
+            <span className="dot"></span>
+          </div>
+        )}
+
+      </div>
+
     </div>
   );
 };

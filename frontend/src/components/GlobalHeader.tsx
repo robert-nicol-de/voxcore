@@ -1,5 +1,5 @@
 import React from "react";
-import './GlobalHeader.css';
+import "./GlobalHeader.css";
 const GlobalHeader: React.FC = () => (
   <header className="global-header">
     <div className="header-left">

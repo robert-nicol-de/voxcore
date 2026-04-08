@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import './PoliciesManager.css';
-import { apiUrl, isApiNotFound } from '../lib/api';
+import React, { useEffect, useMemo, useState } from "react";
+import "./PoliciesManager.css";
+import { apiUrl, isApiNotFound } from "../lib/api";
 
 interface CompanyPolicies {
   block_destructive_queries: {
@@ -42,15 +42,15 @@ interface QueryTestResult {
 const DEFAULT_POLICIES: CompanyPolicies = {
   block_destructive_queries: {
     enabled: true,
-    blocked_keywords: ['drop', 'truncate', 'alter', 'delete'],
+    blocked_keywords: ["drop", "truncate", "alter", "delete"],
   },
   protect_sensitive_columns: {
     enabled: true,
-    blocked_columns: ['password', 'ssn', 'social_security_number', 'credit_card', 'credit_card_number', 'salary', 'private_key', 'api_key', 'secret_key', 'access_token', 'refresh_token', 'bank_account', 'routing_number', 'email'],
+    blocked_columns: ["password", "ssn", "social_security_number", "credit_card", "credit_card_number", "salary", "private_key", "api_key", "secret_key", "access_token", "refresh_token", "bank_account", "routing_number", "email"],
   },
   read_only_ai_mode: {
     enabled: false,
-    allowed_statements: ['select', 'with'],
+    allowed_statements: ["select", "with"],
   },
   query_result_limits: {
     enabled: false,
@@ -58,7 +58,7 @@ const DEFAULT_POLICIES: CompanyPolicies = {
   },
   query_approval_mode: {
     enabled: false,
-    require_for_query_types: ['select'],
+    require_for_query_types: ["select"],
     require_for_tables: [],
   },
   risk_based_approval: {
@@ -69,48 +69,48 @@ const DEFAULT_POLICIES: CompanyPolicies = {
 
 const normalizeCsv = (value: string): string[] =>
   value
-    .split(',')
+    .split(",")
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
 
 const getCompanyId = async (): Promise<string> => {
-  const cached = localStorage.getItem('voxcore_company_id');
+  const cached = localStorage.getItem("voxcore_company_id");
   if (cached) {
     return cached;
   }
 
-  const token = localStorage.getItem('voxcore_token');
+  const token = localStorage.getItem("voxcore_token");
   if (!token) {
-    return 'default';
+    return "default";
   }
 
   try {
-    const response = await fetch(apiUrl('/api/v1/auth/me'), {
+    const response = await fetch(apiUrl("/api/v1/auth/me"), {
       headers: { Authorization: `Bearer ${token}` },
     });
 
     if (response.ok) {
       const profile = await response.json();
-      const companyId = String(profile.company_id ?? 'default');
-      localStorage.setItem('voxcore_company_id', companyId);
+      const companyId = String(profile.company_id ?? "default");
+      localStorage.setItem("voxcore_company_id", companyId);
       return companyId;
     }
   } catch (error) {
-    console.warn('Failed to resolve company id for policy manager', error);
+    console.warn("Failed to resolve company id for policy manager", error);
   }
 
-  return 'default';
+  return "default";
 };
 
 export const PoliciesManager: React.FC = () => {
-  const [companyId, setCompanyId] = useState<string>('default');
+  const [companyId, setCompanyId] = useState<string>("default");
   const [policies, setPolicies] = useState<CompanyPolicies>(DEFAULT_POLICIES);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
-  const [message, setMessage] = useState<string>('');
+  const [error, setError] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
 
-  const [testQuery, setTestQuery] = useState<string>('SELECT * FROM customers');
+  const [testQuery, setTestQuery] = useState<string>("SELECT * FROM customers");
   const [testingQuery, setTestingQuery] = useState<boolean>(false);
   const [testResult, setTestResult] = useState<QueryTestResult | null>(null);
 
@@ -128,8 +128,8 @@ export const PoliciesManager: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      setError('');
-      setMessage('');
+      setError("");
+      setMessage("");
 
       const resolvedCompanyId = await getCompanyId();
       setCompanyId(resolvedCompanyId);
@@ -141,12 +141,12 @@ export const PoliciesManager: React.FC = () => {
           return;
         }
         if (!response.ok) {
-          throw new Error('Failed to load policy configuration');
+          throw new Error("Failed to load policy configuration");
         }
         const data = await response.json();
         setPolicies(data.policies || DEFAULT_POLICIES);
       } catch (err: any) {
-        setError(err?.message || 'Failed to load policies');
+        setError(err?.message || "Failed to load policies");
         setPolicies(DEFAULT_POLICIES);
       } finally {
         setLoading(false);
@@ -168,24 +168,24 @@ export const PoliciesManager: React.FC = () => {
 
   const savePolicies = async () => {
     setSaving(true);
-    setError('');
-    setMessage('');
+    setError("");
+    setMessage("");
     try {
       const response = await fetch(apiUrl(`/api/v1/policies/${companyId}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ policies }),
       });
       if (isApiNotFound(response)) {
-        setMessage('Policy service is unavailable in this deployment.');
+        setMessage("Policy service is unavailable in this deployment.");
         return;
       }
       if (!response.ok) {
-        throw new Error('Failed to save policies');
+        throw new Error("Failed to save policies");
       }
-      setMessage('Policies saved successfully');
+      setMessage("Policies saved successfully");
     } catch (err: any) {
-      setError(err?.message || 'Failed to save policies');
+      setError(err?.message || "Failed to save policies");
     } finally {
       setSaving(false);
     }
@@ -194,25 +194,25 @@ export const PoliciesManager: React.FC = () => {
   const runPolicyTest = async () => {
     if (!testQuery.trim()) return;
     setTestingQuery(true);
-    setError('');
+    setError("");
     setTestResult(null);
     try {
       const response = await fetch(apiUrl(`/api/v1/policies/${companyId}/test-query`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: testQuery }),
       });
       if (isApiNotFound(response)) {
-        setMessage('Policy test is unavailable in this deployment.');
+        setMessage("Policy test is unavailable in this deployment.");
         return;
       }
       if (!response.ok) {
-        throw new Error('Policy test request failed');
+        throw new Error("Policy test request failed");
       }
       const data = await response.json();
       setTestResult(data);
     } catch (err: any) {
-      setError(err?.message || 'Failed to test query');
+      setError(err?.message || "Failed to test query");
     } finally {
       setTestingQuery(false);
     }
@@ -254,14 +254,14 @@ export const PoliciesManager: React.FC = () => {
       {message && <div className="policy-banner success">{message}</div>}
 
       <div className="policies-list">
-        <div className={`policy-card ${policies.block_destructive_queries.enabled ? 'enabled' : 'disabled'}`}>
+        <div className={`policy-card ${policies.block_destructive_queries.enabled ? "enabled" : "disabled"}`}>
           <div className="policy-header">
             <div className="policy-left">
               <div className="policy-toggle">
                 <input
                   type="checkbox"
                   checked={policies.block_destructive_queries.enabled}
-                  onChange={(e) => updatePolicyState('block_destructive_queries', { enabled: e.target.checked })}
+                  onChange={(e) => updatePolicyState("block_destructive_queries", { enabled: e.target.checked })}
                   id="toggle-destructive"
                 />
                 <label htmlFor="toggle-destructive"></label>
@@ -277,9 +277,9 @@ export const PoliciesManager: React.FC = () => {
               <h4>Blocked Keywords (comma separated)</h4>
               <input
                 className="policy-input"
-                value={policies.block_destructive_queries.blocked_keywords.join(', ')}
+                value={policies.block_destructive_queries.blocked_keywords.join(", ")}
                 onChange={(e) =>
-                  updatePolicyState('block_destructive_queries', {
+                  updatePolicyState("block_destructive_queries", {
                     blocked_keywords: normalizeCsv(e.target.value),
                   })
                 }
@@ -289,14 +289,14 @@ export const PoliciesManager: React.FC = () => {
           </div>
         </div>
 
-        <div className={`policy-card ${policies.protect_sensitive_columns.enabled ? 'enabled' : 'disabled'}`}>
+        <div className={`policy-card ${policies.protect_sensitive_columns.enabled ? "enabled" : "disabled"}`}>
           <div className="policy-header">
             <div className="policy-left">
               <div className="policy-toggle">
                 <input
                   type="checkbox"
                   checked={policies.protect_sensitive_columns.enabled}
-                  onChange={(e) => updatePolicyState('protect_sensitive_columns', { enabled: e.target.checked })}
+                  onChange={(e) => updatePolicyState("protect_sensitive_columns", { enabled: e.target.checked })}
                   id="toggle-sensitive"
                 />
                 <label htmlFor="toggle-sensitive"></label>
@@ -312,9 +312,9 @@ export const PoliciesManager: React.FC = () => {
               <h4>Blocked Columns (comma separated)</h4>
               <input
                 className="policy-input"
-                value={policies.protect_sensitive_columns.blocked_columns.join(', ')}
+                value={policies.protect_sensitive_columns.blocked_columns.join(", ")}
                 onChange={(e) =>
-                  updatePolicyState('protect_sensitive_columns', {
+                  updatePolicyState("protect_sensitive_columns", {
                     blocked_columns: normalizeCsv(e.target.value),
                   })
                 }
@@ -324,14 +324,14 @@ export const PoliciesManager: React.FC = () => {
           </div>
         </div>
 
-        <div className={`policy-card ${policies.read_only_ai_mode.enabled ? 'enabled' : 'disabled'}`}>
+        <div className={`policy-card ${policies.read_only_ai_mode.enabled ? "enabled" : "disabled"}`}>
           <div className="policy-header">
             <div className="policy-left">
               <div className="policy-toggle">
                 <input
                   type="checkbox"
                   checked={policies.read_only_ai_mode.enabled}
-                  onChange={(e) => updatePolicyState('read_only_ai_mode', { enabled: e.target.checked })}
+                  onChange={(e) => updatePolicyState("read_only_ai_mode", { enabled: e.target.checked })}
                   id="toggle-readonly"
                 />
                 <label htmlFor="toggle-readonly"></label>
@@ -347,9 +347,9 @@ export const PoliciesManager: React.FC = () => {
               <h4>Allowed Statements (comma separated)</h4>
               <input
                 className="policy-input"
-                value={policies.read_only_ai_mode.allowed_statements.join(', ')}
+                value={policies.read_only_ai_mode.allowed_statements.join(", ")}
                 onChange={(e) =>
-                  updatePolicyState('read_only_ai_mode', {
+                  updatePolicyState("read_only_ai_mode", {
                     allowed_statements: normalizeCsv(e.target.value),
                   })
                 }
@@ -359,14 +359,14 @@ export const PoliciesManager: React.FC = () => {
           </div>
         </div>
 
-        <div className={`policy-card ${policies.query_result_limits.enabled ? 'enabled' : 'disabled'}`}>
+        <div className={`policy-card ${policies.query_result_limits.enabled ? "enabled" : "disabled"}`}>
           <div className="policy-header">
             <div className="policy-left">
               <div className="policy-toggle">
                 <input
                   type="checkbox"
                   checked={policies.query_result_limits.enabled}
-                  onChange={(e) => updatePolicyState('query_result_limits', { enabled: e.target.checked })}
+                  onChange={(e) => updatePolicyState("query_result_limits", { enabled: e.target.checked })}
                   id="toggle-limit"
                 />
                 <label htmlFor="toggle-limit"></label>
@@ -387,8 +387,8 @@ export const PoliciesManager: React.FC = () => {
                 max={1000000}
                 value={policies.query_result_limits.max_rows}
                 onChange={(e) =>
-                  updatePolicyState('query_result_limits', {
-                    max_rows: Math.max(1, Number(e.target.value || '1')),
+                  updatePolicyState("query_result_limits", {
+                    max_rows: Math.max(1, Number(e.target.value || "1")),
                   })
                 }
               />
@@ -396,14 +396,14 @@ export const PoliciesManager: React.FC = () => {
           </div>
         </div>
 
-        <div className={`policy-card ${policies.query_approval_mode.enabled ? 'enabled' : 'disabled'}`}>
+        <div className={`policy-card ${policies.query_approval_mode.enabled ? "enabled" : "disabled"}`}>
           <div className="policy-header">
             <div className="policy-left">
               <div className="policy-toggle">
                 <input
                   type="checkbox"
                   checked={policies.query_approval_mode.enabled}
-                  onChange={(e) => updatePolicyState('query_approval_mode', { enabled: e.target.checked })}
+                  onChange={(e) => updatePolicyState("query_approval_mode", { enabled: e.target.checked })}
                   id="toggle-approval"
                 />
                 <label htmlFor="toggle-approval"></label>
@@ -419,9 +419,9 @@ export const PoliciesManager: React.FC = () => {
               <h4>Require For Query Types (comma separated)</h4>
               <input
                 className="policy-input"
-                value={policies.query_approval_mode.require_for_query_types.join(', ')}
+                value={policies.query_approval_mode.require_for_query_types.join(", ")}
                 onChange={(e) =>
-                  updatePolicyState('query_approval_mode', {
+                  updatePolicyState("query_approval_mode", {
                     require_for_query_types: normalizeCsv(e.target.value),
                   })
                 }
@@ -432,9 +432,9 @@ export const PoliciesManager: React.FC = () => {
               <h4>Require For Tables (comma separated)</h4>
               <input
                 className="policy-input"
-                value={policies.query_approval_mode.require_for_tables.join(', ')}
+                value={policies.query_approval_mode.require_for_tables.join(", ")}
                 onChange={(e) =>
-                  updatePolicyState('query_approval_mode', {
+                  updatePolicyState("query_approval_mode", {
                     require_for_tables: normalizeCsv(e.target.value),
                   })
                 }
@@ -444,14 +444,14 @@ export const PoliciesManager: React.FC = () => {
           </div>
         </div>
 
-        <div className={`policy-card ${policies.risk_based_approval.enabled ? 'enabled' : 'disabled'}`}>
+        <div className={`policy-card ${policies.risk_based_approval.enabled ? "enabled" : "disabled"}`}>
           <div className="policy-header">
             <div className="policy-left">
               <div className="policy-toggle">
                 <input
                   type="checkbox"
                   checked={policies.risk_based_approval.enabled}
-                  onChange={(e) => updatePolicyState('risk_based_approval', { enabled: e.target.checked })}
+                  onChange={(e) => updatePolicyState("risk_based_approval", { enabled: e.target.checked })}
                   id="toggle-risk-approval"
                 />
                 <label htmlFor="toggle-risk-approval"></label>
@@ -473,12 +473,12 @@ export const PoliciesManager: React.FC = () => {
                 step={0.05}
                 value={policies.risk_based_approval.threshold}
                 onChange={(e) =>
-                  updatePolicyState('risk_based_approval', {
-                    threshold: Math.max(0.1, Math.min(1, Number(e.target.value || '0.7'))),
+                  updatePolicyState("risk_based_approval", {
+                    threshold: Math.max(0.1, Math.min(1, Number(e.target.value || "0.7"))),
                   })
                 }
               />
-              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>
+              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>
                 Example: 0.70 means risk score greater than or equal to 70 requires approval.
               </div>
             </div>
@@ -497,12 +497,12 @@ export const PoliciesManager: React.FC = () => {
         />
         <div className="policy-actions">
           <button className="action-btn edit" onClick={runPolicyTest} disabled={testingQuery}>
-            {testingQuery ? 'Testing...' : 'Run Policy Test'}
+            {testingQuery ? "Testing..." : "Run Policy Test"}
           </button>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.allowed ? 'allowed' : 'blocked'}`}>
+          <div className={`test-result ${testResult.allowed ? "allowed" : "blocked"}`}>
             <div className="test-title">{testResult.message}</div>
             {!testResult.allowed && testResult.reasons?.length > 0 && (
               <ul className="rules-list">
@@ -522,7 +522,7 @@ export const PoliciesManager: React.FC = () => {
 
       <div className="policies-footer">
         <button className="btn-primary" onClick={savePolicies} disabled={saving}>
-          {saving ? 'Saving...' : 'Save Policies'}
+          {saving ? "Saving..." : "Save Policies"}
         </button>
       </div>
     </div>

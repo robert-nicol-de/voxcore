@@ -1,9 +1,9 @@
-import React from 'react';
-import './ConnectionStatus.css';
+import React from "react";
+import "./ConnectionStatus.css";
 
 interface ConnectionStatusProps {
   isOpen: boolean;
-  status: 'connecting' | 'success' | 'error';
+  status: "connecting" | "success" | "error";
   message?: string;
   errorReason?: string;
   onClose: () => void;
@@ -21,33 +21,33 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
   return (
     <div className="connection-status-overlay">
       <div className="connection-status-modal">
-        {status === 'connecting' && (
+        {status === "connecting" && (
           <>
             <div className="spinner"></div>
             <h2>🔄 Connecting...</h2>
-            <p className="status-message">{message || 'Establishing connection to database'}</p>
+            <p className="status-message">{message || "Establishing connection to database"}</p>
           </>
         )}
 
-        {status === 'success' && (
+        {status === "success" && (
           <>
             <div className="success-icon">✅</div>
             <h2>Connection Successful</h2>
-            <p className="status-message">{message || 'Successfully connected to database'}</p>
+            <p className="status-message">{message || "Successfully connected to database"}</p>
             <button className="close-btn" onClick={onClose}>
               Continue
             </button>
           </>
         )}
 
-        {status === 'error' && (
+        {status === "error" && (
           <>
             <div className="error-icon">❌</div>
             <h2>Unable to Connect</h2>
             <p className="status-message">Connection failed</p>
             <div className="error-reason">
               <strong>Reason:</strong>
-              <p>{errorReason || 'Unknown error occurred'}</p>
+              <p>{errorReason || "Unknown error occurred"}</p>
             </div>
             <button className="close-btn error" onClick={onClose}>
               Try Again

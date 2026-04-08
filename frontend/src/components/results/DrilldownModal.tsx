@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { apiUrl } from '../../lib/api';
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { apiUrl } from "../../lib/api";
 
 type DrilldownRow = {
   order_id: string;
@@ -23,7 +23,7 @@ type Props = {
   onClose: () => void;
 };
 
-export default function DrilldownModal({ category, dimension = 'status', onClose }: Props) {
+export default function DrilldownModal({ category, dimension = "status", onClose }: Props) {
   const navigate = useNavigate();
   const [rows, setRows] = useState<DrilldownRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,7 +37,7 @@ export default function DrilldownModal({ category, dimension = 'status', onClose
       setLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem('voxcore_token') || localStorage.getItem('vox_token') || '';
+        const token = localStorage.getItem("voxcore_token") || localStorage.getItem("vox_token") || "";
         const params = new URLSearchParams({ value: category, dimension });
         const res = await fetch(apiUrl(`/api/v1/query/drilldown?${params}`), {
           headers: { Authorization: `Bearer ${token}` },
@@ -46,7 +46,7 @@ export default function DrilldownModal({ category, dimension = 'status', onClose
 
         if (!res.ok) {
           const body = (await res.json().catch(() => ({}))) as { detail?: string };
-          throw new Error(body.detail || 'Failed to load drilldown details');
+          throw new Error(body.detail || "Failed to load drilldown details");
         }
 
         const data = (await res.json()) as DrilldownResponse;
@@ -54,7 +54,7 @@ export default function DrilldownModal({ category, dimension = 'status', onClose
         setTotalRevenue(Number(data.total_revenue || 0));
       } catch (e) {
         if (!controller.signal.aborted) {
-          setError(e instanceof Error ? e.message : 'Failed to load drilldown data');
+          setError(e instanceof Error ? e.message : "Failed to load drilldown data");
           setRows([]);
           setTotalRevenue(0);
         }
@@ -73,9 +73,9 @@ export default function DrilldownModal({ category, dimension = 'status', onClose
 
   const exploreWithAi = () => {
     const seed = `Analyze ${dimension} = ${category}. Why did this metric change?`;
-    localStorage.setItem('voxcore_ai_followup_prompt', seed);
+    localStorage.setItem("voxcore_ai_followup_prompt", seed);
     onClose();
-    navigate('/app');
+    navigate("/app");
   };
 
   return (
@@ -86,8 +86,8 @@ export default function DrilldownModal({ category, dimension = 'status', onClose
           <button className="secondary-btn" onClick={onClose}>✕</button>
         </div>
 
-        {loading && <div style={{ color: '#9ab3cf', marginBottom: 12 }}>Loading details...</div>}
-        {error && <div style={{ color: '#ff7a7a', marginBottom: 12 }}>{error}</div>}
+        {loading && <div style={{ color: "#9ab3cf", marginBottom: 12 }}>Loading details...</div>}
+        {error && <div style={{ color: "#ff7a7a", marginBottom: 12 }}>{error}</div>}
 
         {!loading && !error && (
           <>
@@ -109,7 +109,7 @@ export default function DrilldownModal({ category, dimension = 'status', onClose
                 ))}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={3} style={{ color: '#9ab3cf' }}>No matching records.</td>
+                    <td colSpan={3} style={{ color: "#9ab3cf" }}>No matching records.</td>
                   </tr>
                 )}
               </tbody>

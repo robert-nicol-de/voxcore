@@ -16,91 +16,91 @@
   --margin-desktop: 80px;
   --margin-tablet: 64px;
   --margin-mobile: 16px;
+.app-bg {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #0b1220, #050a14);
+  color: #e6edf3;
+}
 
-  --gutter-desktop: 24px;
-  --gutter-tablet: 20px;
-  --gutter-mobile: 16px;
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 80px 24px;
+}
 
-  --sidebar-desktop: 280px;
-  --sidebar-tablet: 240px;
-  --sidebar-mobile: 0;
+.section {
+  margin-bottom: 80px;
+}
 
-  --header-height-desktop: 56px;
-  --header-height-tablet: 48px;
-  --header-height-mobile: 48px;
+.section h2 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
 
-  /* ========================================================================
-     COLORS - NEUTRALS (6 colors)
-     ======================================================================== */
-  --color-bg-primary: #0F172A;
-  --color-surface: #1A202C;
-  --color-surface-elevated: #1E293B;
-  --color-border: #334155;
-  --color-text-secondary: #64748B;
-  --color-text-primary: #F1F5F9;
+.subtitle {
+  color: #8b9bb5;
+  margin-bottom: 32px;
+}
 
-  /* ========================================================================
-     COLORS - SEMANTIC (6 colors)
-     ======================================================================== */
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-error: #EF4444;
-  --color-info: #3B82F6;
-  --color-accent-primary: #6366F1;
-  --color-brand: #7C3AED;
+.section.center {
+  text-align: center;
+}
 
-  /* ========================================================================
-     COLORS - STATUS (3 colors)
-     ======================================================================== */
-  --color-status-passed: #10B981;
-  --color-status-rewritten: #F59E0B;
-  --color-status-blocked: #EF4444;
+.section-content {
+  display: grid;
+  gap: 24px;
+}
 
-  /* ========================================================================
-     TEXT HIERARCHY
-     ======================================================================== */
-  --color-text-heading: #F1F5F9;
-  --color-text-body: #E2E8F0;
-  --color-text-muted: #64748B;
-  --color-text-disabled: #475569;
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
 
-  /* ========================================================================
-     INTERACTIVE ELEMENTS
-     ======================================================================== */
-  --color-button-primary: #6366F1;
-  --color-button-primary-hover: #4F46E5;
-  --color-button-secondary: #334155;
-  --color-link: #3B82F6;
+@media (max-width: 900px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
-  /* ========================================================================
-     SPACING (8pt System)
-     ======================================================================== */
-  --spacing-1: 8px;
-  --spacing-2: 16px;
-  --spacing-3: 24px;
-  --spacing-4: 32px;
-  --spacing-5: 48px;
-  --spacing-6: 64px;
+.hero {
+  text-align: center;
+  margin-bottom: 100px;
+}
 
-  /* ========================================================================
-     BORDER RADIUS
-     ======================================================================== */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+.hero h1 {
+  font-size: 48px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
 
-  /* ========================================================================
-     TRANSITIONS
-     ======================================================================== */
-  --transition-fast: 200ms ease-in-out;
-  --transition-normal: 300ms ease-in-out;
-  --transition-slow: 500ms ease-in-out;
+.hero p {
+  color: #8b9bb5;
+  max-width: 600px;
+  margin: 0 auto 32px;
+}
 
-  /* ========================================================================
-     RESPONSIVE DEFAULTS (Mobile-First)
-     ======================================================================== */
-  --margin: var(--margin-mobile);
-  --gutter: var(--gutter-mobile);
+.hero-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  padding: 12px 24px;
+  border-radius: 10px;
+  border: none;
+  color: white;
+}
+
+.secondary {
+  background: rgba(255,255,255,0.05);
+  padding: 12px 24px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
   --sidebar-width: var(--sidebar-mobile);
   --header-height: var(--header-height-mobile);
 }

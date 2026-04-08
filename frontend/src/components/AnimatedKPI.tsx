@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 const AnimatedKPI: React.FC<{ value: number; duration?: number }> = ({ value, duration = 600 }) => {
   const [display, setDisplay] = useState(0);
   useEffect(() => {
-    let start = 0;
+    const start = 0;
     const startTime = performance.now();
     const animate = (now: number) => {
       const elapsed = now - startTime;

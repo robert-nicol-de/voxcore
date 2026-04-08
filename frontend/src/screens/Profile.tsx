@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { RoleBadge } from '../components/RoleBadge';
-import { apiUrl } from '../lib/api';
+import React, { useState, useEffect } from "react";
+import { RoleBadge } from "../components/RoleBadge";
+import { apiUrl } from "../lib/api";
 
 interface UserInfo {
   email: string;
@@ -18,12 +18,12 @@ interface ProfileProps {
 export const Profile: React.FC<ProfileProps> = ({ token }) => {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!token) return;
-    fetch(apiUrl('/api/v1/auth/me'), {
-      headers: { 'Authorization': `Bearer ${token}` },
+    fetch(apiUrl("/api/v1/auth/me"), {
+      headers: { "Authorization": `Bearer ${token}` },
     })
       .then(res => res.ok ? res.json() : Promise.reject(res))
       .then(data => {
@@ -31,12 +31,12 @@ export const Profile: React.FC<ProfileProps> = ({ token }) => {
         setLoading(false);
       })
       .catch(() => {
-        setError('Failed to load profile');
+        setError("Failed to load profile");
         setLoading(false);
       });
   }, [token]);
 
-  if (loading) return <div className="view-content"><p>Loading...</p></div>;
+  if (loading) return <SkeletonCard />;
   if (error) return <div className="view-content"><p className="error">{error}</p></div>;
   if (!user) return <div className="view-content"><p>No user data</p></div>;
 
@@ -58,7 +58,7 @@ export const Profile: React.FC<ProfileProps> = ({ token }) => {
         </div>
         <div className="profile-section">
           <label>Role:</label>
-          <div style={{ marginTop: '8px' }}>
+          <div style={{ marginTop: "8px" }}>
             <RoleBadge role={user.role} />
           </div>
         </div>

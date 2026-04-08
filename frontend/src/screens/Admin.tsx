@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface AdminProps {
   token: string;
@@ -19,7 +19,7 @@ export const Admin: React.FC<AdminProps> = ({ token, onNavigate }) => {
         <p>Company-wide settings and configuration</p>
         
         <div className="admin-grid">
-          <div className="admin-card" onClick={() => handleNavigate('admin-users')}>
+          <div className="admin-card" onClick={() => handleNavigate("admin-users")}>
             <h3>👥 User Management</h3>
             <p>Manage company users and roles</p>
           </div>

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
+import Table from "../components/Table";
 
 interface ApiKey {
   id: string;
@@ -16,29 +17,29 @@ interface ApiKeysProps {
 export const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
   const [keys, setKeys] = useState<ApiKey[]>([
     {
-      id: '1',
-      name: 'VoxAgent Integration',
-      key: 'sk_live_•••••••••••••••••••••••••',
-      created_at: '2026-02-15T10:30:00Z',
-      last_used: '2026-03-09T14:00:00Z',
+      id: "1",
+      name: "VoxAgent Integration",
+      key: "sk_live_•••••••••••••••••••••••••",
+      created_at: "2026-02-15T10:30:00Z",
+      last_used: "2026-03-09T14:00:00Z",
       active: true,
     },
   ]);
   const [showNewKeyForm, setShowNewKeyForm] = useState(false);
-  const [newKeyName, setNewKeyName] = useState('');
+  const [newKeyName, setNewKeyName] = useState("");
 
   const handleCreateKey = () => {
     if (!newKeyName) return;
     const newKey: ApiKey = {
       id: String(keys.length + 1),
       name: newKeyName,
-      key: 'sk_live_' + Math.random().toString(36).substring(2, 15),
+      key: "sk_live_" + Math.random().toString(36).substring(2, 15),
       created_at: new Date().toISOString(),
       last_used: null,
       active: true,
     };
     setKeys([...keys, newKey]);
-    setNewKeyName('');
+    setNewKeyName("");
     setShowNewKeyForm(false);
   };
 
@@ -74,32 +75,7 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
         <hr />
         
         <h3>Active Keys</h3>
-        {keys.filter(k => k.active).length === 0 ? (
-          <p>No active keys</p>
-        ) : (
-          <table className="keys-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Key</th>
-                <th>Created</th>
-                <th>Last Used</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {keys.filter(k => k.active).map((k) => (
-                <tr key={k.id}>
-                  <td>{k.name}</td>
-                  <td><code>{k.key}</code></td>
-                  <td>{new Date(k.created_at).toLocaleDateString()}</td>
-                  <td>{k.last_used ? new Date(k.last_used).toLocaleString() : 'Never'}</td>
-                  <td><button className="btn btn-danger btn-small" onClick={() => handleRevokeKey(k.id)}>Revoke</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <Table data={keys.filter(k => k.active)} loading={false} />
       </div>
     </div>
   );

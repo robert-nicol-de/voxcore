@@ -1,5 +1,5 @@
 import React from "react";
-import './SignatureApproval.css';
+import "./SignatureApproval.css";
 
 const SignatureApproval: React.FC = () => (
   <div className="signature-approval">

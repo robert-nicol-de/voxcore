@@ -1,0 +1,42 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client", "vitest/globals"]
+  },
+  "include": [
+    "src/lib/api.ts",
+    "src/test/setupTests.ts",
+    "src/app/pages/Dashboard.tsx",
+    "src/app/widgets/RankedRevenueAnalyticsWidgetShell.tsx",
+    "src/app/widgets/RankedRevenueDrilldownShell.tsx",
+    "src/app/widgets/RevenueAnomaliesWidgetShell.tsx",
+    "src/app/widgets/RevenueAnomalyDrilldownShell.tsx",
+    "src/app/widgets/rankedAnalyticsApi.ts",
+    "src/app/widgets/rankedAnalyticsMappers.ts",
+    "src/app/widgets/RevenueByRegionWidget.tsx",
+    "src/app/widgets/RevenueRegionDrilldownModal.tsx",
+    "src/app/widgets/rankedAnalyticsTypes.ts",
+    "src/app/widgets/rankedAnalyticsContract.typecheck.ts",
+    "src/app/widgets/rankedRevenueViewModels.ts",
+    "src/app/widgets/revenueByRegionTypes.ts",
+    "src/app/widgets/RevenueByRegionWidget.test.tsx",
+    "src/app/widgets/RevenueByProductWidget.tsx",
+    "src/app/widgets/RevenueProductDrilldownModal.tsx",
+    "src/app/widgets/revenueByProductTypes.ts",
+    "src/app/widgets/revenueAnalyticsUtils.ts",
+    "src/app/widgets/RevenueByProductWidget.test.tsx",
+    "src/app/widgets/RevenueByCategoryWidget.tsx",
+    "src/app/widgets/RevenueCategoryDrilldownModal.tsx",
+    "src/app/widgets/revenueByCategoryTypes.ts",
+    "src/app/widgets/RevenueByCategoryWidget.test.tsx",
+    "src/app/widgets/RevenueByCustomerWidget.tsx",
+    "src/app/widgets/RevenueCustomerDrilldownModal.tsx",
+    "src/app/widgets/revenueByCustomerTypes.ts",
+    "src/app/widgets/RevenueByCustomerWidget.test.tsx",
+    "src/app/widgets/RevenueAnomaliesWidget.tsx",
+    "src/app/widgets/RevenueAnomalyDrilldownModal.tsx",
+    "src/app/widgets/revenueAnomalyTypes.ts",
+    "src/app/widgets/revenueAnomalyViewModels.ts",
+    "src/app/widgets/RevenueAnomaliesWidget.test.tsx"
+  ]
+}

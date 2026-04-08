@@ -1,0 +1,319 @@
+.onboarding-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(2px);
+}
+
+.onboarding-modal {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid rgba(0, 135, 255, 0.3);
+  border-radius: 16px;
+  padding: 48px;
+  max-width: 500px;
+  width: 90%;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 135, 255, 0.1);
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.onboarding-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.onboarding-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* Progress indicator */
+.onboarding-progress {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 36px;
+}
+
+.progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.3s;
+}
+
+.progress-dot.active {
+  background: #0087ff;
+  box-shadow: 0 0 12px rgba(0, 135, 255, 0.6);
+}
+
+/* Step 1: Positioning */
+.onboarding-step-1 {
+  text-align: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.onboarding-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.onboarding-step-1 h2 {
+  color: #fff;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+}
+
+.onboarding-tagline {
+  color: #0087ff;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 20px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.onboarding-description {
+  color: #aaa;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 28px 0;
+}
+
+/* Step 2: Context Setup */
+.onboarding-step-2 {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.onboarding-step-2 h2 {
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  text-align: center;
+}
+
+.onboarding-subtitle {
+  color: #888;
+  font-size: 13px;
+  text-align: center;
+  margin: 0 0 28px 0;
+}
+
+.setup-section {
+  margin-bottom: 28px;
+}
+
+.setup-section label {
+  display: block;
+  color: #aaa;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+  gap: 10px;
+}
+
+.radio-option input[type="radio"] {
+  cursor: pointer;
+  accent-color: #0087ff;
+}
+
+.radio-option span {
+  color: #aaa;
+  font-size: 13px;
+  flex: 1;
+}
+
+.radio-option:hover {
+  border-color: rgba(0, 135, 255, 0.3);
+  background: rgba(0, 135, 255, 0.05);
+}
+
+.radio-option.selected {
+  border-color: #0087ff;
+  background: rgba(0, 135, 255, 0.1);
+}
+
+.radio-option.selected span {
+  color: #0087ff;
+  font-weight: 600;
+}
+
+/* Step 3: Ready State */
+.onboarding-step-3 {
+  text-align: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.ready-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+  display: block;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.onboarding-step-3 h2 {
+  color: #fff;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+}
+
+.ready-checklist {
+  background: rgba(0, 135, 255, 0.05);
+  border: 1px solid rgba(0, 135, 255, 0.2);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 24px 0;
+  text-align: left;
+}
+
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #aaa;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.check-item:last-child {
+  margin-bottom: 0;
+}
+
+.check-mark {
+  display: inline-block;
+  color: #0087ff;
+  font-weight: 700;
+  min-width: 20px;
+}
+
+/* CTAs */
+.onboarding-cta {
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(90deg, #0087ff, #00a8ff);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 16px;
+}
+
+.onboarding-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 135, 255, 0.4);
+}
+
+.onboarding-cta:active {
+  transform: translateY(0);
+}
+
+.onboarding-cta-large {
+  padding: 16px 24px;
+  font-size: 16px;
+  margin-top: 24px;
+}
+
+.onboarding-skip-text {
+  color: #666;
+  font-size: 12px;
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .onboarding-modal {
+    padding: 32px 24px;
+  }
+
+  .onboarding-step-1 h2,
+  .onboarding-step-3 h2 {
+    font-size: 22px;
+  }
+
+  .onboarding-description {
+    font-size: 13px;
+  }
+
+  .onboarding-cta {
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+}
