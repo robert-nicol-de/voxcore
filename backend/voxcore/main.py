@@ -92,20 +92,24 @@ app.add_middleware(
 # Determine frontend dist path - works on both local and Render
 FRONTEND_DIST = None
 possible_paths = [
-    "/opt/render/project/src/frontend/dist",  # Render production
-    os.path.join(os.path.dirname(__file__), "../../frontend/dist"),  # Local dev
-    "frontend/dist",  # Fallback
+    "/opt/render/project/frontend/dist",  # Render production (correct path)
+    "/opt/render/project/src/frontend/dist",  # Render with src folder
+    Path(__file__).parent.parent.parent / "frontend" / "dist",  # Local: go up 3 levels to root, then frontend/dist
+    Path.cwd() / "frontend" / "dist",  # Local: from current working directory
 ]
 
 for path in possible_paths:
-    if os.path.exists(path):
-        FRONTEND_DIST = Path(path).resolve()
+    path_obj = Path(path)
+    if path_obj.exists() and (path_obj / "index.html").exists():
+        FRONTEND_DIST = path_obj
         logger.info(f"✅ Found frontend dist at {FRONTEND_DIST}")
         break
 
 if not FRONTEND_DIST:
-    logger.warning(f"⚠️  Frontend dist not found in any of {possible_paths}")
-    FRONTEND_DIST = None
+    logger.warning(f"⚠️ Frontend dist not found. Checked: {possible_paths}")
+    logger.warning("⚠️ Continuing anyway - SPA routes will serve errors for missing dist")
+else:
+    logger.info(f"✅ Frontend dist ready: {FRONTEND_DIST}")
 
 # Serve static assets explicitly
 if FRONTEND_DIST and (FRONTEND_DIST / "assets").exists():
@@ -316,38 +320,41 @@ async def test_query(message: str, org_id: str):
 
 # ============= MAIN =============
 
-# SPA FALLBACK (MUST BE LAST ROUTE)
+# SPA FALLBACK (MUST BE LAST ROUTE - ALWAYS ACTIVE)
 # This always serves React app for unknown routes
-if FRONTEND_DIST:
-    # Root route - explicit handler for /
-    @app.get("/")
-    async def serve_root():
-        """Serve root path - returns index.html for React SPA"""
+@app.get("/")
+async def serve_root():
+    """Serve root path - returns index.html for React SPA"""
+    if FRONTEND_DIST:
         return FileResponse(FRONTEND_DIST / "index.html")
+    return {"error": "Frontend not built yet"}
+
+
+@app.get("/{full_path:path}")
+async def spa_fallback(full_path: str):
+    """
+    Serve Vite SPA for all routes not matched above.
+    Routes unknown paths to index.html for React Router to handle.
     
-    # Generic path handler for everything else
-    @app.get("/{full_path:path}")
-    async def spa_fallback(full_path: str):
-        """
-        Serve Vite SPA for all routes not matched above.
-        Routes unknown paths to index.html for React Router to handle.
-        """
-        # Don't intercept API routes that weren't caught above
-        if full_path.startswith("api/") or full_path.startswith("test/"):
-            return {"error": "Not found"}, 404
-        
-        target = FRONTEND_DIST / full_path
-        
-        # Serve exact file if it exists (CSS, JS, images, etc)
-        if full_path and target.exists() and target.is_file():
-            logger.info(f"📄 Serving file: {full_path}")
-            return FileResponse(target)
-        
-        # Default: serve index.html for SPA routing
-        logger.info(f"🔀 SPA fallback: {full_path} → index.html")
-        return FileResponse(FRONTEND_DIST / "index.html")
-else:
-    logger.error("⚠️  Frontend dist not found - SPA fallback disabled")
+    This is the ABSOLUTE LAST route - nothing comes after it.
+    """
+    if not FRONTEND_DIST:
+        return {"error": "Frontend not built"}
+    
+    # Don't intercept API routes that weren't caught above (shouldn't happen)
+    if full_path.startswith("api/") or full_path.startswith("test/") or full_path.startswith("docs"):
+        return {"error": "Not found"}, 404
+    
+    target = FRONTEND_DIST / full_path
+    
+    # Serve exact file if it exists (CSS, JS, images, etc)
+    if full_path and target.exists() and target.is_file():
+        logger.info(f"📄 Serving file: {full_path}")
+        return FileResponse(target)
+    
+    # Default: serve index.html for SPA routing
+    logger.info(f"🔀 SPA fallback: {full_path} → index.html")
+    return FileResponse(FRONTEND_DIST / "index.html")
 
 
 if __name__ == "__main__":
