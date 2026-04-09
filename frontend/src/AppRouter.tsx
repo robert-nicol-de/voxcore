@@ -1,6 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-import LandingPage from "./pages/LandingPage";
 import Playground from "./pages/Playground";
 import Login from "./pages/Login";
 import Product from "./pages/Product";
@@ -11,21 +10,19 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Landing & Marketing */}
-        <Route path="/" element={<LandingPage />} />
+        {/* Main site = real app */}
+        <Route path="/" element={<Playground />} />
+        <Route path="/app" element={<Playground />} />
+        <Route path="/playground" element={<Playground />} />
+
+        {/* Marketing / supporting pages */}
         <Route path="/product" element={<Product />} />
         <Route path="/security" element={<Security />} />
         <Route path="/pricing" element={<Pricing />} />
-
-        {/* Auth */}
         <Route path="/login" element={<Login />} />
 
-        {/* Main App */}
-        <Route path="/playground" element={<Playground />} />
-        <Route path="/app" element={<Playground />} />
-
         {/* Fallback */}
-        <Route path="*" element={<LandingPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
