@@ -1,68 +1,64 @@
 """
 VOXCORE — MAIN APPLICATION
 
-Entry point for VoxQuery. Initializes all 16 STEPS and wires them together.
-
-This is where everything connects:
-- All services
-- All routes
-- All middleware
-- The 14-step pipeline
+Entry point for VoxQuery. Initializes all services and wires routes,
+middleware, API endpoints, and SPA frontend serving together.
 """
 
-from fastapi import FastAPI, Request, Response, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.exceptions import RequestValidationError
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
+from datetime import datetime
+from pathlib import Path
 import logging
 import time
-from datetime import datetime
-import os
-from pathlib import Path
+
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 # VoxCore components
 from backend.voxcore.api import conversation_api
-from backend.voxcore.engine.service_container import initialize_services, get_services
 from backend.voxcore.engine.core import get_voxcore
+from backend.voxcore.engine.service_container import initialize_services, get_services
 
-# Configure logging
+
+# ============= LOGGING =============
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
 
-# ============= STARTUP/SHUTDOWN =============
+# ============= STARTUP / SHUTDOWN =============
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Application lifespan (startup + shutdown).
-    
-    Startup: Initialize all services
-    Shutdown: Clean up resources
+    Application lifespan.
+
+    Startup:
+    - initialize all services
+
+    Shutdown:
+    - clean up resources if needed
     """
-    
-    # STARTUP
     logger.info("🚀 VoxQuery starting up...")
-    logger.info("📦 STEP 16: Initializing all services...")
-    
+    logger.info("📦 Initializing services...")
+
     try:
         services = await initialize_services()
         app.state.services = services
-        logger.info("✅ All 16 STEPS initialized successfully!")
+        logger.info("✅ Services initialized successfully")
     except Exception as e:
         logger.error(f"❌ Failed to initialize services: {e}")
         raise
-    
+
     yield
-    
-    # SHUTDOWN
+
     logger.info("🛑 VoxQuery shutting down...")
-    # Clean up connections, background tasks, etc.
     logger.info("✅ Shutdown complete")
 
 
@@ -72,13 +68,12 @@ app = FastAPI(
     title="VoxQuery - Enterprise AI Data Platform",
     description="AI-powered SQL assistant with governance, security, and observability",
     version="16.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 
 # ============= MIDDLEWARE =============
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -88,93 +83,82 @@ app.add_middleware(
 )
 
 
-# ============= STATIC FILES =============
-# Determine frontend dist path - works on both local and Render
-FRONTEND_DIST = None
-possible_paths = [
-    "/opt/render/project/frontend/dist",  # Render production (correct path)
-    "/opt/render/project/src/frontend/dist",  # Render with src folder
-    Path(__file__).parent.parent.parent / "frontend" / "dist",  # Local: go up 3 levels to root, then frontend/dist
-    Path.cwd() / "frontend" / "dist",  # Local: from current working directory
-]
-
-for path in possible_paths:
-    path_obj = Path(path)
-    if path_obj.exists() and (path_obj / "index.html").exists():
-        FRONTEND_DIST = path_obj
-        logger.info(f"✅ Found frontend dist at {FRONTEND_DIST}")
-        break
-
-if not FRONTEND_DIST:
-    logger.warning(f"⚠️ Frontend dist not found. Checked: {possible_paths}")
-    logger.warning("⚠️ Continuing anyway - SPA routes will serve errors for missing dist")
-else:
-    logger.info(f"✅ Frontend dist ready: {FRONTEND_DIST}")
-
-# Serve static assets explicitly
-if FRONTEND_DIST and (FRONTEND_DIST / "assets").exists():
-    app.mount(
-        "/assets",
-        StaticFiles(directory=str(FRONTEND_DIST / "assets")),
-        name="assets"
-    )
-    logger.info("✅ Mounted /assets from dist")
-
-
-# Global request/response middleware for the 14-step pipeline
 @app.middleware("http")
 async def pipeline_middleware(request: Request, call_next):
     """
-    Implement the 14-step pipeline:
-    
-    1. Auth middleware
-    2. Rate limit check  
-    3-14. Done by VoxCoreEngine
+    Global request/response middleware.
     """
-    
     request_id = str(time.time())
     request.state.request_id = request_id
-    
     start_time = time.time()
-    
-    # STEP 1: Auth (simple example)
-    # In production: JWT verification, etc.
-    # auth_token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    # user = await verify_token(auth_token)
-    
-    # STEP 2: Rate limiting
-    # middleware = app.state.services.security_middleware
-    # is_throttled, error = await middleware.process_request(...)
-    # if is_throttled:
-    #     return Response(status_code=429, content=error)
-    
-    # Process request
+
     response = await call_next(request)
-    
-    # Add response headers
+
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Process-Time"] = str(time.time() - start_time)
-    
-    # Log request
+
     logger.info(
         f"[{request_id}] {request.method} {request.url.path} - "
         f"Status: {response.status_code} - "
         f"Duration: {(time.time() - start_time) * 1000:.1f}ms"
     )
-    
+
     return response
+
+
+# ============= FRONTEND DIST DETECTION =============
+
+def resolve_frontend_dist() -> Path | None:
+    """
+    Resolve the built Vite frontend dist path reliably for both:
+    - local development
+    - Render deployment
+
+    This file lives under:
+      backend/voxcore/main.py
+
+    So repo root is:
+      Path(__file__).resolve().parent.parent.parent
+    """
+    base_dir = Path(__file__).resolve().parent.parent.parent
+
+    possible_paths = [
+        base_dir / "frontend" / "dist",
+    ]
+
+    for path in possible_paths:
+        if path.exists() and (path / "index.html").exists():
+            logger.info(f"✅ Found frontend dist at {path}")
+            return path
+
+    logger.error("❌ Frontend dist NOT found")
+    logger.error("Checked paths:")
+    for path in possible_paths:
+        logger.error(f" - {path}")
+
+    return None
+
+
+FRONTEND_DIST = resolve_frontend_dist()
+
+if FRONTEND_DIST:
+    logger.info(f"🔥 USING FRONTEND DIST: {FRONTEND_DIST}")
+
+    assets_dir = FRONTEND_DIST / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+        logger.info("✅ Mounted /assets from frontend dist")
 
 
 # ============= ROUTES =============
 
-# Register conversation API router
+# API router
 app.include_router(conversation_api.router)
 
 
-# Health/status endpoint
+# Health/status endpoints
 @app.get("/api/health")
 async def health():
-    """Health check endpoint"""
     return {
         "status": "healthy",
         "service": "VoxQuery",
@@ -187,113 +171,126 @@ async def health():
 
 
 
-# ============= ERROR HANDLING =============
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle validation errors"""
-    return {
-        "error": "Validation error",
-        "details": exc.errors(),
-        "status": 422
-    }
-
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected errors"""
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    return {
-        "error": "Internal server error",
-        "message": str(exc),
-        "status": 500
-    }
-
-
-# ============= DEPENDENCY INJECTION =============
-
-async def get_service_container():
-    """Dependency: Get service container"""
-    return get_services()
-
-
-# ============= SPECIALIZED ENDPOINTS =============
-
+# Debug/test endpoints
 @app.get("/test/ping")
 async def test_ping():
-    """Simple ping test"""
     return {"pong": True, "timestamp": datetime.utcnow().isoformat()}
 
 
 @app.post("/test/query")
 async def test_query(message: str, org_id: str):
-    """Test query endpoint (debug)"""
-    
-    # Test through VoxCore engine
     from backend.voxcore.engine.core import VoxQueryRequest
-    
+
     engine = get_voxcore()
     services = get_services().to_dict()
-    
+
     request = VoxQueryRequest(
         message=message,
         session_id="test-session",
         org_id=org_id,
         user_id="test-user",
-        user_role="analyst"
+        user_role="analyst",
     )
-    
+
     response = await engine.execute_query(request, services)
     return response.to_dict()
 
 
-# ============= MAIN =============
+# ============= ERROR HANDLING =============
 
-# SPA FALLBACK (MUST BE LAST ROUTE - ALWAYS ACTIVE)
-# This always serves React app for unknown routes
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "Validation error",
+            "details": exc.errors(),
+            "status": 422,
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal server error",
+            "message": str(exc),
+            "status": 500,
+        },
+    )
+
+
+# ============= DEPENDENCY INJECTION =============
+
+async def get_service_container():
+    return get_services()
+
+
+# ============= SPA SERVING =============
+
+def frontend_ready() -> bool:
+    return FRONTEND_DIST is not None and (FRONTEND_DIST / "index.html").exists()
+
+
 @app.get("/")
 async def serve_root():
-    """Serve root path - returns index.html for React SPA"""
-    if FRONTEND_DIST:
-        return FileResponse(FRONTEND_DIST / "index.html")
-    return {"error": "Frontend not built yet"}
+    """
+    Serve React app at root.
+    """
+    if not frontend_ready():
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Frontend not built yet"},
+        )
+
+    return FileResponse(FRONTEND_DIST / "index.html")
 
 
 @app.get("/{full_path:path}")
 async def spa_fallback(full_path: str):
     """
-    Serve Vite SPA for all routes not matched above.
-    Routes unknown paths to index.html for React Router to handle.
-    
-    This is the ABSOLUTE LAST route - nothing comes after it.
+    Serve the React SPA for all non-API routes.
+
+    Rules:
+    - API/docs/test/system routes are not intercepted
+    - existing files under dist are served directly
+    - all other routes return index.html for React Router
     """
-    if not FRONTEND_DIST:
-        return {"error": "Frontend not built"}
-    
-    # Don't intercept API routes that weren't caught above (shouldn't happen)
-    if full_path.startswith("api/") or full_path.startswith("test/") or full_path.startswith("docs"):
-        return {"error": "Not found"}, 404
-    
+    if not frontend_ready():
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Frontend not built yet"},
+        )
+
+    reserved_prefixes = ("api/", "docs", "test/", "system/")
+    if full_path.startswith(reserved_prefixes):
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Not found"},
+        )
+
     target = FRONTEND_DIST / full_path
-    
-    # Serve exact file if it exists (CSS, JS, images, etc)
+
     if full_path and target.exists() and target.is_file():
         logger.info(f"📄 Serving file: {full_path}")
         return FileResponse(target)
-    
-    # Default: serve index.html for SPA routing
-    logger.info(f"🔀 SPA fallback: {full_path} → index.html")
+
+    logger.info(f"🔀 SPA fallback: {full_path} -> index.html")
     return FileResponse(FRONTEND_DIST / "index.html")
 
 
+# ============= MAIN =============
+
 if __name__ == "__main__":
     import uvicorn
-    
-    # Run with: uvicorn backend.voxcore.main:app --reload
+
     uvicorn.run(
         "backend.voxcore.main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,
-        log_level="info"
+        log_level="info",
     )
