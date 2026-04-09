@@ -184,78 +184,7 @@ async def health():
     }
 
 
-# (Old root endpoint removed - now serves index.html via SPA fallback)
 
-
-@app.get("/docs/architecture")
-async def architecture_docs():
-    """Return architecture documentation"""
-    return {
-        "title": "VoxQuery - 16 Step Architecture",
-        "steps": {
-            "1-9": "Governance & Core",
-            "10": "Observability",
-            "11": "Resilience",
-            "12": "Frontend Trust",
-            "13": "Execution Metadata",
-            "14": "Monitoring",
-            "15": "Performance",
-            "16": "Enterprise Readiness"
-        },
-        "pipeline": {
-            "steps": [
-                "Auth middleware",
-                "Rate limit check",
-                "Intent + State (LLM)",
-                "Query build",
-                "Tenant enforcement",
-                "Policy engine",
-                "Cost check",
-                "Cache check",
-                "Execute query",
-                "Sanitize results",
-                "Generate metadata",
-                "Cache result",
-                "Track metrics",
-                "Return response"
-            ]
-        },
-        "master_endpoints": [
-            "POST /api/v1/query - Main query endpoint",
-            "GET /api/v1/jobs/{job_id} - Job status",
-            "GET /api/v1/metrics/summary - Metrics",
-            "GET /api/v1/compliance/export - Compliance reports",
-            "GET /api/v1/compliance/controls - SOC2 controls",
-            "GET /api/v1/policies - List policies",
-            "POST /api/v1/policies - Create policy",
-            "DELETE /api/v1/policies/{id} - Delete policy"
-        ]
-    }
-
-
-@app.get("/system/status")
-async def system_status():
-    """Get overall system status"""
-    return {
-        "status": "operational",
-        "timestamp": datetime.utcnow().isoformat(),
-        "components": {
-            "api": "healthy",
-            "governance": "healthy",
-            "execution": "healthy",
-            "performance": "healthy",
-            "security": "healthy",
-            "compliance": "healthy",
-            "observability": "healthy"
-        },
-        "metrics": {
-            "uptime_hours": 24,
-            "total_queries": 1000,
-            "avg_latency_ms": 250,
-            "cache_hit_rate": 0.65,
-            "error_rate": 0.01
-        }
-    }
 
 
 # ============= ERROR HANDLING =============
