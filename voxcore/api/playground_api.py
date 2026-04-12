@@ -15,6 +15,7 @@ from backend.db.org_repository import PolicyRepository
 from backend.services.org_policy_engine import OrganizationPolicyEngine
 from backend.services.context_builder import QueryContextBuilder
 from voxcore.engine.conversation_manager import ConversationManager
+from voxcore.core import PlaygroundGovernanceBlock
 
 router = APIRouter()
 
@@ -56,15 +57,37 @@ class ExecutionMetadata(BaseModel):
 	timeout_seconds: int = QUERY_TIMEOUT
 	execution_time_ms: int = 0
 
+class Control(BaseModel):
+	"""Individual governance control that was applied"""
+	name: str  # "row_limit", "timeout", "query_rewrite", etc.
+	description: str  # Human-readable explanation
+	value: any = None  # Optional value
+
 class GovernanceBlock(BaseModel):
-	"""Unified governance response across all scenarios"""
-	classification: str  # "SAFE" | "MEDIUM" | "HIGH"
-	risk_score: int  # 0-100
-	confidence: float  # 0.0-1.0
-	reasons: list[str] = []
-	policy_violations: list[str] = []
-	policy_applied: str = "None"
-	requires_approval: bool = False
+	"""Enhanced governance response - explicit and clear about governance decisions"""
+	# Decision & Status (Most important — what happened)
+	decision: str  # "ALLOWED" | "MODIFIED" | "BLOCKED" | "ERROR"
+	status_label: str  # Clean UI label (e.g., "Query modified for safety")
+	
+	# Risk Assessment
+	risk_score: int  # 0-100 scale
+	risk_explanation: str  # User-facing explanation of the governance decision
+	
+	# Issues & Controls (What were the concerns and how did we address them)
+	issues: list[str] = []  # List of detected issues ("Large table scan", etc.)
+	controls_applied: list[Control] = []  # List of controls that were applied
+	
+	# Transparency Flags
+	was_rewritten: bool = False  # Did we rewrite the query for safety?
+	sandbox_mode: bool = True  # always true in preview
+	
+	# For backward compatibility
+	classification: str = "SAFE"  # "SAFE" | "MEDIUM" | "HIGH" — derived from decision
+	confidence: float = 1.0  # 0.0-1.0 — derived from risk_score
+	reasons: list[str] = []  # Backward compat — set to [risk_explanation]
+	policy_violations: list[str] = []  # Backward compat
+	policy_applied: str = "None"  # Backward compat
+	requires_approval: bool = False  # Backward compat
 
 class PlaygroundQueryResponse(BaseModel):
 	"""Stable public contract for Playground endpoint - locked for frontend"""
@@ -174,6 +197,66 @@ def cleanup_expired_sessions():
 			"expired_sessions": expired_count,
 			"active_sessions": len(ACTIVE_SESSIONS),
 		})
+
+# ============================================================================
+# GOVERNANCE CONVERSION HELPER
+# ============================================================================
+
+def convert_core_governance_to_playground(
+	core_governance: PlaygroundGovernanceBlock
+) -> GovernanceBlock:
+	"""
+	Convert core.py's governance block to Playground's governance block.
+	
+	Core's block is very explicit about governance decisions.
+	We translate it to Playground's format while preserving all information.
+	"""
+	
+	# Map decision to classification
+	decision_to_classification = {
+		"ALLOWED": "SAFE",
+		"MODIFIED": "SAFE",  # Safe because we modified it
+		"BLOCKED": "HIGH",
+		"ERROR": "MEDIUM",
+	}
+	
+	classification = decision_to_classification.get(
+		core_governance.decision,
+		"MEDIUM"
+	)
+	
+	# Calculate confidence (inverse of risk)
+	confidence = max(0.0, 1.0 - (core_governance.risk_score / 100.0))
+	
+	# Convert controls to reasons for backward compat
+	reasons = [core_governance.risk_explanation]
+	reasons.extend([c.description for c in core_governance.controls_applied])
+	
+	# Build Playground governance block
+	return GovernanceBlock(
+		# Primary governance info
+		decision=core_governance.decision,
+		status_label=core_governance.status_label,
+		risk_score=core_governance.risk_score,
+		risk_explanation=core_governance.risk_explanation,
+		issues=core_governance.issues,
+		controls_applied=[
+			Control(
+				name=c.name,
+				description=c.description,
+				value=c.value
+			)
+			for c in core_governance.controls_applied
+		],
+		was_rewritten=core_governance.was_rewritten,
+		sandbox_mode=core_governance.sandbox_mode,
+		
+		# Backward compatibility fields
+		classification=classification,
+		confidence=confidence,
+		reasons=reasons,
+		requires_approval=(core_governance.decision == "BLOCKED"),
+	)
 
 def get_or_create_session(session_id: str = None, org_id: str = "default-org", user_id: str = "unknown") -> PlaygroundSession:
 	"""Get existing session or create new one with proper lifecycle"""
