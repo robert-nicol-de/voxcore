@@ -1,6 +1,14 @@
 """
 VoxCore Semantic Cache (Redis-backed)
 
+🔒 SOURCE OF TRUTH for all caching behavior
+
+This module is the single, authoritative cache implementation for VoxQuery.
+All query result caching (exploration, EMD, insights) funnel through this module.
+Use only the three public functions: get_cached_result(), cache_result(), clear_cache()
+
+Do NOT create competing cache patterns elsewhere.
+
 Caches query results using Redis for:
 1. Performance: Avoid repeated expensive queries
 2. Multi-user consistency: Cache shared across all users
@@ -18,6 +26,10 @@ Example:
         result = execute_expensive_query(sql)
         cache_result(sql, result)
     return result
+
+Files using this cache:
+- voxcore/engine/exploration_engine.py
+- voxcore/engine/explain_my_data.py
 """
 import hashlib
 import json
