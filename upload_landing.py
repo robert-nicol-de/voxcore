@@ -2,8 +2,8 @@
 import requests
 import base64
 
-# Read the landing.html file
-with open('frontend/dist/landing.html', 'r', encoding='utf-8') as f:
+# Read the built SPA entrypoint
+with open('frontend/dist/index.html', 'r', encoding='utf-8') as f:
     content = f.read()
 
 # cPanel credentials
@@ -30,9 +30,9 @@ payload = {
 }
 
 print('=' * 60)
-print('UPLOADING LANDING PAGE TO CPANEL')
+print('UPLOADING VOXCORE APP INDEX TO CPANEL')
 print('=' * 60)
-print(f'File: landing.html')
+print(f'File: index.html')
 print(f'Size: {len(content)} bytes')
 print(f'Target: https://voxcore.org/')
 print()
@@ -51,7 +51,7 @@ try:
     print()
     
     if response.status_code == 200:
-        print('SUCCESS! Landing page uploaded.')
+        print('SUCCESS! App entry uploaded.')
         print()
         print('Visit: https://voxcore.org/')
         print('Press Ctrl+Shift+R to hard refresh cache')

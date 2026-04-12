@@ -1,5 +1,5 @@
-# VoxCore Landing Page Automation Script
-# This script automates the cPanel file reorganization and landing page deployment
+# VoxCore frontend deployment helper.
+# Deploy the built SPA to root while preserving the /app entrypoint.
 
 param(
     [string]$CpanelHost = "cloud771.thundercloud.uk:2083",
@@ -10,7 +10,7 @@ param(
 )
 
 Write-Host "===============================================" -ForegroundColor Cyan
-Write-Host "VoxCore Landing Page Automation" -ForegroundColor Cyan
+Write-Host "VoxCore App Root Deployment" -ForegroundColor Cyan
 Write-Host "===============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -28,29 +28,29 @@ $baseUrl = "https://$CpanelHost/execute/Fileman"
 Write-Host "✓ API authentication prepared" -ForegroundColor Green
 Write-Host ""
 
-# Step 2: Check landing page exists
-Write-Host "[2/5] Checking landing page files..." -ForegroundColor Yellow
-$landingPagePath = "$LocalDistPath\landing.html"
-if (Test-Path $landingPagePath) {
-    Write-Host "✓ Landing page file found: $landingPagePath" -ForegroundColor Green
+# Step 2: Check the built SPA exists
+Write-Host "[2/5] Checking frontend build files..." -ForegroundColor Yellow
+$frontendIndexPath = "$LocalDistPath\index.html"
+if (Test-Path $frontendIndexPath) {
+    Write-Host "✓ Frontend entry found: $frontendIndexPath" -ForegroundColor Green
 } else {
-    Write-Host "✗ Landing page not found at: $landingPagePath" -ForegroundColor Red
-    Write-Host "Make sure landing.html is in your frontend\dist folder" -ForegroundColor Red
+    Write-Host "✗ Frontend entry not found at: $frontendIndexPath" -ForegroundColor Red
+    Write-Host "Make sure index.html is in your frontend\dist folder" -ForegroundColor Red
     exit 1
 }
 Write-Host ""
 
-# Step 3: Copy index.html to app folder and upload landing page
+# Step 3: Copy the same SPA shell to both root and /app
 Write-Host "[3/5] Reorganizing files..." -ForegroundColor Yellow
-Write-Host "  → Will copy index.html to /app/index.html" -ForegroundColor Cyan
-Write-Host "  → Will move assets/ to /app/assets/" -ForegroundColor Cyan
-Write-Host "  → Will upload landing.html as new root index.html" -ForegroundColor Cyan
+Write-Host "  → Will upload index.html as /public_html/index.html" -ForegroundColor Cyan
+Write-Host "  → Will copy the same SPA shell to /public_html/app/index.html" -ForegroundColor Cyan
+Write-Host "  → Will keep shared assets under /public_html/assets/" -ForegroundColor Cyan
 Write-Host ""
 
-# Step 4: Upload landing page
-Write-Host "[4/5] Landing page ready for upload..." -ForegroundColor Yellow
-$landingContent = Get-Content $landingPagePath -Raw
-Write-Host "✓ Landing page content loaded ($(($landingContent.Length / 1KB).ToString('N1')) KB)" -ForegroundColor Green
+# Step 4: Upload SPA entrypoint
+Write-Host "[4/5] Frontend app ready for upload..." -ForegroundColor Yellow
+$frontendIndexContent = Get-Content $frontendIndexPath -Raw
+Write-Host "✓ Frontend index loaded ($(($frontendIndexContent.Length / 1KB).ToString('N1')) KB)" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "===============================================" -ForegroundColor Cyan
@@ -58,29 +58,27 @@ Write-Host "SUMMARY" -ForegroundColor Cyan
 Write-Host "===============================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Files ready for upload:" -ForegroundColor White
-Write-Host "  • From: $LocalDistPath\landing.html" -ForegroundColor Cyan
+Write-Host "  • From: $LocalDistPath\index.html" -ForegroundColor Cyan
 Write-Host "  • To:   /public_html/index.html" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Folder structure after deployment:" -ForegroundColor White
 Write-Host "  public_html/" -ForegroundColor Cyan
-Write-Host "  ├── index.html (landing page)" -ForegroundColor Cyan
-Write-Host "  ├── .htaccess" -ForegroundColor Cyan
+Write-Host "  ├── index.html (real VoxCore app)" -ForegroundColor Cyan
+Write-Host "  ├── assets/" -ForegroundColor Cyan
 Write-Host "  └── app/" -ForegroundColor Cyan
-Write-Host "      ├── index.html (governance dashboard)" -ForegroundColor Cyan
-Write-Host "      └── assets/" -ForegroundColor Cyan
+Write-Host "      └── index.html (same SPA shell)" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "NEXT STEPS:" -ForegroundColor Yellow
 Write-Host "1. In cPanel File Manager, navigate to public_html" -ForegroundColor White
 Write-Host "2. Delete the current index.html" -ForegroundColor White
-Write-Host "3. Upload landing.html from: $LocalDistPath" -ForegroundColor White
-Write-Host "4. Rename landing.html to index.html" -ForegroundColor White
+Write-Host "3. Upload index.html from: $LocalDistPath" -ForegroundColor White
+Write-Host "4. Copy the same file to app/index.html" -ForegroundColor White
 Write-Host "5. Refresh https://$DomainName/" -ForegroundColor White
 Write-Host ""
-Write-Host "Your landing page will now have:" -ForegroundColor Green
-Write-Host "  ✓ Professional branding" -ForegroundColor Green
-Write-Host "  ✓ Feature highlights" -ForegroundColor Green
-Write-Host "  ✓ 'Enter VoxCore' button" -ForegroundColor Green
-Write-Host "  ✓ Navigation to full app at /app/" -ForegroundColor Green
+Write-Host "The deployed site will now have:" -ForegroundColor Green
+Write-Host "  ✓ The real VoxCore app at /" -ForegroundColor Green
+Write-Host "  ✓ The same app shell preserved at /app" -ForegroundColor Green
+Write-Host "  ✓ Shared assets served from /assets" -ForegroundColor Green
 Write-Host ""
-Write-Host "Questions? Check frontend/dist/landing.html" -ForegroundColor Cyan
+Write-Host "Questions? Check frontend/dist/index.html" -ForegroundColor Cyan
 Write-Host "===============================================" -ForegroundColor Cyan
