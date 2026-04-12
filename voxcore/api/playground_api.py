@@ -14,8 +14,14 @@ from backend.db.queries_repository import QueryLogsRepository
 from backend.db.org_repository import PolicyRepository
 from backend.services.org_policy_engine import OrganizationPolicyEngine
 from backend.services.context_builder import QueryContextBuilder
+from voxcore.engine.conversation_manager import ConversationManager
 
 router = APIRouter()
+
+# ============================================================================
+# STEP 2: INITIALIZE CONVERSATION MANAGER FOR DEMO SCENARIOS
+# ============================================================================
+conversation_manager = ConversationManager(demo_mode=True)
 
 # ============================================================================
 # STEP 1: STABLE PUBLIC CONTRACT + SESSION LIFECYCLE
@@ -352,6 +358,27 @@ async def playground_query(
 		})
 		
 		# ========================================================================
+		# STEP 1.5: ROUTE THROUGH CONVERSATION MANAGER (STEP 2)
+		# ========================================================================
+		scenario_result = conversation_manager.process_message(
+			session_id=session.session_id,
+			message=request.text,
+		)
+		
+		internal_result = scenario_result.get("_internal_result", {})
+		hero_insight = internal_result.get("hero_insight", "Analysis complete")
+		why_this_answer = internal_result.get("why_this_answer", "")
+		demo_response = internal_result.get("result", {})
+		emd_preview = internal_result.get("emd_preview", "")
+		demo_suggestions = internal_result.get("suggestions", [])
+		
+		logger.info({
+			"event": "scenario_routed",
+			"session_id": session.session_id,
+			"intent": internal_result.get("intent", "unknown"),
+		})
+		
+		# ========================================================================
 		# STEP 2: BUILD QUERY CONTEXT
 		# ========================================================================
 		query_context = {}
@@ -488,6 +515,29 @@ async def playground_query(
 		# ========================================================================
 		# STEP 8: BUILD STABLE RESPONSE WITH GOVERNANCE GUARDRAIL
 		# ========================================================================
+		result_data = {
+			"query_id": query_id,
+			"status": status,
+			"demo_data": demo_response.get("data", []),
+			"narrative": demo_response.get("narrative", ""),
+			"chart_type": demo_response.get("chart_type", ""),
+			"chart_config": demo_response.get("chart_config", {}),
+		}
+		
+		# Merge governance from scenario with governance from policy
+		scenario_governance = internal_result.get("governance", {})
+		combined_governance_reasons = reasons.copy()
+		if scenario_governance.get("sensitivity"):
+			combined_governance_reasons.append(f"Sensitivity: {scenario_governance['sensitivity'].title()}")
+		
+		# Build suggestions combining scenario suggestions with policy suggestions
+		combined_suggestions = []
+		if demo_suggestions:
+			combined_suggestions.extend([s.label for s in demo_suggestions if isinstance(s, object) and hasattr(s, 'label')])
+		
+		if status != "allowed":
+			combined_suggestions.append("Contact your admin" if status == "blocked" else "Pending approval")
+		
 		return build_playground_response(
 			session=session,
 			query_id=query_id,
@@ -495,20 +545,16 @@ async def playground_query(
 			status=status,
 			risk_score=risk_score,
 			confidence=confidence,
-			reasons=reasons,
+			reasons=combined_governance_reasons,
 			policy_violations=policy_violations,
 			policy_applied=policy_applied,
 			original_sql=original_sql,
 			generated_sql=generated_sql,
-			hero_insight="Query analyzed by governance pipeline",
-			why_this_answer=f"Classification: {status.upper()} (risk: {risk_score}%)",
-			result={
-				"query_id": query_id,
-				"status": status,
-				"data": None,  # Demo mode - no execution
-			},
-			emd_preview=f"{status.upper()} — {' '.join(reasons[:1]) if reasons else 'Analysis complete'}",
-			suggestions=["Review governance policy" if status != "allowed" else "Query ready for execution"],
+			hero_insight=hero_insight,
+			why_this_answer=why_this_answer,
+			result=result_data,
+			emd_preview=emd_preview if emd_preview else f"{status.upper()} — {hero_insight}",
+			suggestions=combined_suggestions if combined_suggestions else ["Query analyzed successfully"],
 			execution_time_ms=analysis_time_ms,
 		)
 	
