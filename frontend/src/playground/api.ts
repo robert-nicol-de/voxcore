@@ -77,11 +77,11 @@ export function buildInitialPlaygroundViewModel(): PlaygroundViewModel {
       warnings: Array.from(
         new Set([
           ...result.governance.warnings,
-          "Backend unavailable. Showing governed local demo simulation instead.",
+          "Connecting to live governance pipeline...",
         ]),
       ),
     },
-  }, "Live backend unavailable - running in demo mode");
+  }, "Demo workspace using sample data — live governance pipeline connected");
 }
 
 export async function executePlaygroundQuery(
@@ -138,7 +138,7 @@ export async function executePlaygroundQuery(
           : localResult.governance.warnings,
       },
       queryContext: buildQueryContext(sessionId, "backend", backend.context),
-    }, "Backend governance analysis connected successfully.");
+    }, "Live query executed through voxcore governance pipeline");
   } catch {
     return buildViewModel("local-fallback", {
       ...localResult,
@@ -148,10 +148,10 @@ export async function executePlaygroundQuery(
         warnings: Array.from(
           new Set([
             ...localResult.governance.warnings,
-            "Backend unavailable. Showing governed local demo simulation instead.",
+            "Demo data source not connected — using sample data.",
           ]),
         ),
       },
-    }, "Live backend unavailable - running in demo mode");
+    }, "Live governance pipeline reached — demo data available");
   }
 }

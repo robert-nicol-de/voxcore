@@ -128,19 +128,18 @@ export async function runQuery(
   }
 
   try {
-    const apiKey = import.meta.env.VITE_API_KEY || "";
     const res = await fetch(apiUrl("/api/v1/query"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
       },
       body: JSON.stringify({
-        text: text.trim(),
-        session_id: options?.sessionId || "default",
-        environment: options?.environment || "dev",
-        source: options?.source || "playground",
-        user: options?.user || "ai-agent",
+        question: text.trim(),
+        warehouse: "snowflake",
+        execute: true,
+        dry_run: false,
+        format: "table",
+        schema: {},
       }),
     });
 

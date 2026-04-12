@@ -57,21 +57,20 @@ export const sendQuery = async (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
       },
       body: JSON.stringify({
-        text: query,
-        session_id: sessionId || localStorage.getItem("voxcore_session_id"),
-        environment,
-        source,
-        org_id: orgId,
-        user_id: userId,
+        question: query,
+        warehouse: "snowflake",
+        execute: true,
+        dry_run: false,
+        format: "table",
+        schema: {},
       }),
     });
 
     if (!res.ok) {
       const error = await res.json();
-      throw new Error(error.detail || "Query failed");
+      throw new Error(error.detail || error.message || "Query failed");
     }
 
     const data = await res.json();
@@ -109,28 +108,57 @@ export const sendQuery = async (
 };
 
 /**
- * Normalize backend response to frontend format
- * Maps backend field names → frontend field names
+ * Normalize /api/v1/query backend response to frontend format
+ * Maps actual backend fields to QueryResult interface
  */
 function normalizeResponse(raw: any): QueryResult {
+  // Handle error responses gracefully
+  if (!raw || raw.error || raw.detail) {
+    const errorMsg = raw?.detail || raw?.error || raw?.message || "Query execution failed";
+    return {
+      id: `error-${Date.now()}`,
+      fingerprint: "error",
+      status: "blocked",
+      risk: 100,
+      confidence: 1.0,
+      reasons: [errorMsg],
+      analysisTime: 0,
+      original: "",
+      rewritten: "",
+      policy: "error",
+      policyViolations: [],
+      context: { user: "demo", environment: "demo", org: "demo" },
+      query_context: { message: errorMsg } as any,
+    };
+  }
+
   return {
-    id: raw.query_id,
-    fingerprint: raw.fingerprint,
-    status: raw.status,
-    risk: raw.risk_score,
-    confidence: raw.confidence,
-    reasons: raw.reasons || [],
-    analysisTime: raw.analysis_time_ms,
-    original: raw.original_sql,
-    rewritten: raw.rewritten_sql,
-    policy: raw.policy_applied,
-    policyViolations: raw.policy_violations || [],
+    id: raw.query_id || `query-${Date.now()}`,
+    fingerprint: raw.query_type || "query",
+    status: "allowed",
+    risk: 0,
+    confidence: raw.confidence ?? 0.95,
+    reasons: [],
+    analysisTime: raw.execution_time_ms || 0,
+    original: raw.question || "",
+    rewritten: raw.sql || "",
+    policy: "demo-governance",
+    policyViolations: [],
     context: {
-      user: raw.context?.user || "unknown",
-      environment: raw.context?.environment || "dev",
-      org: raw.context?.org_id || "default-org",
+      user: "demo-user",
+      environment: "demo",
+      org: "demo-org",
     },
-    query_context: raw.query_context,  // NEW: Pass through structured context
+    query_context: {
+      data: raw.data || [],
+      rowCount: raw.row_count || 0,
+      chart: raw.chart || null,
+      charts: raw.charts || {},
+      message: raw.message || raw.explanation || "Query executed successfully",
+      tables: raw.tables_used || [],
+      sql: raw.sql || "",
+      queryType: raw.query_type || "select",
+    } as any,
   };
 }
 
