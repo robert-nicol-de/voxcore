@@ -9,6 +9,25 @@ Production-ready API endpoints for:
 - Policy management
 
 All endpoints use VoxCoreEngine for execution.
+
+============================================================================
+STEP 10: ORCHESTRATION CONSISTENCY - CONVERSATION ENDPOINT
+============================================================================
+This file establishes the reference pattern for conversation routes.
+
+Key Design Decision:
+- ConversationManager.handle_message(session_id, message, **kwargs)
+- CORRECT ORDER: (session_id, message)
+- The /api/v1/conversation endpoint demonstrates the standards pattern
+- This prevents signature mismatch drift between Playground and other routes
+
+Why This Matters:
+- Multiple routes must use consistent orchestration
+- Mismatched signatures = architectural drift
+- One source of truth: ConversationManager signature
+- All callers must respect: session_id FIRST, then message
+
+See: /api/v1/conversation endpoint for reference implementation
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -16,6 +35,8 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 import json
+import uuid
+import time
 
 from backend.voxcore.engine.core import (
     get_voxcore,
@@ -23,6 +44,9 @@ from backend.voxcore.engine.core import (
     VoxQueryResponse,
     ExecutionMetadata
 )
+
+# Step 10: Import ConversationManager for clean orchestration with correct signature
+from voxcore.engine.conversation_manager import ConversationManager
 
 
 # ============= REQUEST/RESPONSE MODELS =============
@@ -74,12 +98,151 @@ class PolicyModel(BaseModel):
     created_at: datetime
 
 
+# ============= STEP 10: CONVERSATION HANDLER MODELS =============
+
+class ConversationRequestModel(BaseModel):
+    """POST /api/v1/conversation - Route through conversation manager with correct signature"""
+    text: str  # User message
+    session_id: str
+    org_id: str = "default-org"
+    user_id: str = "anonymous"
+    user_role: str = "analyst"
+
+
+class ConversationResponseModel(BaseModel):
+    """Response from conversation endpoint - aligned with Playground contract"""
+    session_id: str
+    query_id: str
+    
+    # Core result from conversation manager
+    hero_insight: str  # One-liner result
+    why_this_answer: str  # Narrative explanation
+    result: Dict[str, Any]  # Actual data/scenario result
+    
+    # Enrichment
+    governance: Dict[str, Any] = {}  # Governance metadata
+    emd_preview: str = ""  # Executive summary preview
+    suggestions: List[str] = []  # Next-step suggestions
+    
+    # Metadata
+    created_at: str  # ISO8601 timestamp
+    response_time_ms: int = 0
+    
+    # Status
+    success: bool = True
+    error: Optional[str] = None
+
+
 # ============= ROUTERS =============
 
 router = APIRouter(prefix="/api/v1", tags=["voxcore"])
 
+# ============= STEP 10: INITIALIZE CONVERSATION MANAGER =============
+# Source of truth: ConversationManager.handle_message(session_id, message, **kwargs)
+# This ensures all conversation routes use consistent orchestration
+conversation_manager = ConversationManager(demo_mode=True)
 
-# 🔥 ENDPOINT 1: MAIN QUERY ENDPOINT
+
+# ============= STEP 10: CONVERSATION ENDPOINT (synchronized with Playground) =============
+@router.post("/conversation", response_model=ConversationResponseModel)
+async def handle_conversation(
+    request_body: ConversationRequestModel,
+    request: Request,
+):
+    """
+    🔥 CONVERSATION HANDLER ENDPOINT - Clean orchestration with correct signature
+    
+    This endpoint demonstrates the standard pattern for calling ConversationManager:
+    - Correct argument order: handle_message(session_id, message, ...)
+    - Response aligned with Playground contract
+    - No signature mismatches between routes
+    
+    Pattern (REFERENCE FOR ALL CONVERSATION ROUTES):
+        response = conversation_manager.handle_message(
+            session_id=request_body.session_id,  # ✓ First parameter
+            message=request_body.text,            # ✓ Second parameter
+        )
+    
+    This is intentionally simple to prevent orchestration drift.
+    Complex logic (governance, policies, etc.) belongs in the Playground endpoint.
+    """
+    
+    start_time = time.time()
+    query_id = f"CONV-{uuid.uuid4().hex[:12]}"
+    
+    try:
+        # =====================================================================
+        # STEP 1: CALL CONVERSATION MANAGER WITH CORRECT SIGNATURE
+        # =====================================================================
+        # CORRECT ORDER: (session_id, message)
+        # NOT: (message, session_id) ← This would be a signature mismatch!
+        scenario_result = conversation_manager.handle_message(
+            session_id=request_body.session_id,  # ✓ FIRST
+            message=request_body.text,            # ✓ SECOND
+        )
+        
+        # =====================================================================
+        # STEP 2: EXTRACT SCENARIO RESULT INTO RESPONSE FIELDS
+        # =====================================================================
+        internal_result = scenario_result.get("_internal_result", {})
+        hero_insight = internal_result.get("hero_insight", "Analysis complete")
+        why_this_answer = internal_result.get("why_this_answer", "")
+        demo_response = internal_result.get("result", {})
+        emd_preview = internal_result.get("emd_preview", "")
+        demo_suggestions = internal_result.get("suggestions", [])
+        governance = internal_result.get("governance", {})
+        
+        # =====================================================================
+        # STEP 3: BUILD RESPONSE MATCHING PLAYGROUND CONTRACT
+        # =====================================================================
+        response_time_ms = int((time.time() - start_time) * 1000)
+        
+        return ConversationResponseModel(
+            session_id=request_body.session_id,
+            query_id=query_id,
+            hero_insight=hero_insight,
+            why_this_answer=why_this_answer,
+            result={
+                "demo_data": demo_response.get("data", []),
+                "narrative": demo_response.get("narrative", ""),
+                "chart_type": demo_response.get("chart_type", ""),
+                "chart_config": demo_response.get("chart_config", {}),
+                "governance_metadata": demo_response.get("governance_metadata", {}),
+            },
+            governance=governance,
+            emd_preview=emd_preview if emd_preview else f"{hero_insight}",
+            suggestions=[
+                s["label"] if isinstance(s, dict) else getattr(s, "label", str(s))
+                for s in demo_suggestions
+            ] if demo_suggestions else [],
+            created_at=datetime.utcnow().isoformat(),
+            response_time_ms=response_time_ms,
+            success=True,
+            error=None,
+        )
+    
+    except Exception as e:
+        # Return error response with same contract
+        response_time_ms = int((time.time() - start_time) * 1000)
+        error_message = f"Conversation error: {str(e)}"
+        
+        return ConversationResponseModel(
+            session_id=request_body.session_id,
+            query_id=query_id,
+            hero_insight="Error processing message",
+            why_this_answer=error_message,
+            result={"error": error_message},
+            governance={"decision": "ERROR", "risk_score": 100},
+            emd_preview=error_message,
+            suggestions=["Please try again"],
+            created_at=datetime.utcnow().isoformat(),
+            response_time_ms=response_time_ms,
+            success=False,
+            error=error_message,
+        )
+
+
+# ============= STEP 1: MAIN QUERY ENDPOINT
 @router.post("/query", response_model=QueryResponseModel)
 async def execute_query(
     request_body: QueryRequestModel,
