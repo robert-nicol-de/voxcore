@@ -129,7 +129,7 @@ export async function runQuery(
 
   try {
     const apiKey = import.meta.env.VITE_API_KEY || "";
-    const res = await fetch(apiUrl("/api/playground/query"), {
+    const res = await fetch(apiUrl("/api/v1/query"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
