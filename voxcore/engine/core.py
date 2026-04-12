@@ -320,7 +320,7 @@ class VoxCoreEngine:
 
     def _estimate_and_validate_cost(self, context: ExecutionContext, sql: str) -> int:
         """
-        Estimate query cost and validate against thresholds.
+        Estimate query cost and validate against thresholds using standardized API.
 
         Cost Levels:
         - 0-40:   Safe (allow)
@@ -331,29 +331,22 @@ class VoxCoreEngine:
             Cost score (0-100)
 
         Raises:
-            Exception: If cost > 70
+            Exception: If cost > 70 (DENIED by Playground thresholds)
         """
-        from voxcore.engine.query_cost_analyzer import estimate_query_cost
-        from voxcore.engine.sql_pipeline import analyze_sql_structure
-
-        # Analyze SQL structure
-        metadata = analyze_sql_structure(sql)
-
-        # Estimate cost
-        cost_score = estimate_query_cost(
-            metadata.get("join_count", 0),
-            metadata.get("has_filter", False),
-            metadata.get("estimated_rows", 0),
-            metadata.get("result_rows", 0),
-        )
-
-        # NEW THRESHOLDS ⚡
-        if cost_score > 70:
+        from voxcore.engine.query_cost_analyzer import check_query_cost
+        
+        # Use standardized cost-check API
+        cost_check = check_query_cost(sql, threshold=70, playground_mode=True)
+        cost_score = cost_check["score"]
+        
+        # Block if decision is DENIED (cost >= 70)
+        if not cost_check["allowed"]:
             raise Exception(
                 f"Query too expensive (cost: {cost_score}/100). "
-                f"Simplify or add filters. Max allowed: 70."
+                f"Decision: {cost_check['decision']}. "
+                f"Reason: {cost_check['reason']}"
             )
-
+        
         return cost_score
 
     def _get_cost_level(self, cost_score: int) -> str:
