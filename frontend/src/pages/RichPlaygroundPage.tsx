@@ -20,7 +20,6 @@
  * - Sidebar navigation between Query Lab, Data Explorer, Insights, Governance
  * - Header branding with VoxCore title
  * - Environment trust badge
- * - Conversion panel (Book Demo, Explore Product)
  * - Better use of horizontal space
  */
 
@@ -44,9 +43,6 @@ import {
   PlaygroundResultStack,
   PlaygroundErrorState,
 } from "@/features/playground";
-
-// Legacy panels (reused)
-import { PlaygroundConversionPanel } from "@/playground/legacy/PlaygroundConversionPanel";
 
 // Old components (for section views)
 import { ResultDrilldownModal } from "@/components/voxcore/ResultDrilldownModal";
@@ -286,10 +282,6 @@ export default function RichPlaygroundPage() {
                   </div>
                 </div>
 
-                {/* Conversion panel - show after successful query with results */}
-                {!isRunning && !error && payload?.result && (
-                  <PlaygroundConversionPanel />
-                )}
               </div>
             )}
           </div>

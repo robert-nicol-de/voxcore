@@ -109,22 +109,16 @@ export function PlaygroundSidebar({
         )}
       </div>
 
-      {/* Bottom CTAs */}
-      <div className="mt-8 space-y-2 border-t border-white/5 pt-5">
-        <a
-          href="#book-demo"
-          className="block w-full rounded-[12px] border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-center text-[11px] font-semibold text-emerald-200 transition hover:border-emerald-400/50 hover:bg-emerald-500/15 lg:text-xs"
-        >
-          <span className="hidden lg:inline">Book Demo</span>
-          <span className="lg:hidden">Demo</span>
-        </a>
-        <a
-          href="/docs"
-          className="block w-full rounded-[12px] border border-white/10 bg-white/5 px-3 py-2.5 text-center text-[11px] font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/10 lg:text-xs"
-        >
-          <span className="hidden lg:inline">View Docs</span>
-          <span className="lg:hidden">Docs</span>
-        </a>
+      {/* Workspace footer */}
+      <div className="mt-8 border-t border-white/5 pt-5">
+        <div className="rounded-[16px] border border-white/8 bg-white/[0.03] px-3 py-3.5 lg:px-4">
+          <div className="hidden text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 lg:block">
+            Workspace scope
+          </div>
+          <div className="mt-0 text-center text-[11px] leading-5 text-slate-400 lg:mt-2 lg:text-left lg:text-xs">
+            Governed sample datasets, bounded execution, and terminal-state review stay inside this workspace.
+          </div>
+        </div>
       </div>
     </aside>
   );
