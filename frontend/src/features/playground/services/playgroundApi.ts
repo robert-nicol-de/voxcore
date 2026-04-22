@@ -17,6 +17,14 @@
  */
 
 import { runQuery } from "@/lib/api";
+import {
+  pollGovernedJob,
+  type GovernedJobSnapshot,
+} from "@/lib/governedJobPolling";
+import {
+  normalizeGovernedJobResult,
+  normalizeGovernedCompatibilityStatus,
+} from "@/lib/governedJobResultNormalizer";
 import { runPlaygroundQuery } from "@/playground/simulator";
 import type {
   PlaygroundMode,
@@ -63,6 +71,48 @@ function decisionFromBackend(
     return "Review";
   }
   return "Allowed";
+}
+
+function executionStatusFromBackend(
+  status: "blocked" | "allowed" | "pending_approval",
+  canonicalStatus?: string
+): PlaygroundResult["executionStatus"] {
+  if (canonicalStatus === "queued" || canonicalStatus === "running") {
+    return "queued";
+  }
+  if (status === "blocked" || status === "pending_approval") {
+    return "not_executed";
+  }
+  return "executed";
+}
+
+function resultStatusFromBackend(
+  status: "blocked" | "allowed" | "pending_approval",
+  canonicalStatus?: string
+): PlaygroundResult["resultStatus"] {
+  if (status === "blocked") {
+    return "sql_untrusted";
+  }
+  if (canonicalStatus === "queued" || canonicalStatus === "running" || status === "pending_approval") {
+    return "not_executed";
+  }
+  return "answered";
+}
+
+function normalizeBackendStatus(
+  status: string | undefined
+): "blocked" | "allowed" | "pending_approval" {
+  return normalizeGovernedCompatibilityStatus(status || "");
+}
+
+function normalizeBackendCost(
+  cost: unknown
+): "LOW" | "MEDIUM" | "HIGH" | undefined {
+  const normalized = String(cost || "").trim().toUpperCase();
+  if (normalized === "LOW" || normalized === "MEDIUM" || normalized === "HIGH") {
+    return normalized;
+  }
+  return undefined;
 }
 
 /**
@@ -214,6 +264,10 @@ function buildQueryContext(
     user?: string;
     environment?: string;
     source?: string;
+  },
+  lifecycle?: {
+    canonicalStatus?: string;
+    jobId?: string | null;
   }
 ): PlaygroundQueryContext {
   return {
@@ -225,6 +279,8 @@ function buildQueryContext(
     route: "Query Router -> Governance Engine -> Query Execution -> Insight Engine -> Exploration Engine",
     sessionId,
     orgId: window.localStorage.getItem("voxcore_org_id") || "default-org",
+    canonicalStatus: lifecycle?.canonicalStatus,
+    jobId: lifecycle?.jobId,
   };
 }
 
@@ -240,6 +296,151 @@ function buildViewModel(
     mode: modeLabel(source),
     notice,
     result,
+  };
+}
+
+function mergeBackendIntoPlaygroundViewModel(
+  baseViewModel: PlaygroundViewModel,
+  backend: PlaygroundBackendResponse
+): PlaygroundViewModel {
+  const baseResult = baseViewModel.result;
+  const executionStatus = executionStatusFromBackend(
+    backend.status,
+    backend.canonicalStatus
+  );
+  const resultStatus = resultStatusFromBackend(
+    backend.status,
+    backend.canonicalStatus
+  );
+
+  const updatedResult: PlaygroundResult = {
+    ...baseResult,
+    decision: decisionFromBackend(backend.status),
+    title:
+      backend.canonicalStatus === "queued"
+        ? "Query accepted and queued"
+        : backend.canonicalStatus === "running"
+          ? "Query is running"
+          : backend.canonicalStatus === "blocked"
+            ? "Query blocked by governance"
+            : backend.canonicalStatus === "failed"
+              ? "Query execution failed"
+              : baseResult.title,
+    subtitle:
+      backend.canonicalStatus === "queued"
+        ? backend.jobId
+          ? `Governance approved the request and queued job ${backend.jobId} for execution.`
+          : "Governance approved the request and queued it for execution."
+        : backend.canonicalStatus === "running"
+          ? backend.jobId
+            ? `Governed execution is in progress for job ${backend.jobId}.`
+            : "Governed execution is in progress."
+          : backend.canonicalStatus === "blocked"
+            ? backend.reasons?.[0] || "This query violates governance policies and cannot be executed."
+            : backend.canonicalStatus === "failed"
+              ? "An error occurred during query execution."
+              : baseResult.subtitle,
+    governance: {
+      ...baseResult.governance,
+      classification: classificationFromBackend(backend.status, backend.riskScore),
+      riskScore: backend.riskScore,
+      cost: backend.cost || baseResult.governance.cost,
+      policyStatus:
+        backend.status === "blocked"
+          ? "BLOCKED"
+          : backend.status === "pending_approval"
+            ? "REVIEW"
+            : "APPROVED",
+      rationale:
+        backend.reasons.length > 0
+          ? backend.reasons.join(" ")
+          : baseResult.governance.rationale,
+      warnings:
+        backend.reasons.length > 0
+          ? Array.from(new Set([...backend.reasons, ...baseResult.governance.warnings]))
+          : baseResult.governance.warnings,
+    },
+    queryContext: {
+      ...buildQueryContext(
+        baseResult.queryContext.sessionId || "",
+        "backend",
+        backend.context || {
+          user: baseResult.queryContext.user,
+          environment: baseResult.queryContext.environment,
+          source: baseResult.queryContext.source,
+        },
+        {
+          canonicalStatus: backend.canonicalStatus,
+          jobId: backend.jobId,
+        }
+      ),
+      route: baseResult.queryContext.route,
+      orgId: baseResult.queryContext.orgId,
+      sessionId: baseResult.queryContext.sessionId,
+    },
+    executionStatus,
+    resultStatus,
+    canonicalStatus: backend.canonicalStatus,
+    jobId: backend.jobId,
+    messageOverride:
+      backend.canonicalStatus === "queued"
+        ? backend.jobId
+          ? `Execution is pending. Track job ${backend.jobId} for completion.`
+          : "Execution is pending while the governed worker picks up this query."
+        : backend.canonicalStatus === "running"
+          ? backend.jobId
+            ? `Execution is in progress for job ${backend.jobId}.`
+            : "Execution is in progress."
+          : backend.status === "blocked"
+            ? backend.reasons[0] || "Query blocked by governance policy."
+            : backend.status === "pending_approval"
+              ? backend.reasons[0] || "Query requires review before execution."
+              : baseResult.messageOverride,
+  };
+
+  const notice =
+    backend.canonicalStatus === "queued"
+      ? backend.jobId
+        ? `Query queued for governed execution. Job ID: ${backend.jobId}`
+        : "Query queued for governed execution."
+      : backend.canonicalStatus === "running"
+        ? backend.jobId
+          ? `Query is executing. Job ID: ${backend.jobId}`
+          : "Query is executing."
+        : backend.status === "blocked"
+          ? "Query blocked by the governed execution pipeline."
+          : backend.status === "pending_approval"
+            ? "Query requires approval before execution can continue."
+            : "Live query executed through voxcore governance pipeline";
+
+  return buildViewModel("backend", updatedResult, notice);
+}
+
+function translateJobSnapshotToBackendResponse(
+  job: GovernedJobSnapshot,
+  fallbackResult: PlaygroundResult
+): PlaygroundBackendResponse {
+  const normalized = normalizeGovernedJobResult(job, {
+    risk_score: fallbackResult.governance.riskScore,
+    reasons: fallbackResult.governance.warnings,
+  });
+  const typedResult = normalized.rawResult;
+  return {
+    status: normalized.status,
+    canonicalStatus: normalized.canonicalStatus,
+    jobId: normalized.jobId,
+    riskScore: normalized.riskScore || fallbackResult.governance.riskScore,
+    cost: normalizeBackendCost(typedResult.estimated_cost_tier),
+    reasons: normalized.reasons,
+    context: {
+      user: fallbackResult.queryContext.user,
+      environment: fallbackResult.queryContext.environment,
+      source: fallbackResult.queryContext.source,
+    },
+    controlPlane:
+      typedResult.control_plane && typeof typedResult.control_plane === "object"
+        ? (typedResult.control_plane as Record<string, unknown>)
+        : undefined,
   };
 }
 
@@ -260,12 +461,12 @@ export function buildInitialPlaygroundViewModel(): PlaygroundViewModel {
         warnings: Array.from(
           new Set([
             ...complete.governance.warnings,
-            "Connecting to live governance pipeline...",
+            "Sample preview only. Run a query to use the live governed backend path.",
           ])
         ),
       },
     },
-    "Demo workspace using sample data — live governance pipeline connected"
+    "Sample preview only — run a query to execute through the live governed backend path."
   );
 }
 
@@ -341,36 +542,16 @@ export async function executePlaygroundQuery(
       user: request.user,
     });
 
-    // Success: merge backend governance with local result
-    return buildViewModel(
-      "backend",
-      {
-        ...complete,
-        decision: decisionFromBackend(backend.status),
-        governance: {
-          ...complete.governance,
-          classification: classificationFromBackend(backend.status, backend.riskScore),
-          riskScore: backend.riskScore,
-          cost: backend.cost || complete.governance.cost,
-          policyStatus:
-            backend.status === "blocked"
-              ? "BLOCKED"
-              : backend.status === "pending_approval"
-                ? "REVIEW"
-                : "APPROVED",
-          rationale:
-            backend.reasons.length > 0
-              ? backend.reasons.join(" ")
-              : complete.governance.rationale,
-          warnings: backend.reasons.length > 0
-            ? Array.from(
-                new Set([...backend.reasons, ...complete.governance.warnings])
-              )
-            : complete.governance.warnings,
+    return mergeBackendIntoPlaygroundViewModel(
+      buildViewModel(
+        "backend",
+        {
+          ...complete,
+          queryContext: buildQueryContext(sessionId, "backend", backend.context),
         },
-        queryContext: buildQueryContext(sessionId, "backend", backend.context),
-      },
-      "Live query executed through voxcore governance pipeline"
+        "Live query executed through voxcore governance pipeline"
+      ),
+      backend
     );
   } catch (error) {
     // Error handling: normalize API errors and throw
@@ -406,3 +587,50 @@ function normalizeApiError(error: unknown): string {
 
   // Fallback for non-Error types
   return "An unexpected error occurred. Please try again.";
+}
+
+export async function pollQueuedPlaygroundQuery(
+  initialViewModel: PlaygroundViewModel,
+  onUpdate: (next: PlaygroundViewModel) => void,
+  options?: {
+    intervalMs?: number;
+    maxAttempts?: number;
+  }
+): Promise<PlaygroundViewModel> {
+  const jobId = initialViewModel.result.jobId;
+  if (!jobId || initialViewModel.result.canonicalStatus !== "queued") {
+    return initialViewModel;
+  }
+
+  return pollGovernedJob({
+    jobId,
+    initialState: initialViewModel,
+    isCurrent: () => true,
+    intervalMs: options?.intervalMs,
+    maxAttempts: options?.maxAttempts,
+    mergeSnapshot: (currentViewModel, job) => {
+      const translated = translateJobSnapshotToBackendResponse(job, currentViewModel.result);
+      return mergeBackendIntoPlaygroundViewModel(currentViewModel, translated);
+    },
+    onUpdate,
+    onTimeout: (currentViewModel, timedOutJobId) =>
+      mergeBackendIntoPlaygroundViewModel(currentViewModel, {
+        status:
+          currentViewModel.result.decision === "Review"
+            ? "pending_approval"
+            : "allowed",
+        canonicalStatus: "queued",
+        jobId: timedOutJobId,
+        riskScore: currentViewModel.result.governance.riskScore,
+        reasons: [
+          "Execution is still pending. The worker did not reach a terminal state before the polling timeout.",
+        ],
+        cost: currentViewModel.result.governance.cost,
+        context: {
+          user: currentViewModel.result.queryContext.user,
+          environment: currentViewModel.result.queryContext.environment,
+          source: currentViewModel.result.queryContext.source,
+        },
+      }),
+  });
+}

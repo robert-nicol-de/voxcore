@@ -27,11 +27,15 @@ import type {
   PlaygroundViewModel,
   PlaygroundDataset,
 } from "../types/playground";
-import { executePlaygroundQuery } from "../services/playgroundApi";
+import {
+  executePlaygroundQuery,
+  pollQueuedPlaygroundQuery,
+} from "../services/playgroundApi";
 
 const INITIAL_QUERY = "Show revenue by region";
 const INITIAL_DATASET: PlaygroundDataset = "sales";
 const INITIAL_SECTION = "playground" as const;
+let latestPlaygroundSubmissionId = 0;
 
 /**
  * Playground Store
@@ -47,7 +51,9 @@ export const usePlaygroundStore = create<PlaygroundStateSlice>()(
       query: INITIAL_QUERY,
       setQuery: (query) => set({ query }),
 
-      // Execution state (4-state status model)
+      // Request state for the submit lifecycle.
+      // Note: queued canonical execution is represented in payload.result.executionStatus,
+      // not as a separate store-level request status.
       status: "idle",
       setStatus: (status) => set({ status }),
 
@@ -83,6 +89,7 @@ export const usePlaygroundStore = create<PlaygroundStateSlice>()(
       submitQuery: async (queryOverride?: string) => {
         const currentState = usePlaygroundStore.getState();
         const queryToRun = queryOverride || currentState.query;
+        const submissionId = ++latestPlaygroundSubmissionId;
 
         // Transition to loading
         set({ status: "loading", error: null });
@@ -95,13 +102,61 @@ export const usePlaygroundStore = create<PlaygroundStateSlice>()(
             currentState.activeDataset
           );
 
-          // Success state
+          // Success means the frontend received a governed response.
+          // The actual execution lifecycle still lives on payload.result.executionStatus
+          // and may be "queued" even when this store status is "success".
           set({
             status: "success",
             payload: result,
             error: null,
             query: queryToRun,
           });
+
+          if (result.result.executionStatus === "queued" && result.result.jobId) {
+            void pollQueuedPlaygroundQuery(result, (nextPayload) => {
+              if (submissionId !== latestPlaygroundSubmissionId) {
+                return;
+              }
+
+              const latestState = usePlaygroundStore.getState();
+              if (
+                latestState.payload?.result.jobId &&
+                latestState.payload.result.jobId !== nextPayload.result.jobId
+              ) {
+                return;
+              }
+
+              set({
+                payload: nextPayload,
+                status: "success",
+                error: null,
+              });
+            }).catch((pollError) => {
+              if (submissionId !== latestPlaygroundSubmissionId) {
+                return;
+              }
+
+              const latestState = usePlaygroundStore.getState();
+              const currentPayload = latestState.payload;
+              if (!currentPayload || currentPayload.result.jobId !== result.result.jobId) {
+                return;
+              }
+
+              const errorMessage =
+                pollError instanceof Error
+                  ? pollError.message
+                  : "Polling for query completion failed.";
+
+              set({
+                payload: {
+                  ...currentPayload,
+                  notice: `${currentPayload.notice} Polling paused: ${errorMessage}`,
+                },
+                status: "success",
+                error: null,
+              });
+            });
+          }
         } catch (err) {
           // Error state - service layer provides the error message
           const errorMessage =
@@ -115,7 +170,8 @@ export const usePlaygroundStore = create<PlaygroundStateSlice>()(
       },
 
       // Reset everything to initial state
-      resetSession: () =>
+      resetSession: () => {
+        latestPlaygroundSubmissionId += 1;
         set({
           query: INITIAL_QUERY,
           status: "idle",
@@ -126,10 +182,12 @@ export const usePlaygroundStore = create<PlaygroundStateSlice>()(
           selectedPoint: null,
           isDrilldownOpen: false,
           sessionId: `voxcore-playground-${Date.now()}`,
-        }),
+        });
+      },
 
       // Legacy reset (kept for backward compatibility)
-      reset: () =>
+      reset: () => {
+        latestPlaygroundSubmissionId += 1;
         set({
           query: INITIAL_QUERY,
           status: "idle",
@@ -139,7 +197,8 @@ export const usePlaygroundStore = create<PlaygroundStateSlice>()(
           activeDataset: INITIAL_DATASET,
           selectedPoint: null,
           isDrilldownOpen: false,
-        }),
+        });
+      },
 
       // Legacy UI state setters (for components that set these directly)
       setIsRunning: (running) => {
@@ -247,6 +306,12 @@ export const usePlaygroundExecutionState = () =>
     payload: state.payload,
     error: state.error,
   }));
+
+/**
+ * True when the latest governed response has been accepted but is still queued.
+ */
+export const usePlaygroundHasQueuedExecution = () =>
+  usePlaygroundStore((state) => state.payload?.result.executionStatus === "queued");
 
 /**
  * Get actions only (for components that don't depend on state change).

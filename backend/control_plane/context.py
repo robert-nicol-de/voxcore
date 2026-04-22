@@ -74,6 +74,7 @@ def build_worker_request_context(payload: dict[str, Any]) -> Any:
             datasource_id=payload.get("datasource_id"),
             user_id=payload.get("user_id"),
             role=payload.get("role"),
+            user_email=payload.get("user_email"),
         ),
         headers={"X-Schema-Name": payload.get("schema_name")},
     )

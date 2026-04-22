@@ -1,8 +1,9 @@
 import time
+import logging
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request, Depends
+from fastapi import APIRouter, HTTPException, Query, Request
 from backend.core.auth import verify_api_key
 from backend.core.usage import track_usage, check_rate_limit
 from backend.core.logger import log_query as core_log_query
@@ -19,9 +20,14 @@ from backend.services.safety_validator import validate_query_safety
 from backend.services.audit_logger import create_audit_query_id, log_audit_event
 from backend.services.data_policy_engine import find_sensitive_columns_in_query, get_sensitive_columns
 from backend.services.query_job_queue import enqueue_query_job, get_job, get_worker_stats
+from backend.services.query_job_result_normalizer import normalize_governed_job_record
 from backend.services.ai_context_builder import build_ai_query_context_with_runtime
+from backend.services.query_result_contract import (
+    ApprovalRequiredContract,
+    ClarificationRequiredContract,
+    FallbackContract,
+)
 from backend.event_bus import POLICY_VIOLATION, QUERY_BLOCKED, QUERY_EXECUTED, publish_event
-from backend.schemas.query_response import QueryResponse
 from backend.semantic_brain import (
     AnalysisSessionStore,
     build_preview_chart,
@@ -32,6 +38,7 @@ from backend.semantic_brain import (
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 _SEED_ACTIVITY_LOGS: list[dict[str, Any]] = [
@@ -64,13 +71,47 @@ def _tenant_key(company_id: str, workspace_id: str) -> str:
     return f"{company_id}:{workspace_id}"
 
 
+def _request_state(request: Any) -> Any:
+    state = getattr(request, "state", None)
+    if state is not None:
+        return state
+    return type("RequestState", (), {})()
+
+
+def _request_headers(request: Any) -> Any:
+    headers = getattr(request, "headers", None)
+    if headers is not None and hasattr(headers, "get"):
+        return headers
+    return {}
+
+
+def _request_header(request: Any, name: str, default: Any = None) -> Any:
+    return _request_headers(request).get(name, default)
+
+
+def _request_client_host(request: Any) -> str | None:
+    client = getattr(request, "client", None)
+    host = getattr(client, "host", None)
+    if host is not None:
+        return str(host)
+
+    state = _request_state(request)
+    for attr in ("client_host", "ip_address", "remote_addr"):
+        value = getattr(state, attr, None)
+        if value:
+            return str(value)
+
+    return None
+
+
 def _resolve_tenant_context(
-    request: Request,
+    request: Any,
     company_id: str = "default",
     workspace_id: str = "default",
 ) -> tuple[str, str]:
-    from_state_org = getattr(request.state, "org_id", None)
-    from_state_workspace = getattr(request.state, "workspace_id", None)
+    state = _request_state(request)
+    from_state_org = getattr(state, "org_id", None)
+    from_state_workspace = getattr(state, "workspace_id", None)
 
     effective_company_id = str(from_state_org if from_state_org is not None else company_id)
     effective_workspace_id = str(
@@ -97,16 +138,17 @@ def _save_latest_plan(company_id: str, workspace_id: str, plan: dict[str, Any]) 
 
 
 def _build_semantic_payload(
-    request: Request,
+    request: Any,
     query_text: str,
     workspace_id: str,
     previous_plan: dict[str, Any] | None = None,
     preview_rows: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    state = _request_state(request)
     ai_context = build_ai_query_context_with_runtime(
         workspace_id,
-        getattr(request.state, "datasource_id", None),
-        request.headers.get("X-Schema-Name"),
+        getattr(state, "datasource_id", None),
+        _request_header(request, "X-Schema-Name"),
     )
     semantic_payload = build_semantic_payload(
         query_text=query_text,
@@ -115,7 +157,7 @@ def _build_semantic_payload(
         previous_plan=previous_plan,
         preview_rows=preview_rows or [],
     )
-    current_company_id = str(getattr(request.state, "org_id", "default"))
+    current_company_id = str(getattr(state, "org_id", "default"))
     session_key = _tenant_key(current_company_id, workspace_id)
     plan = semantic_payload.get("analytical_plan") if isinstance(semantic_payload, dict) else None
     if isinstance(plan, dict):
@@ -135,7 +177,7 @@ def _build_semantic_payload(
 
 
 def _append_activity(
-    request: Request,
+    request: Any,
     query: str,
     status: str,
     risk: str = "low",
@@ -288,7 +330,11 @@ def _analyze_query_risk(query: str, metadata: dict = None) -> dict[str, Any]:
     pattern_info = None
     flags = []
     if metadata is not None:
-        risk_score, flags, pattern_info = apply_pattern_scoring(query, metadata, risk_score, [])
+        risk_score, flags, pattern_info = apply_pattern_scoring(
+            risk_score,
+            [],
+            metadata,
+        )
         if flags:
             reasons.extend(flags)
 
@@ -507,8 +553,8 @@ def inspect_query(request: Request, payload: InspectRequest):
     risk_details = _analyze_query_risk(query_text)
     ai_context = build_ai_query_context_with_runtime(
         workspace_id,
-        getattr(request.state, "datasource_id", None),
-        request.headers.get("X-Schema-Name"),
+        getattr(_request_state(request), "datasource_id", None),
+        _request_header(request, "X-Schema-Name"),
     )
 
     blocked_keywords = ["DROP", "DELETE", "TRUNCATE"]
@@ -597,7 +643,7 @@ def analyze_query_risk(request: Request, payload: RiskRequest):
         "risk": risk or {},
         "semantic": semantic_payload or {}
     }
-    print("FINAL RESPONSE:", response)
+    logger.debug("query_risk response: %s", response)
     return response
 
 
@@ -608,7 +654,286 @@ class QueryRequest(BaseModel):
     workspace_id: str = "default"
 
 
-def _add_ai_context(request: Request, payload: QueryRequest, body: dict[str, Any]) -> dict[str, Any]:
+def _coerce_str(value: Any, default: str = "") -> str:
+    if value is None:
+        return default
+    text = str(value).strip()
+    return text if text else default
+
+
+def _normalize_v1_payload(raw_payload: dict[str, Any]) -> tuple[QueryRequest, dict[str, Any]]:
+    if not isinstance(raw_payload, dict):
+        raise HTTPException(status_code=400, detail="JSON object body is required")
+
+    query_text = _coerce_str(
+        raw_payload.get("query")
+        or raw_payload.get("message")
+        or raw_payload.get("question")
+        or raw_payload.get("text")
+    )
+    if not query_text:
+        raise HTTPException(status_code=400, detail="query is required")
+
+    request_payload = QueryRequest(
+        query=query_text,
+        agent=_coerce_str(
+            raw_payload.get("agent")
+            or raw_payload.get("source")
+            or raw_payload.get("user"),
+            "anonymous",
+        ),
+        company_id=_coerce_str(
+            raw_payload.get("company_id")
+            or raw_payload.get("org_id")
+            or raw_payload.get("organization_id"),
+            "default",
+        ),
+        workspace_id=_coerce_str(raw_payload.get("workspace_id"), "default"),
+    )
+
+    legacy_context = {
+        "question": _coerce_str(raw_payload.get("question"), query_text),
+        "session_id": _coerce_str(raw_payload.get("session_id")),
+        "environment": _coerce_str(raw_payload.get("environment"), "compat"),
+        "source": _coerce_str(raw_payload.get("source"), request_payload.agent),
+        "user": _coerce_str(raw_payload.get("user"), request_payload.agent),
+        "connection_id": _coerce_str(raw_payload.get("connection_id")),
+        "warehouse": _coerce_str(raw_payload.get("warehouse")),
+        "format": _coerce_str(raw_payload.get("format")),
+        "execute": bool(raw_payload.get("execute", True)),
+        "dry_run": bool(raw_payload.get("dry_run", False)),
+        "schema": raw_payload.get("schema"),
+    }
+    return request_payload, legacy_context
+
+
+def _resolve_v1_api_identity(request: Request) -> tuple[str | None, bool]:
+    api_key = _request_header(request, "x-api-key")
+    if api_key:
+        verified_key = verify_api_key(api_key)
+        return verified_key, True
+    return None, False
+
+
+def _prime_v1_request_state(
+    request: Request,
+    payload: QueryRequest,
+    legacy_context: dict[str, Any],
+) -> None:
+    """
+    Seed minimal request.state identity for the canonical governed path.
+
+    The rich Playground calls the v1 compatibility endpoint without a prior auth
+    middleware pass, but downstream governance and permission checks expect
+    request.state.user_id/org_id/workspace_id/role to exist.
+    """
+    state = _request_state(request)
+
+    if all(
+        getattr(state, attr, None) is not None
+        for attr in ("user_id", "org_id", "workspace_id", "role")
+    ):
+        return
+
+    def _coerce_int(value: Any) -> int | None:
+        text = _coerce_str(value)
+        return int(text) if text.isdigit() else None
+
+    user_id = _coerce_int(getattr(state, "user_id", None))
+    org_id = _coerce_int(getattr(state, "org_id", None))
+    workspace_id = _coerce_int(getattr(state, "workspace_id", None))
+    role = _coerce_str(getattr(state, "role", None), "")
+    user_email = _coerce_str(getattr(state, "user_email", None), "")
+
+    if user_id and org_id and workspace_id and role:
+        return
+
+    from backend.api.auth import ensure_auth_bootstrap
+    from backend.db import org_store
+
+    ensure_auth_bootstrap()
+
+    fallback_org_id = _coerce_int(payload.company_id) or 1
+    fallback_workspace_id = _coerce_int(payload.workspace_id)
+    fallback_user_email = (
+        _coerce_str(legacy_context.get("user"))
+        or _coerce_str(payload.agent)
+        or "admin@voxcore.com"
+    )
+    if "@" not in fallback_user_email:
+        fallback_user_email = "admin@voxcore.com"
+
+    org_user = org_store.get_user_by_email(fallback_user_email)
+    if not org_user:
+        users = org_store.list_users(fallback_org_id)
+        org_user = users[0] if users else None
+
+    if org_user:
+        user_id = user_id or int(org_user["id"])
+        org_id = org_id or int(org_user.get("org_id") or fallback_org_id)
+        role = role or _coerce_str(org_user.get("role"), "analyst")
+        user_email = user_email or _coerce_str(org_user.get("email"))
+
+    if org_id is None:
+        org_id = fallback_org_id
+
+    if workspace_id is None:
+        workspace = (
+            org_store.get_workspace(fallback_workspace_id, org_id)
+            if fallback_workspace_id is not None
+            else org_store.get_default_workspace(org_id)
+        )
+        if workspace:
+            workspace_id = int(workspace["id"])
+
+    if workspace_id is None:
+        workspace_id = 1
+
+    if user_id is None:
+        user_id = 1
+
+    state.user_id = user_id
+    state.org_id = org_id
+    state.workspace_id = workspace_id
+    state.role = role or _coerce_str(legacy_context.get("user_role"), "analyst")
+    state.user_email = user_email or "admin@voxcore.com"
+
+
+def _extract_compat_sql(result: dict[str, Any], fallback_query: str) -> str:
+    for candidate in (
+        result.get("generated_sql"),
+        (result.get("sql") or {}).get("query") if isinstance(result.get("sql"), dict) else None,
+        (result.get("structured_sql") or {}).get("sql")
+        if isinstance(result.get("structured_sql"), dict)
+        else None,
+        (result.get("query_graph") or {}).get("compiled_sql")
+        if isinstance(result.get("query_graph"), dict)
+        else None,
+    ):
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+    return fallback_query
+
+
+def _extract_compat_confidence(result: dict[str, Any]) -> float:
+    confidence = result.get("confidence")
+    if isinstance(confidence, dict):
+        try:
+            return float(confidence.get("confidence_score", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+    try:
+        return float(confidence or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _compatibility_status(canonical_status: str) -> str:
+    normalized = _coerce_str(canonical_status, "queued").lower()
+    if normalized in {"blocked", "blocked_sensitive"}:
+        return "blocked"
+    if normalized in {"approval_required", "pending_approval"}:
+        return "pending_approval"
+    return "allowed"
+
+
+def _build_v1_query_response(
+    request: Request,
+    payload: QueryRequest,
+    legacy_context: dict[str, Any],
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    canonical_status = _coerce_str(result.get("status"), "queued").lower()
+    compatibility_status = _compatibility_status(canonical_status)
+    sql_text = _extract_compat_sql(result, payload.query)
+    metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+    risk_snapshot = _analyze_query_risk(sql_text or payload.query, metadata)
+    reasons = result.get("reasons") if isinstance(result.get("reasons"), list) else []
+    if not reasons:
+        reasons = list(risk_snapshot.get("reasons", []))
+
+    risk_score = int(risk_snapshot.get("risk_score", 0) or 0)
+    if compatibility_status == "pending_approval" and risk_score < 70:
+        risk_score = 70
+    if compatibility_status == "blocked" and risk_score < 80:
+        risk_score = 80
+
+    top_message = _coerce_str(result.get("message"))
+    if not top_message and canonical_status == "queued":
+        top_message = "Query accepted and queued for governed execution"
+    if not top_message and compatibility_status == "pending_approval":
+        top_message = "Query requires approval before execution"
+    if not top_message and compatibility_status == "blocked":
+        top_message = "Query blocked by governance checks"
+
+    control_plane = result.get("control_plane") if isinstance(result.get("control_plane"), dict) else {}
+    job_id = _coerce_str(result.get("job_id"))
+    query_id = _coerce_str(result.get("query_id"), job_id or f"compat-{int(time.time() * 1000)}")
+    intent = result.get("intent") if isinstance(result.get("intent"), dict) else {}
+    intent_type = _coerce_str(intent.get("type"), "query")
+    confidence_score = _extract_compat_confidence(result)
+    context = {
+        "user": _coerce_str(
+            getattr(_request_state(request), "user_email", None),
+            legacy_context.get("user") or payload.agent,
+        ),
+        "environment": legacy_context.get("environment") or "compat",
+        "source": legacy_context.get("source") or payload.agent,
+    }
+
+    governance = {
+        "compatibility_status": compatibility_status,
+        "canonical_status": canonical_status,
+        "risk_score": risk_score,
+        "risk_level": risk_snapshot.get("risk_level", "low"),
+        "reasons": reasons,
+        "control_plane": control_plane,
+        "queued": canonical_status == "queued",
+        "job_id": job_id or None,
+    }
+
+    return {
+        "success": compatibility_status != "blocked",
+        "status": compatibility_status,
+        "canonical_status": canonical_status,
+        "message": top_message,
+        "query_id": query_id,
+        "job_id": job_id or None,
+        "fingerprint": intent_type,
+        "query_type": intent_type,
+        "question": legacy_context.get("question") or payload.query,
+        "original_query": payload.query,
+        "query": payload.query,
+        "sql": sql_text,
+        "generated_sql": sql_text,
+        "final_sql": sql_text,
+        "original_sql": payload.query,
+        "rewritten_sql": sql_text,
+        "risk_score": risk_score,
+        "risk_level": risk_snapshot.get("risk_level", "low"),
+        "confidence": confidence_score,
+        "reasons": reasons,
+        "analysis_time_ms": 0,
+        "execution_time_ms": 0,
+        "row_count": 0,
+        "rows_returned": 0,
+        "data": [],
+        "results": [],
+        "chart": None,
+        "charts": {},
+        "tables_used": [],
+        "suggestions": result.get("suggested_questions", []) if isinstance(result.get("suggested_questions"), list) else [],
+        "execution": {
+            "rows_returned": 0,
+            "execution_time_ms": 0,
+        },
+        "context": context,
+        "governance": governance,
+        "control_plane": control_plane,
+    }
+
+
+def _add_ai_context(request: Any, payload: QueryRequest, body: dict[str, Any]) -> dict[str, Any]:
     company_id, workspace = _resolve_tenant_context(request, payload.company_id, payload.workspace_id)
     previous_plan = _get_previous_plan(company_id, workspace)
     semantic_payload = _build_semantic_payload(
@@ -627,12 +952,13 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     start = time.perf_counter()
     query = payload.query
     query_id = create_audit_query_id()
+    request_state = _request_state(request)
     company_id, workspace_id = _resolve_tenant_context(
         request, payload.company_id, payload.workspace_id
     )
-    actor_role = str(getattr(request.state, "role", "viewer") or "viewer")
-    actor_email = getattr(request.state, "user_email", None)
-    actor_user_id = getattr(request.state, "user_id", None)
+    actor_role = str(getattr(request_state, "role", "viewer") or "viewer")
+    actor_email = getattr(request_state, "user_email", None)
+    actor_user_id = getattr(request_state, "user_id", None)
     previous_plan = _get_previous_plan(company_id, workspace_id)
     semantic_payload = _build_semantic_payload(
         request,
@@ -642,110 +968,9 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     )
     _save_latest_plan(company_id, workspace_id, semantic_payload["analytical_plan"])
     semantic_sql = str(semantic_payload.get("generated_sql") or "")
-
-        if policy_result.get("requires_approval"):
-            _append_activity(request, query, "blocked", "high", company_id, workspace_id)
-            execution_time = time.perf_counter() - start
-            cost_usd = float(cost_estimate.get("estimated_rows_scanned", 0)) * 0.000001
-            lineage_id = None
-            log_query(
-                company_id=1,
-                user_id=1,
-                query=query,
-                execution_time=execution_time,
-                risk_level="APPROVAL_REQUIRED",
-                blocked=False,
-                cost_usd=cost_usd,
-                lineage_id=lineage_id,
-            )
-            queued_id: int | None = None
-            approval_reasons = policy_result.get("approval_reasons", [])
-            try:
-                from backend.services import approval_queue as queue
-                queued_id = queue.enqueue_query_for_approval(
-                    company_id=company_id,
-                    workspace_id=workspace_id,
-                    user_id=actor_user_id,
-                    query=query,
-                    reasons=approval_reasons,
-                    analysis=analysis,
-                )
-            except Exception:
-                queued_id = None
-            audit_event(
-                "approval_required",
-                "policy_engine",
-                approval_reasons,
-                analysis=analysis,
-                risk_level="medium",
-                guardian_validation="approval_required",
-                execution_time_ms=round(execution_time * 1000, 2),
-                extra={
-                    "policy_decision": policy_result.get("policy_decision"),
-                    "policy_rule": policy_result.get("policy_rule"),
-                    "policy_version": policy_result.get("policy_version"),
-                }
-            )
-            return {
-                "status": "approval_required",
-                "approval_reasons": approval_reasons,
-                "queued_id": queued_id,
-                "analysis": analysis,
-                "original_query": policy_result["original_query"],
-                "effective_query": policy_result["rewritten_query"],
-                "generated_sql": semantic_sql,
-                "policy_decision": policy_result.get("policy_decision"),
-                "policy_rule": policy_result.get("policy_rule"),
-                "policy_version": policy_result.get("policy_version"),
-            } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
-        else:
-            error_report.suggested_action = "CLARIFY"
-
-    # 3. Clarification
-    if error_report.error_detected and error_report.suggested_action == "CLARIFY":
-        clarification_system = ClarificationSystem()
-        clarification_input = ClarificationInput(
-            semantic_plan=semantic_payload.get("analytical_plan", {}),
-            error_report=error_report.dict(),
-            clarification_context=ClarificationContext()
-        )
-        clarification_result = clarification_system.clarify(clarification_input)
-        FailureIntelligenceLogger().log_event(FailureIntelligenceInput(
-            event_type=EventType.CLARIFICATION,
-            event_payload=clarification_result.dict(),
-            timestamp=datetime.utcnow(),
-            user_id=actor_user_id,
-        ))
-        if clarification_result.clarification_needed:
-            return {
-                "status": "clarification_required",
-                "clarification_prompt": clarification_result.clarification_prompt,
-                "clarification_type": clarification_result.clarification_type,
-                "clarification_options": clarification_result.clarification_options,
-                "log": clarification_result.log_entry,
-            }
-
-    # 4. Fallback
-    if error_report.error_detected and error_report.suggested_action == "FALLBACK":
-        fallback_manager = FallbackManager()
-        fallback_input = FallbackInput(
-            semantic_plan=semantic_payload.get("analytical_plan", {}),
-            error_report=error_report.dict(),
-        )
-        fallback_result = fallback_manager.fallback(fallback_input)
-        FailureIntelligenceLogger().log_event(FailureIntelligenceInput(
-            event_type=EventType.FALLBACK,
-            event_payload=fallback_result.dict(),
-            timestamp=datetime.utcnow(),
-            user_id=actor_user_id,
-        ))
-        return {
-            "status": "fallback",
-            "fallback_mode": fallback_result.fallback_mode,
-            "fallback_result": fallback_result.fallback_result,
-            "fallback_details": fallback_result.fallback_details,
-            "log": fallback_result.log_entry,
-        }
+    # Seed a conservative cost estimate for early-exit branches that may
+    # block before the full risk-engine score is available.
+    cost_estimate = _estimate_query_cost(query, 0)
 
     # --- Zanzibar-style permission check ---
     from backend.api.permission_guard import permission_engine
@@ -764,7 +989,7 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
         )
     if not has_permission:
         from backend.db.org_store import audit_log_permission_failure
-        ip_address = getattr(request.client, "host", None)
+        ip_address = _request_client_host(request)
         audit_log_permission_failure(
             user_id=user_id or -1,
             org_id=int(company_id) if company_id.isdigit() else -1,
@@ -800,16 +1025,16 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     # ...existing code...
     # After query execution, scan results for sensitive data
     # (This should be placed after the DB query, but before returning to user)
+    original_add_ai_context = _add_ai_context
+
     def _add_ai_context_and_scan_results(request, payload, body):
         # Scan result set for sensitive data (PII, financial, etc.)
         if isinstance(body, dict):
             for k in ["preview_rows", "rows", "result", "data"]:
                 if k in body and isinstance(body[k], list):
                     body[k] = scan_results(body[k])
-        return _add_ai_context(request, payload, body)
-
-    global _add_ai_context
-    _add_ai_context = _add_ai_context_and_scan_results
+        return original_add_ai_context(request, payload, body)
+    add_ai_context = _add_ai_context_and_scan_results
 
     def audit_event(
         status: str,
@@ -900,7 +1125,13 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             "original_query": payload.query,
             "effective_query": query,
             "generated_sql": semantic_sql,
-        } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
+        } | {
+            "ai_context": build_ai_query_context_with_runtime(
+                workspace_id,
+                getattr(request_state, "datasource_id", None),
+                _request_header(request, "X-Schema-Name"),
+            )
+        }
 
     # 2) Policy Engine enforcement.
     policy_result = apply_policies(company_id, query, analysis=analysis, actor_role=actor_role)
@@ -952,7 +1183,13 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             "policy_decision": policy_result.get("policy_decision"),
             "policy_rule": policy_result.get("policy_rule"),
             "policy_version": policy_result.get("policy_version"),
-        } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
+        } | {
+            "ai_context": build_ai_query_context_with_runtime(
+                workspace_id,
+                getattr(request_state, "datasource_id", None),
+                _request_header(request, "X-Schema-Name"),
+            )
+        }
 
     query = policy_result["rewritten_query"]
 
@@ -998,7 +1235,13 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             "original_query": payload.query,
             "effective_query": query,
             "generated_sql": semantic_sql,
-        } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
+        } | {
+            "ai_context": build_ai_query_context_with_runtime(
+                workspace_id,
+                getattr(request_state, "datasource_id", None),
+                _request_header(request, "X-Schema-Name"),
+            )
+        }
 
     # 4) Policy-based approval mode.
     if policy_result.get("requires_approval"):
@@ -1028,7 +1271,7 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             )
             queued_id = row.get("id")
         except Exception as _queue_err:
-            print(f"[!] Approval queue insert failed: {_queue_err}")
+            logger.warning("Approval queue insert failed: %s", _queue_err)
 
         audit_event(
             "approval_required",
@@ -1040,18 +1283,34 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             execution_time_ms=round(execution_time * 1000, 2),
             extra={"queue_id": queued_id},
         )
-        return {
-            "query_id": query_id,
-            "status": "approval_required",
-            "queue_id": queued_id,
-            "requires_approval": True,
-            "message": "AI query pending approval",
-            "reasons": approval_reasons,
-            "analysis": analysis,
-            "original_query": payload.query,
-            "effective_query": query,
-            "generated_sql": semantic_sql,
-        } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
+        # Build control plane metadata
+        from backend.control_plane.context import build_control_plane_context, build_control_plane_metadata, build_query_route_plan
+        control_plane_ctx = build_control_plane_context(request, payload, operation="query.approval_required", entrypoint="api")
+        route_plan = build_query_route_plan("approval")
+        control_plane_metadata = build_control_plane_metadata(
+            control_plane_ctx,
+            route_plan,
+            "approval_required",
+            extra={"queue_id": queued_id}
+        )
+        
+        # Build governed outcome contract
+        contracted_result = ApprovalRequiredContract.build(
+            approval_reasons=approval_reasons,
+            queue_id=queued_id,
+            control_plane=control_plane_metadata,
+            analysis=analysis,
+            query_id=query_id,
+            original_query=payload.query,
+            effective_query=query,
+            generated_sql=semantic_sql,
+        )
+        contracted_result["ai_context"] = build_ai_query_context_with_runtime(
+            workspace_id, 
+            getattr(request_state, "datasource_id", None), 
+            _request_header(request, "X-Schema-Name")
+        )
+        return contracted_result
 
     # 5) Additional risk scoring + optional approval queue.
     try:
@@ -1115,7 +1374,7 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             )
             queued_id = row.get("id")
         except Exception as _queue_err:
-            print(f"[!] Approval queue insert failed: {_queue_err}")
+            logger.warning("Approval queue insert failed: %s", _queue_err)
         audit_event(
             "approval_required",
             "risk_engine",
@@ -1134,22 +1393,38 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             query,
             list(risk_result["reasons"]),
         )
-        return {
-            "query_id": query_id,
-            "status": "approval_required",
-            "queue_id": queued_id,
-            "risk_score": risk_score,
-            "risk_level": risk_level,
-            "requires_approval": True,
-            "approval_threshold": approval_threshold,
-            "reasons": risk_result["reasons"] + [f"Risk threshold {approval_threshold:.2f} exceeded"],
-            "analysis": analysis,
-            "original_query": payload.query,
-            "effective_query": query,
-            "generated_sql": semantic_sql,
-            "message": "Query held for admin review. Check /api/approval/pending.",
+        # Build control plane metadata
+        from backend.control_plane.context import build_control_plane_context, build_control_plane_metadata, build_query_route_plan
+        control_plane_ctx = build_control_plane_context(request, payload, operation="query.approval_required", entrypoint="api")
+        route_plan = build_query_route_plan("approval")
+        control_plane_metadata = build_control_plane_metadata(
+            control_plane_ctx,
+            route_plan,
+            "approval_required",
+            extra={"queue_id": queued_id, "approval_threshold": approval_threshold}
+        )
+        
+        # Build governed outcome contract
+        contracted_result = ApprovalRequiredContract.build(
+            approval_reasons=risk_result["reasons"] + [f"Risk threshold {approval_threshold:.2f} exceeded"],
+            queue_id=queued_id,
+            control_plane=control_plane_metadata,
+            analysis=analysis,
+            query_id=query_id,
+            original_query=payload.query,
+            effective_query=query,
+            generated_sql=semantic_sql,
+            risk_score=risk_score,
+            risk_level=risk_level,
+            approval_threshold=approval_threshold,
             **cost_estimate,
-        } | {"ai_context": build_ai_query_context_with_runtime(workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
+        )
+        contracted_result["ai_context"] = build_ai_query_context_with_runtime(
+            workspace_id, 
+            getattr(request_state, "datasource_id", None), 
+            _request_header(request, "X-Schema-Name")
+        )
+        return contracted_result
 
     # 6) Database execution simulation/risk stage.
     risk = calculate_risk(query)
@@ -1184,7 +1459,13 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
             "status": "blocked",
             "analysis": analysis,
             "risk": risk
-        } | {"ai_context": build_ai_query_context_with_runtime(payload.workspace_id, getattr(request.state, "datasource_id", None), request.headers.get("X-Schema-Name"))}
+        } | {
+            "ai_context": build_ai_query_context_with_runtime(
+                payload.workspace_id,
+                getattr(request_state, "datasource_id", None),
+                _request_header(request, "X-Schema-Name"),
+            )
+        }
 
     audit_event(
         "allowed",
@@ -1197,7 +1478,7 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
         execution_time_ms=round(execution_time * 1000, 2),
     )
 
-    semantic = _add_ai_context(request, payload, {
+    semantic = add_ai_context(request, payload, {
         "query_id": query_id,
         "status": "allowed",
         "company_id": company_id,
@@ -1269,7 +1550,7 @@ def process_query_payload(request: Request, payload: QueryRequest) -> dict[str, 
     response["insight"] = insight
     if historical_comparison:
         response["historical_comparison"] = historical_comparison
-    print("FINAL RESPONSE:", response)
+    logger.debug("process_query_payload response: %s", response)
     return response
 
 
@@ -1279,18 +1560,21 @@ def run_query(request: Request, payload: QueryRequest):
     return get_control_plane().handle_query(request, payload)
 
 
-@router.post("/api/v1/query", response_model=QueryResponse)
+@router.post("/api/v1/query")
 @limiter.limit("100/minute")
-def run_query_v1(request: Request, payload: QueryRequest, api_key=Depends(verify_api_key)):
-    # Usage tracking and rate limiting
-    track_usage(api_key)
-    check_rate_limit(api_key)
+def run_query_v1(request: Request, payload: dict[str, Any]):
+    normalized_payload, legacy_context = _normalize_v1_payload(payload)
+    _prime_v1_request_state(request, normalized_payload, legacy_context)
+    api_key, has_verified_api_key = _resolve_v1_api_identity(request)
+    if has_verified_api_key and api_key:
+        track_usage(api_key)
+        check_rate_limit(api_key)
 
     # Call the main logic
-    result = get_control_plane().enqueue_query(request, payload)
+    result = get_control_plane().enqueue_query(request, normalized_payload)
 
     # Logging (query, sql, risk, top_insight)
-    user_query = getattr(payload, 'query', None)
+    user_query = normalized_payload.query
     sql = result.get('sql', {}).get('query') if isinstance(result, dict) else None
     risk = result.get('risk', {}) if isinstance(result, dict) else None
     insight = result.get('insight', {}) if isinstance(result, dict) else {}
@@ -1302,7 +1586,7 @@ def run_query_v1(request: Request, payload: QueryRequest, api_key=Depends(verify
         "top_insight": top_insight
     })
 
-    return result
+    return _build_v1_query_response(request, normalized_payload, legacy_context, result)
 
 
 @router.get("/api/v1/query/jobs/{job_id}")
@@ -1310,7 +1594,7 @@ def get_query_job_status(job_id: str):
     job = get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return job
+    return normalize_governed_job_record(job)
 
 
 @router.get("/api/v1/query/worker-stats")

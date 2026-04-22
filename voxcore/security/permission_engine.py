@@ -24,7 +24,13 @@ class PermissionEngine:
         LIMIT 1
         """
         params = (subject[0], subject[1], relation, obj[0], obj[1])
-        result = self.db.fetch_one(query, params)
+        fetch_one = getattr(self.db, "fetch_one", None)
+        if not callable(fetch_one):
+            return False
+        try:
+            result = fetch_one(query, params)
+        except Exception:
+            return False
         return result is not None
 
     def check_access(self, user_id: Any, relation: str, object_type: str, object_id: Any, get_user_workspaces=None, depth=0) -> bool:
@@ -42,6 +48,9 @@ class PermissionEngine:
         # Workspace inheritance
         if get_user_workspaces:
             workspaces = get_user_workspaces(user_id)
+            if object_type == "workspace" and str(object_id) in {str(ws) for ws in workspaces}:
+                self.cache.setex(cache_key, self.cache_ttl, "1")
+                return True
             for ws in workspaces:
                 # Recursive check with depth limit
                 if self.relationship_exists(("workspace", ws), relation, (object_type, object_id)):

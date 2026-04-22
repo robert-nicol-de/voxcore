@@ -242,8 +242,10 @@ async def handle_conversation(
         )
 
 
-# ============= STEP 1: MAIN QUERY ENDPOINT
-@router.post("/query", response_model=QueryResponseModel)
+# ============= STEP 1: LEGACY QUERY ENDPOINT
+# Keep this route available for direct engine debugging without shadowing the
+# canonical governed Playground contract at POST /api/v1/query.
+@router.post("/query/legacy", response_model=QueryResponseModel)
 async def execute_query(
     request_body: QueryRequestModel,
     request: Request,

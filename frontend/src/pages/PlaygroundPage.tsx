@@ -74,6 +74,7 @@ export default function PlaygroundPage() {
   const setPayload = usePlaygroundStore((s) => s.setPayload);
 
   const error = usePlaygroundStore((s) => s.error);
+  const setError = usePlaygroundStore((s) => s.setError);
   const clearError = usePlaygroundStore((s) => s.clearError);
 
   const selectedPoint = usePlaygroundStore((s) => s.selectedPoint);
@@ -124,20 +125,20 @@ export default function PlaygroundPage() {
    */
   const handleRun = async () => {
     setIsRunning(true);
+    clearError();
 
     try {
       const nextQuery = query.trim() || "Show revenue by region";
-      const result = await executePlaygroundQuery({
-        query: nextQuery,
+      const result = await executePlaygroundQuery(
+        nextQuery,
         sessionId,
-        environment: "dev",
-        source: "playground",
-        user: "ai-agent",
-      });
+        activeDataset
+      );
       setPayload(result);
     } catch (error) {
-      console.error("Query execution failed:", error);
-      // Error handling delegated to API service (returns fallback)
+      const message =
+        error instanceof Error ? error.message : "Query execution failed.";
+      setError(message);
     } finally {
       setIsRunning(false);
     }
