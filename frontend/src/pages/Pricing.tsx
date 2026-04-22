@@ -1,6 +1,7 @@
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
-import { MarketingContainer, MarketingLayout } from "@/components/layout/MarketingLayout";
+import MarketingLayout from "@/components/layout/MarketingLayout";
+import { MarketingContainer } from "@/components/layout/MarketingLayout";
 
 const plans = [
   {

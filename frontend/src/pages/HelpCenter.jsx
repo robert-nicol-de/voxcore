@@ -97,7 +97,7 @@ export default function HelpCenter() {
               <p>
                 Type a SQL query or paste one from your AI assistant. Example:
               </p>
-              <pre>SELECT * FROM users WHERE created_at > NOW() - INTERVAL 7 DAYS</pre>
+              <pre>{`SELECT * FROM users WHERE created_at > NOW() - INTERVAL 7 DAYS`}</pre>
               <h4>Step 3: Submit</h4>
               <p>Click "Execute Query" and wait for analysis.</p>
               <h4>Step 4: Review Decision</h4>
@@ -446,7 +446,7 @@ WHERE date > NOW() - INTERVAL 30 DAYS`}
               <ul>
                 <li><strong>Name:</strong> "Max 3 JOINs"</li>
                 <li><strong>Rule Type:</strong> max_joins</li>
-                <li><strong>Condition:</strong> {"{ \"max\": 3 }"}</li>
+                <li><strong>Condition:</strong> <code>{'{ "max": 3 }'}</code></li>
                 <li><strong>Action:</strong> REQUIRE_APPROVAL</li>
                 <li><strong>Effect:</strong> Queries with 4+ JOINs require approval</li>
               </ul>
@@ -454,7 +454,7 @@ WHERE date > NOW() - INTERVAL 30 DAYS`}
               <ul>
                 <li><strong>Name:</strong> "Max 1000 rows"</li>
                 <li><strong>Rule Type:</strong> max_rows</li>
-                <li><strong>Condition:</strong> {"{ \"max_limit\": 1000 }"}</li>
+                <li><strong>Condition:</strong> <code>{'{ "max_limit": 1000 }'}</code></li>
                 <li><strong>Action:</strong> BLOCK</li>
                 <li><strong>Effect:</strong> LIMIT greater than 1000 is blocked</li>
               </ul>

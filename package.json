@@ -12,6 +12,7 @@
     "dev": "concurrently \"npm run frontend\" \"npm run backend\" \"npm run worker\""
   },
   "dependencies": {
+    "lucide-react": "^1.8.0",
     "reactflow": "^11.11.4",
     "recharts": "^3.8.1"
   }
